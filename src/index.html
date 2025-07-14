@@ -2,25 +2,25 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' https://cdnjs.cloudflare.com; font-src https://cdnjs.cloudflare.com;">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" /> <!-- Added viewport -->
+  <meta name="description" content="Nexium Volume Bot: Boost ERC-20 tokens on Base Mainnet with MetaMask." /> <!-- Added description -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' https://cdnjs.cloudflare.com; font-src https://cdnjs.cloudflare.com; script-src 'self' https://cdn.jsdelivr.net;"> <!-- Added https://cdn.jsdelivr.net for ethers.js -->
   <link rel="icon" type="image/png" href="/favicon.svg">
-  <title>Nexium Volume bot | Launch</title>
+  <title>Nexium Volume Bot | Launch</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-[#0d0c1d] text-white font-sans flex flex-col min-h-screen">
- <main class="flex flex-1 items-center justify-center flex-col text-center px-4">
-  <img src="/logo.png" alt="Nexium-MTX Logo" id="nav-logo" class="h-14 w-14" onerror="console.log('Logo load failed'); this.classList.add('hidden')">
-  <h1 class="text-4xl md:text-6xl font-bold text-yellow-400 mb-8">Nexium Volume Bot</h1>
-  <p class="text-sm max-w-lg text-gray-300 mb-12 text-effect">Connect wallet | Add Volume.</p>
-  <a href="add-volume.html">
-
-    <button id="launchBtn" class="glow-button text-black text-lg font-bold py-4 px-10 rounded-xl transition-transform hover:scale-105 animate-pulse" aria-label="Launch App">Launch App</button>
-  </a>
-</main>
+  <main class="flex flex-1 items-center justify-center flex-col text-center px-4">
+    <img src="/logo.png" alt="Nexium-MTX Logo" id="nav-logo" class="h-14 w-14" onerror="console.log('Logo load failed'); this.classList.add('hidden')">
+    <h1 class="text-4xl md:text-6xl font-bold text-yellow-400 mb-8">Nexium Volume Bot</h1>
+    <p class="text-sm max-w-lg text-gray-300 mb-12 text-effect">Connect wallet | Add Volume.</p>
+    <a href="add-volume.html">
+      <button id="launchBtn" class="glow-button text-black text-lg font-bold py-4 px-10 rounded-xl transition-transform hover:scale-105 animate-pulse" aria-label="Launch App">Launch App</button>
+    </a>
+  </main>
   <footer class="text-center text-sm text-gray-400 py-6 border-t border-gray-700">
     © 2025 Nexium-volume-bot — Built with ❤ 
   </footer>
-  <!-- <script type="module" src="main.js"></script> -->
+  <!-- <script type="module" src="main.js"></script> --> <!-- Keeping this commented unless you want JS here -->
 </body>
 </html>
