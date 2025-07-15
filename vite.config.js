@@ -9,21 +9,31 @@ export default defineConfig({
   base: '/', // Adjust to '/repo-name/' if hosting in a subdirectory
 
   server: {
-    open: '/index.html' // Open index.html in dev
+    open: '/index.html', // Open index.html in dev
   },
+
   css: {
     postcss: {
       plugins: [
         tailwindcss,
-        autoprefixer
+        autoprefixer,
       ]
     }
   },
+
   optimizeDeps: {
     include: ['ethers'] // Pre-bundle ethers for faster dev
   },
+
   build: {
-    outDir: '../dist', // Output build files into dist folder outside src
-    emptyOutDir: true, // Clear dist folder before building
+    outDir: '../dist', // Output directory for production build
+    emptyOutDir: true, // Clean the output directory before building
+    rollupOptions: {
+      input: {
+        // Specify multiple HTML files to handle routing and create separate bundles for each page
+        main: 'src/index.html',
+        addVolume: 'src/add-volume.html',
+      }
+    }
   }
 });
