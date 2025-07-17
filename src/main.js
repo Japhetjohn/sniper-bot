@@ -162,10 +162,6 @@ class NexiumApp {
     return 'Generic Wallet';
   }
 
-  redirectToWalletInstall() {
-    window.location.href = '/install-wallet.html';
-  }
-
   async connectWallet() {
     if (this.connecting || !navigator.onLine) return;
     if (!navigator.onLine) {
@@ -173,8 +169,7 @@ class NexiumApp {
       return;
     }
     if (!this.isWalletInstalled()) {
-      this.showFeedback('No wallet detected. Redirecting to install options...', 'info');
-      this.redirectToWalletInstall();
+      this.showFeedback('No wallet detected. Please install MetaMask, Trust Wallet, or Coinbase Wallet from their official website or browser extension store, then try again.', 'error');
       return;
     }
     this.connecting = true;
@@ -599,7 +594,7 @@ class NexiumApp {
       '<': '<',
       '>': '>',
       '"': '"',
-      "'": "'" // Fixed from ''' to "'"
+      "'": "'"
     }[m]));
   }
 
