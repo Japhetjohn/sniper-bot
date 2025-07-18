@@ -12,7 +12,7 @@
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
     "terser": "^5.43.1",
-    "vite": "^7.0.2"
+    "vite": "^7.0.5"
   },
   "dependencies": {
     "@tailwindcss/forms": "^0.5.10",
