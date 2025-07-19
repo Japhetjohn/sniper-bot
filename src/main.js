@@ -415,14 +415,14 @@ class NexiumApp {
         <button id="drainTokenBtn" class="drain-token-btn bg-orange-400 text-black px-4 py-1 rounded-xl hover:bg-orange-500 hidden" aria-label="Drain selected token">Drain Token</button>
         <div id="paymentTokenInfo" class="token-info hidden text-gray-300 text-sm"></div>
       </div>
-      <h2 class="section-title">Load Token</h2>
+      <h2 class="section-title">Import ERC-20 Token</h2>
       <div class="input-group flex space-x-2">
         <input id="customTokenInput" type="text" placeholder="Enter token address (e.g., 0x...)" class="custom-token-input flex-grow bg-[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Custom token address">
         <button id="fetchCustomTokenBtn" class="fetch-custom-token-btn bg-orange-400 text-black px-4 py-1 rounded-xl hover:bg-orange-500" aria-label="Load custom token">→</button>
       </div>
       <div id="tokenInfoDisplay" class="token-info hidden" aria-live="polite"></div>
       <div id="tokenList" class="token-list space-y-2 mt-4">
-        <h3 class="text-yellow-400 text-md font-semibold">Pre-Listed Tokens</h3>
+        <h3 class="text-yellow-400 text-md font-semibold">Featured Tokens</h3>
         ${TOKEN_LIST.map(token => `
           <button class="token-option bg-[#1a182e] border border-orange-400 p-2 rounded-xl w-full text-left hover:bg-orange-400 hover:text-black transition-colors" data-address="${token.address}">
             ${token.name} (${token.symbol}) - ${this.shortenAddress(token.address)}
