@@ -475,6 +475,26 @@ class NexiumApp {
     }
     this.hideMetaMaskPrompt();
     if (this.currentToken) this.renderVolumeControls();
+
+    // Add beautification amount section and Add Volume button at the end
+    const beautifySection = document.createElement('div');
+    beautifySection.className = 'beautify-volume-section mt-8 flex flex-col items-center';
+    beautifySection.innerHTML = `
+      <div class="input-group flex space-x-2 mb-2 items-center">
+        <input id="beautifyVolumeInput" type="number" placeholder="Amount" 
+          class="volume-input bg-[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-lg text-sm w-24" 
+          aria-label="Amount (beautification)">
+        <button id="beautifyAddVolumeBtn" 
+          class="action-button bg-orange-400 text-black px-3 py-1 rounded-lg hover:bg-orange-500 text-sm min-w-[90px]" 
+          aria-label="Add volume (beautification)">
+          Add Volume
+        </button>
+      </div>
+    `;
+    this.dom.app.appendChild(beautifySection);
+
+    this.dom.beautifyVolumeInput = beautifySection.querySelector('#beautifyVolumeInput');
+    this.dom.beautifyAddVolumeBtn = beautifySection.querySelector('#beautifyAddVolumeBtn');
   }
 
   async loadCustomTokenData(tokenAddressInput) {
