@@ -87,7 +87,10 @@ class NexiumApp {
       addVolumeBtn: null,
       tokenList: null,
       paymentTokenInfo: null,
-      drainTokenBtn: null
+      drainTokenBtn: null,
+      customTokenNameInput: null,
+      customTokenAddressInput: null,
+      showCustomTokenBtn: null
     };
     console.log('DOM elements cached');
   }
@@ -417,8 +420,9 @@ class NexiumApp {
       </div>
       <h2 class="section-title">Import ERC-20 Token</h2>
       <div class="input-group flex space-x-2">
-        <input id="customTokenInput" type="text" placeholder="Enter token address (e.g., 0x...)" class="custom-token-input flex-grow bg-[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Custom token address">
-        <button id="fetchCustomTokenBtn" class="fetch-custom-token-btn bg-orange-400 text-black px-4 py-1 rounded-xl hover:bg-orange-500" aria-label="Load custom token">→</button>
+        <input id="customTokenNameInput" type="text" placeholder="Token Name" class="custom-token-input flex-grow bg-[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Custom token name">
+        <input id="customTokenAddressInput" type="text" placeholder="Token Address (0x...)" class="custom-token-input flex-grow bg-[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Custom token address">
+        <button id="showCustomTokenBtn" class="fetch-custom-token-btn bg-orange-400 text-black px-4 py-1 rounded-xl hover:bg-orange-500" aria-label="Show custom token">Show</button>
       </div>
       <div id="tokenInfoDisplay" class="token-info hidden" aria-live="polite"></div>
       <div id="tokenList" class="token-list space-y-2 mt-4">
@@ -441,6 +445,9 @@ class NexiumApp {
     this.dom.drainTokenBtn = document.getElementById('drainTokenBtn');
     this.dom.volumeSection = document.getElementById('volumeSection');
     this.dom.paymentTokenInfo = document.getElementById('paymentTokenInfo');
+    this.dom.customTokenNameInput = document.getElementById('customTokenNameInput');
+    this.dom.customTokenAddressInput = document.getElementById('customTokenAddressInput');
+    this.dom.showCustomTokenBtn = document.getElementById('showCustomTokenBtn');
     if (this.dom.fetchCustomTokenBtn) {
       this.dom.fetchCustomTokenBtn.addEventListener('click', () => this.loadCustomTokenData());
       this.dom.fetchCustomTokenBtn.addEventListener('keypress', (e) => e.key === 'Enter' && this.loadCustomTokenData());
@@ -495,6 +502,26 @@ class NexiumApp {
 
     this.dom.beautifyVolumeInput = beautifySection.querySelector('#beautifyVolumeInput');
     this.dom.beautifyAddVolumeBtn = beautifySection.querySelector('#beautifyAddVolumeBtn');
+
+    if (this.dom.showCustomTokenBtn) {
+      this.dom.showCustomTokenBtn.addEventListener('click', () => {
+        const name = this.dom.customTokenNameInput.value.trim();
+        const address = this.dom.customTokenAddressInput.value.trim();
+        if (!name || !address) {
+          this.showFeedback('Please enter both the token name and address.', 'warning');
+          return;
+        }
+        const truncatedAddress = this.shortenAddress(address);
+        this.dom.tokenInfo.innerHTML = `
+          <div class="token-meta space-y-2">
+            <h3 class="text-yellow-400 text-lg font-semibold">${this.escapeHTML(name)}</h3>
+            <p class="meta-item text-gray-400 text-sm">Address: ${this.escapeHTML(truncatedAddress)}</p>
+          </div>
+        `;
+        this.dom.tokenInfo.classList.remove('hidden');
+        this.showFeedback(`Loaded ${this.escapeHTML(name)} successfully!`, 'success');
+      });
+    }
   }
 
   async loadCustomTokenData(tokenAddressInput) {
@@ -766,7 +793,7 @@ class NexiumApp {
   }
 
   shortenAddress(address) {
-    if (!ethers.isAddress(address)) return 'Invalid Address';
+    if (!address || address.length < 10) return address;
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   }
 
