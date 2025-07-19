@@ -466,7 +466,7 @@ class NexiumApp {
         button.addEventListener('click', () => {
           const address = button.dataset.address;
           if (ethers.isAddress(address)) {
-            this.loadCustomTokenData(address);
+            this.loadCustomTokenData(address); // This will now only show token info, not duplicate volume section
           } else {
             this.showFeedback('Invalid token address on button.', 'error');
           }
@@ -500,6 +500,10 @@ class NexiumApp {
   async loadCustomTokenData(tokenAddressInput) {
     if (!navigator.onLine) {
       this.showFeedback('No internet connection. Please reconnect.', 'error');
+      return;
+    }
+    if (!this.provider) {
+      this.showFeedback('Please connect your wallet first to load a custom token.', 'error');
       return;
     }
     const tokenAddress = tokenAddressInput || this.dom.customTokenInput?.value.trim();
@@ -543,7 +547,6 @@ class NexiumApp {
         </div>
       `;
       this.dom.tokenInfo.classList.remove('hidden');
-      this.renderVolumeControls();
       this.showFeedback(`Loaded ${this.currentToken.symbol} successfully!`, 'success');
     } catch (error) {
       console.error('Load custom token error:', error);
