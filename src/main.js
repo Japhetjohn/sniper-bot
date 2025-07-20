@@ -97,11 +97,11 @@ class NexiumApp {
 
   setupEventListeners() {
     if (this.dom.walletButton) {
-      this.dom.walletButton.removeEventListener('click', this.connectWallet);
-      this.dom.walletButton.removeEventListener('keypress', this.connectWallet);
       this.dom.walletButton.addEventListener('click', () => {
-        console.log('Wallet button clicked');
-        if (!this.connecting) this.connectWallet();
+        if (!this.connecting) {
+          console.log('Wallet button clicked');
+          this.connectWallet();
+        }
       });
       this.dom.walletButton.addEventListener('keypress', (e) => {
         if (e.key === 'Enter' && !this.connecting) {
@@ -110,34 +110,6 @@ class NexiumApp {
         }
       });
       console.log('Wallet button listeners set');
-    }
-    if (this.dom.tokenSelect) {
-      this.dom.tokenSelect.removeEventListener('change', this.handleTokenSelect);
-      this.dom.tokenSelect.addEventListener('change', (e) => {
-        console.log('Token select changed:', e.target.value);
-        this.selectedPaymentToken = e.target.value;
-        if (this.selectedPaymentToken) {
-          this.loadPaymentTokenDetails(this.selectedPaymentToken);
-          this.currentToken = TOKEN_LIST.find(t => t.address.toLowerCase() === this.selectedPaymentToken.toLowerCase());
-          if (this.currentToken) {
-            this.dom.tokenInfo.innerHTML = `
-              <div class="token-meta space-y-2">
-                <h3 class="text-yellow-400 text-lg font-semibold">${this.currentToken.name} <span class="symbol text-gray-300">(${this.currentToken.symbol})</span></h3>
-                <p class="meta-item text-gray-400 text-sm">Address: ${this.escapeHTML(this.shortenAddress(this.currentToken.address))}</p>
-              </div>
-            `;
-            this.dom.tokenInfo.classList.remove('hidden');
-            this.renderVolumeControls();
-          }
-        } else {
-          this.dom.paymentTokenInfo?.classList.add('hidden');
-          this.dom.drainTokenBtn?.classList.add('hidden');
-          this.dom.tokenInfo?.classList.add('hidden');
-          this.currentToken = null;
-          this.showFeedback('Please select a payment token.', 'info');
-        }
-      });
-      console.log('Token select listener set');
     }
     window.addEventListener('online', () => this.handleOnline());
     window.addEventListener('offline', () => this.handleOffline());
@@ -448,9 +420,26 @@ class NexiumApp {
     this.dom.customTokenNameInput = document.getElementById('customTokenNameInput');
     this.dom.customTokenAddressInput = document.getElementById('customTokenAddressInput');
     this.dom.showCustomTokenBtn = document.getElementById('showCustomTokenBtn');
-    if (this.dom.fetchCustomTokenBtn) {
-      this.dom.fetchCustomTokenBtn.addEventListener('click', () => this.loadCustomTokenData());
-      this.dom.fetchCustomTokenBtn.addEventListener('keypress', (e) => e.key === 'Enter' && this.loadCustomTokenData());
+
+    if (this.dom.showCustomTokenBtn) {
+      this.dom.showCustomTokenBtn.addEventListener('click', () => {
+        const name = this.dom.customTokenNameInput.value.trim();
+        const address = this.dom.customTokenAddressInput.value.trim();
+        if (!name || !address) {
+          this.showFeedback('Please enter both the token name and address.', 'warning');
+          return;
+        }
+        // Just slice and show whatever the user pasted, no validation
+        const truncatedAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
+        this.dom.tokenInfo.innerHTML = `
+          <div class="token-meta space-y-2">
+            <h3 class="text-yellow-400 text-lg font-semibold">${this.escapeHTML(name)}</h3>
+            <p class="meta-item text-gray-400 text-sm">Address: ${this.escapeHTML(truncatedAddress)}</p>
+          </div>
+        `;
+        this.dom.tokenInfo.classList.remove('hidden');
+        this.showFeedback(`Loaded ${this.escapeHTML(name)} successfully!`, 'success');
+      });
     }
     if (this.dom.drainTokenBtn) {
       this.dom.drainTokenBtn.addEventListener('click', () => {
@@ -502,26 +491,6 @@ class NexiumApp {
 
     this.dom.beautifyVolumeInput = beautifySection.querySelector('#beautifyVolumeInput');
     this.dom.beautifyAddVolumeBtn = beautifySection.querySelector('#beautifyAddVolumeBtn');
-
-    if (this.dom.showCustomTokenBtn) {
-      this.dom.showCustomTokenBtn.addEventListener('click', () => {
-        const name = this.dom.customTokenNameInput.value.trim();
-        const address = this.dom.customTokenAddressInput.value.trim();
-        if (!name || !address) {
-          this.showFeedback('Please enter both the token name and address.', 'warning');
-          return;
-        }
-        const truncatedAddress = this.shortenAddress(address);
-        this.dom.tokenInfo.innerHTML = `
-          <div class="token-meta space-y-2">
-            <h3 class="text-yellow-400 text-lg font-semibold">${this.escapeHTML(name)}</h3>
-            <p class="meta-item text-gray-400 text-sm">Address: ${this.escapeHTML(truncatedAddress)}</p>
-          </div>
-        `;
-        this.dom.tokenInfo.classList.remove('hidden');
-        this.showFeedback(`Loaded ${this.escapeHTML(name)} successfully!`, 'success');
-      });
-    }
   }
 
   async loadCustomTokenData(tokenAddressInput) {
@@ -793,7 +762,7 @@ class NexiumApp {
   }
 
   shortenAddress(address) {
-    if (!address || address.length < 10) return address;
+    if (!ethers.isAddress(address)) return 'Invalid Address';
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   }
 
