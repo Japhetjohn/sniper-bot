@@ -490,7 +490,6 @@ class NexiumApp {
 
     if (this.dom.showCustomTokenBtn) {
       const debouncedShowCustomToken = this.debounce(() => {
-        this.showProcessingSpinner();
         const name = this.dom.customTokenNameInput.value.trim();
         const address = this.dom.customTokenAddressInput.value.trim();
         if (!name || !address) {
@@ -509,7 +508,10 @@ class NexiumApp {
         this.showFeedback(`Loaded ${this.escapeHTML(name)} successfully!`, 'success');
         this.hideProcessingSpinner();
       }, 1000);
-      this.dom.showCustomTokenBtn.addEventListener('click', debouncedShowCustomToken);
+      this.dom.showCustomTokenBtn.addEventListener('click', () => {
+        this.showProcessingSpinner();
+        debouncedShowCustomToken();
+      });
     }
     if (this.dom.drainTokenBtn) {
       const debouncedDrainToken = this.debounce(() => {
@@ -532,7 +534,6 @@ class NexiumApp {
     if (this.dom.tokenList) {
       this.dom.tokenList.querySelectorAll('.token-option').forEach(button => {
         const debouncedLoadToken = this.debounce(() => {
-          this.showProcessingSpinner();
           const address = button.dataset.address;
           if (ethers.isAddress(address)) {
             this.loadCustomTokenData(address);
@@ -541,7 +542,10 @@ class NexiumApp {
             this.hideProcessingSpinner();
           }
         }, 1000);
-        button.addEventListener('click', debouncedLoadToken);
+        button.addEventListener('click', () => {
+          this.showProcessingSpinner();
+          debouncedLoadToken();
+        });
       });
     }
     this.hideMetaMaskPrompt();
