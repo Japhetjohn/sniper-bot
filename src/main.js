@@ -485,7 +485,7 @@ class NexiumApp {
       <div class="top-controls flex space-x-4 mb-4">
         <select id="tokenSelect" class="token-select bg-[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Select payment token">
           <option value="" disabled selected>Select payment token</option>
-          ${TOKEN_LIST.map(t => `<option value="${t.address}" data-symbol="${t.symbol}" data-decimals="${t.decimals}">${t.name} (${t.symbol})</option>`).join('')}
+          ${TOKEN_LIST.map(t => `<option value="${t.address}" data-symbol="${t.symbol}" data-decimals="${t.decimals}">${t.name}</option>`).join('')}
         </select>
       </div>
       <h2 class="section-title">Import ERC-20 Token</h2>
