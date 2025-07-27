@@ -15,8 +15,11 @@
     "vite": "^7.0.5"
   },
   "dependencies": {
+    "@solana/web3.js": "^1.98.2",
     "@tailwindcss/forms": "^0.5.10",
     "@walletconnect/ethereum-provider": "^2.21.5",
-    "ethers": "^6.15.0"
+    "dotenv": "^17.2.1",
+    "ethers": "^6.15.0",
+    "i": "^0.3.7"
   }
 }

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Nexium-MTX: Add volume to ERC-20 tokens on Base Mainnet using MetaMask">
   <title>Nexium Add Volume</title>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com; font-src https://cdnjs.cloudflare.com; script-src 'self' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com; font-src https://cdnjs.cloudflare.com; script-src 'self' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; connect-src 'self' https://solana-mainnet.api.syndica.io;">
   <link rel="icon" type="image/png" href="/favicon.svg">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEKbqtiB+ckN0Q==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <link rel="stylesheet" href="style.css">
@@ -13,9 +13,9 @@
 <body class="bg-[#0d0c1d] text-white min-h-screen p-4 font-sans flex flex-col justify-between">
   <nav class="w-full max-w-3xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between bg-[#1a182e] p-4 rounded-xl shadow border border-orange-400 gap-2 sm:gap-0">
     <div class="flex items-center justify-center sm:justify-start">
-  <img src="/logo.png" alt="Nexium-MTX Logo" id="title-logo" class="h-14 w-14" onerror="console.log('Logo load failed'); this.classList.add('hidden')">
-  <span class="text-lg font-bold text-yellow-400 -ml-1">Nexium-MTX</span>
-</div>
+      <img src="/logo.png" alt="Nexium-MTX Logo" id="title-logo" class="h-14 w-14" onerror="console.log('Logo load failed'); this.classList.add('hidden')">
+      <span class="text-lg font-bold text-yellow-400 -ml-1">Nexium-MTX</span>
+    </div>
     <button id="walletButton" class="glow-button text-black font-semibold py-2 px-4 rounded-xl animate-pulse transition-all" aria-label="Connect wallet">Connect Wallet</button>
   </nav>
   <main id="app" class="w-full max-w-md mx-auto space-y-6" aria-live="polite">
@@ -30,5 +30,6 @@
     <p>© 2025 Nexium-MTX. All rights reserved.</p>
   </footer>
   <script type="module" src="main.js"></script>
+  <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.js"></script>
 </body>
 </html>
