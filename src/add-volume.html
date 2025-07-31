@@ -3,11 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Nexium-MTX: Add volume to ERC-20 tokens on Base Mainnet using MetaMask">
+  <meta name="description" content="Nexium-MTX: Add volume to ERC-20 tokens on Base Mainnet using MetaMask, Phantom, or Trust Wallet">
   <title>Nexium Add Volume</title>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com; font-src https://cdnjs.cloudflare.com; script-src 'self' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; connect-src 'self' https://solana-mainnet.api.syndica.io;">
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    img-src 'self' https://nexium-bot.onrender.com data:;
+    style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com;
+    font-src 'self' https://cdnjs.cloudflare.com;
+    script-src 'self' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://unpkg.com;
+    connect-src 'self' https://cloud.walletconnect.com https://rpc.ankr.com wss://relay.walletconnect.org https://solana-mainnet.api.syndica.io;
+  ">
   <link rel="icon" type="image/png" href="/favicon.svg">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEKbqtiB+ckN0Q==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-t4F8gqPCFDHz1x3NNFv+CVSo2y+ArsV+pvdzQAxm+r9ORtTRT/u8V90SLizlJ4ZH7GOE+BR4zWaZVdaKXj1y9Q==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-[#0d0c1d] text-white min-h-screen p-4 font-sans flex flex-col justify-between">
@@ -16,11 +23,19 @@
       <img src="/logo.png" alt="Nexium-MTX Logo" id="title-logo" class="h-14 w-14" onerror="console.log('Logo load failed'); this.classList.add('hidden')">
       <span class="text-lg font-bold text-yellow-400 -ml-1">Nexium-MTX</span>
     </div>
-    <button id="walletButton" class="glow-button text-black font-semibold py-2 px-4 rounded-xl animate-pulse transition-all" aria-label="Connect wallet">Connect Wallet</button>
+    <div class="flex flex-col sm:flex-row gap-2">
+      <button id="connect-metamask" class="glow-button text-black font-semibold py-2 px-4 rounded-xl animate-pulse transition-all" aria-label="Connect MetaMask">Connect MetaMask</button>
+      <button id="connect-phantom" class="glow-button text-black font-semibold py-2 px-4 rounded-xl animate-pulse transition-all" aria-label="Connect Phantom">Connect Phantom</button>
+      <button id="connect-trustwallet" class="glow-button text-black font-semibold py-2 px-4 rounded-xl animate-pulse transition-all" aria-label="Connect Trust Wallet">Connect Trust Wallet</button>
+    </div>
   </nav>
   <main id="app" class="w-full max-w-md mx-auto space-y-6" aria-live="polite">
     <div id="metamaskPrompt" class="hidden bg-[#1a182e] border border-orange-400 p-4 rounded-xl text-center text-sm glass">
-      <p class="text-gray-300">MetaMask is not installed. <a href="https://metamask.io/download/" target="_blank" rel="noopener noreferrer" class="text-yellow-400 hover:underline" aria-label="Install MetaMask">Install MetaMask</a> to continue.</p>
+      <p class="text-gray-300">No wallet installed. Install one to continue:<br>
+        <a href="https://metamask.io/download/" target="_blank" rel="noopener noreferrer" class="text-yellow-400 hover:underline" aria-label="Install MetaMask">MetaMask</a> |
+        <a href="https://phantom.app/download" target="_blank" rel="noopener noreferrer" class="text-yellow-400 hover:underline" aria-label="Install Phantom">Phantom</a> |
+        <a href="https://trustwallet.com/download" target="_blank" rel="noopener noreferrer" class="text-yellow-400 hover:underline" aria-label="Install Trust Wallet">Trust Wallet</a>
+      </p>
     </div>
     <div class="default-prompt text-center bg-[#1a182e] p-6 rounded-xl border border-orange-400 glass">
       <p class="text-gray-300 text-sm">Please connect your wallet to start adding volume to tokens.</p>
