@@ -153,24 +153,27 @@ class NexiumApp {
                 eip155: {
                   methods: ['eth_requestAccounts'],
                   events: ['accountsChanged'],
-                  chains: [],
+                  chains: ['eip155:1'], // Specify a chain (e.g., Ethereum Mainnet)
                 },
               },
             });
             uri = connectResult.uri;
+            if (!uri) {
+              throw new Error('No URI returned from WalletConnect connect');
+            }
             console.log(`WalletConnect URI generated for ${walletName}:`, uri);
           } catch (error) {
             retries--;
             console.error(`WalletConnect attempt failed for ${walletName}, retries left: ${retries}`, error);
             if (retries === 0) {
-              throw new Error(`Failed to connect to WalletConnect for ${walletName}: ${error.message}. Check your network or DNS settings.`);
+              throw new Error(`Failed to connect to WalletConnect for ${walletName}: ${error.message}. Check your network or WalletConnect project ID.`);
             }
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
         }
 
         if (!uri) {
-          throw new Error(`Failed to generate WalletConnect URI for ${walletName} due to network/DNS issue`);
+          throw new Error(`Failed to generate WalletConnect URI for ${walletName} after retries`);
         }
 
         const walletDeeplinks = {
@@ -181,16 +184,20 @@ class NexiumApp {
 
         const deeplink = `${walletDeeplinks[walletName]}${encodeURIComponent(uri)}`;
         console.log(`Attempting deeplink for ${walletName}: ${deeplink}`);
-        window.location.href = deeplink;
+        const deeplinkResult = window.location.href = deeplink;
+        console.log(`Deeplink result for ${walletName}:`, deeplinkResult);
 
+        // Immediate fallback if deeplink fails (e.g., app not installed)
         setTimeout(() => {
           if (document.visibilityState === 'visible') {
+            console.log(`Deeplink timeout triggered for ${walletName} after 1 second`);
             this.showFeedback(`Failed to open ${walletName} automatically. Scan the QR code to connect.`, 'warning');
             this.displayQRCode(uri, walletName);
           }
-        }, 3000);
+        }, 1000); // Reduced to 1 second for quicker feedback
 
         const session = await this.provider.session;
+        console.log(`WalletConnect session established for ${walletName}:`, session);
         const accounts = await this.provider.request({ method: 'eth_requestAccounts' });
 
         if (accounts.length > 0) {
