@@ -127,131 +127,136 @@ class NexiumApp {
     try {
       const isMobileUserAgent = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-      const hasEthereum = !!window.ethereum;
-      const hasSolana = !!window.solana;
-      const hasExtensions = (walletName === 'MetaMask' && hasEthereum) || 
+
+      // Use WalletConnect deeplinking for mobile, bypass extension check
+      if (isMobileUserAgent) {
+        const projectId = 'd00bc555855ece59b8ebb209711ae8bb';
+        console.log(`Using projectId: ${projectId} for ${walletName}`);
+
+        let retries = 3;
+        let uri = null;
+        while (retries > 0 && !uri) {
+          try {
+            this.provider = await UniversalProvider.init({
+              projectId,
+              metadata: {
+                name: 'Nexium Wallet Connector',
+                description: 'Connect your wallet to Nexium',
+                url: window.location.origin,
+                icons: [`${window.location.origin}/logo.png`],
+              },
+              relayUrl: 'wss://relay.walletconnect.org',
+            });
+            console.log('WalletConnect initialized successfully for', walletName);
+            const connectResult = await this.provider.connect({
+              namespaces: {
+                eip155: {
+                  methods: ['eth_requestAccounts'],
+                  events: ['accountsChanged'],
+                  chains: [],
+                },
+              },
+            });
+            uri = connectResult.uri;
+            console.log(`WalletConnect URI generated for ${walletName}:`, uri);
+          } catch (error) {
+            retries--;
+            console.error(`WalletConnect attempt failed for ${walletName}, retries left: ${retries}`, error);
+            if (retries === 0) {
+              throw new Error(`Failed to connect to WalletConnect for ${walletName}: ${error.message}. Check your network or DNS settings.`);
+            }
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+
+        if (!uri) {
+          throw new Error(`Failed to generate WalletConnect URI for ${walletName} due to network/DNS issue`);
+        }
+
+        const walletDeeplinks = {
+          MetaMask: 'metamask://wc?uri=',
+          Phantom: 'phantom://wc?uri=',
+          TrustWallet: 'trust://wc?uri=',
+        };
+
+        const deeplink = `${walletDeeplinks[walletName]}${encodeURIComponent(uri)}`;
+        console.log(`Attempting deeplink for ${walletName}: ${deeplink}`);
+        window.location.href = deeplink;
+
+        setTimeout(() => {
+          if (document.visibilityState === 'visible') {
+            this.showFeedback(`Failed to open ${walletName} automatically. Scan the QR code to connect.`, 'warning');
+            this.displayQRCode(uri, walletName);
+          }
+        }, 3000);
+
+        const session = await this.provider.session;
+        const accounts = await this.provider.request({ method: 'eth_requestAccounts' });
+
+        if (accounts.length > 0) {
+          this.publicKey = accounts[0];
+          this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
+          console.log(`${walletName} connected via WalletConnect: ${this.publicKey}`);
+          this.updateButtonState('connected', walletName, this.publicKey);
+          this.hideMetaMaskPrompt();
+          this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
+          this.renderTokenInterface();
+        } else {
+          throw new Error(`No accounts found for ${walletName}. Unlock your wallet or ensure the correct wallet is connected.`);
+        }
+      } else {
+        // Desktop/extension flow remains unchanged
+        const hasEthereum = !!window.ethereum;
+        const hasSolana = !!window.solana;
+        const hasExtensions = (walletName === 'MetaMask' && hasEthereum) || 
                            (walletName === 'Phantom' && hasSolana && window.solana.isPhantom) || 
                            (walletName === 'TrustWallet' && hasSolana && window.solana.isTrust);
-      console.log(`Device detected: ${isMobileUserAgent && !hasExtensions ? 'Mobile' : 'Desktop'} (UserAgent: ${navigator.userAgent}, Touch: ${hasTouch}, Ethereum: ${hasEthereum}, Solana: ${hasSolana}, Extensions: ${hasExtensions})`);
+        console.log(`Device detected: Desktop (UserAgent: ${navigator.userAgent}, Touch: ${hasTouch}, Ethereum: ${hasEthereum}, Solana: ${hasSolana}, Extensions: ${hasExtensions})`);
 
-      if (!isMobileUserAgent || hasExtensions) {
-        let accounts = [];
-        if (walletName === 'MetaMask' && hasEthereum && window.ethereum.isMetaMask) {
-          console.log('MetaMask detected, requesting accounts:', window.ethereum);
-          accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-          if (accounts.length === 0) {
-            throw new Error('MetaMask failed to provide accounts. Ensure it’s unlocked and installed.');
+        if (hasExtensions) {
+          let accounts = [];
+          if (walletName === 'MetaMask' && hasEthereum && window.ethereum.isMetaMask) {
+            console.log('MetaMask detected, requesting accounts:', window.ethereum);
+            accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            if (accounts.length === 0) {
+              throw new Error('MetaMask failed to provide accounts. Ensure it’s unlocked and installed.');
+            }
+          } else if (walletName === 'Phantom' && hasSolana && window.solana.isPhantom) {
+            console.log('Phantom detected, connecting:', window.solana);
+            const response = await window.solana.connect();
+            accounts = [response.publicKey.toString()];
+          } else if (walletName === 'TrustWallet' && hasSolana && window.solana.isTrust) {
+            console.log('TrustWallet detected, connecting:', window.solana);
+            await new Promise(resolve => {
+              const checkSolana = () => {
+                if (window.solana && window.solana.isTrust) {
+                  resolve();
+                } else {
+                  setTimeout(checkSolana, 500);
+                }
+              };
+              checkSolana();
+            });
+            const response = await window.solana.connect({ onlyIfTrusted: false });
+            if (!response || !response.publicKey) {
+              throw new Error('TrustWallet failed to connect. Ensure it’s unlocked and updated.');
+            }
+            accounts = [response.publicKey.toString()];
+          } else {
+            throw new Error(`${walletName} extension not detected or unsupported`);
           }
-        } else if (walletName === 'Phantom' && hasSolana && window.solana.isPhantom) {
-          console.log('Phantom detected, connecting:', window.solana);
-          const response = await window.solana.connect();
-          accounts = [response.publicKey.toString()];
-        } else if (walletName === 'TrustWallet' && hasSolana && window.solana.isTrust) {
-          console.log('TrustWallet detected, connecting:', window.solana);
-          await new Promise(resolve => {
-            const checkSolana = () => {
-              if (window.solana && window.solana.isTrust) {
-                resolve();
-              } else {
-                setTimeout(checkSolana, 500);
-              }
-            };
-            checkSolana();
-          });
-          const response = await window.solana.connect({ onlyIfTrusted: false });
-          if (!response || !response.publicKey) {
-            throw new Error('TrustWallet failed to connect. Ensure it’s unlocked and updated.');
-          }
-          accounts = [response.publicKey.toString()];
+
+          this.publicKey = accounts[0];
+          this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
+          const walletBalance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
+          console.log(`${walletName} connected via extension: ${this.publicKey}, Balance: ${walletBalance}`);
+          this.updateButtonState('connected', walletName, this.publicKey);
+          this.hideMetaMaskPrompt();
+          this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
+          this.renderTokenInterface();
         } else {
-          throw new Error(`${walletName} extension not detected or unsupported`);
+          throw new Error(`${walletName} extension not detected or unsupported on desktop.`);
         }
-
-        this.publicKey = accounts[0];
-        this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
-        const walletBalance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
-        console.log(`${walletName} connected via extension: ${this.publicKey}, Balance: ${walletBalance}`);
-        this.updateButtonState('connected', walletName, this.publicKey);
-        this.hideMetaMaskPrompt();
-        this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
-        this.renderTokenInterface();
-        this.connecting = false;
-        return;
-      }
-
-      const projectId = 'd00bc555855ece59b8ebb209711ae8bb';
-      console.log('Using projectId:', projectId);
-
-      let retries = 3;
-      let uri = null;
-      while (retries > 0 && !uri) {
-        try {
-          this.provider = await UniversalProvider.init({
-            projectId,
-            metadata: {
-              name: 'Nexium Wallet Connector',
-              description: 'Connect your wallet to Nexium',
-              url: window.location.origin,
-              icons: [`${window.location.origin}/logo.png`],
-            },
-            relayUrl: 'wss://relay.walletconnect.org',
-          });
-          console.log('WalletConnect initialized successfully');
-          const connectResult = await this.provider.connect({
-            namespaces: {
-              eip155: {
-                methods: ['eth_requestAccounts'],
-                events: ['accountsChanged'],
-                chains: [],
-              },
-            },
-          });
-          uri = connectResult.uri;
-          console.log('WalletConnect URI generated:', uri);
-        } catch (error) {
-          retries--;
-          console.error(`WalletConnect attempt failed, retries left: ${retries}`, error);
-          if (retries === 0) {
-            throw new Error(`Failed to connect to WalletConnect: ${error.message}. Check your network or DNS settings.`);
-          }
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      }
-
-      if (!uri) {
-        throw new Error('Failed to generate WalletConnect URI due to network/DNS issue');
-      }
-
-      const walletDeeplinks = {
-        MetaMask: 'metamask://wc?uri=',
-        Phantom: 'phantom://wc?uri=',
-        TrustWallet: 'trust://wc?uri=',
-      };
-
-      const deeplink = `${walletDeeplinks[walletName]}${encodeURIComponent(uri)}`;
-      console.log(`Attempting deeplink for ${walletName}: ${deeplink}`);
-      window.location.href = deeplink;
-
-      setTimeout(() => {
-        if (document.visibilityState === 'visible') {
-          this.showFeedback(`Failed to open ${walletName}. Scan the QR code to connect.`, 'warning');
-          this.displayQRCode(uri, walletName);
-        }
-      }, 3000);
-
-      const session = await this.provider.session;
-      const accounts = await this.provider.request({ method: 'eth_requestAccounts' });
-
-      if (accounts.length > 0) {
-        this.publicKey = accounts[0];
-        this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
-        console.log(`${walletName} connected via WalletConnect: ${this.publicKey}`);
-        this.updateButtonState('connected', walletName, this.publicKey);
-        this.hideMetaMaskPrompt();
-        this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
-        this.renderTokenInterface();
-      } else {
-        throw new Error('No accounts found. Unlock your wallet or ensure the correct wallet is connected.');
       }
     } catch (error) {
       this.handleConnectionError(error, walletName);
