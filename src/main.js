@@ -131,7 +131,7 @@ class NexiumApp {
         // Mobile: Use direct deeplinks
         const deeplinks = {
           MetaMask: 'https://metamask.app.link/dapp/nexium-bot.onrender.com',
-          Phantom: 'https://phantom.app/ul/browse/https://nexium-bot.onrender.com',
+          Phantom: 'https://phantom.app/ul/v1/connect?app_url=https://nexium-bot.onrender.com',
           TrustWallet: 'https://link.trustwallet.com/open_url?coin=56&url=https://nexium-bot.onrender.com',
         };
 
@@ -142,14 +142,14 @@ class NexiumApp {
         console.log(`Attempting direct deeplink: ${deeplink}`);
         window.location.href = deeplink;
 
-        // Fallback to prompt if deeplink fails after 1 second
+        // Extended timeout to 3 seconds for slower connections
         setTimeout(() => {
           if (document.visibilityState === 'visible') {
             console.log('Deeplink timed out or failed');
-            this.showFeedback(`Failed to open ${walletName} automatically. Please open ${walletName} and connect manually.`, 'warning');
+            this.showFeedback(`Failed to open ${walletName} automatically. Please open the ${walletName} app and connect manually or ensure the app is updated.`, 'warning');
             this.showMetaMaskPrompt();
           }
-        }, 1000);
+        }, 3000);
       } else {
         // Desktop: Use extension-based flow
         const hasEthereum = !!window.ethereum;
