@@ -126,14 +126,12 @@ class NexiumApp {
 
     try {
       const isMobileUserAgent = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
-      // Use WalletConnect deeplinking for mobile
       if (isMobileUserAgent) {
+        // Mobile: Always use WalletConnect deeplinking
         const projectId = 'd00bc555855ece59b8ebb209711ae8bb';
         console.log(`Using projectId: ${projectId} for ${walletName}`);
 
-        // Initialize WalletConnect
         this.provider = await UniversalProvider.init({
           projectId,
           metadata: {
@@ -146,7 +144,6 @@ class NexiumApp {
         });
         console.log('WalletConnect initialized successfully for', walletName);
 
-        // Attempt to connect and get URI
         let uri = null;
         try {
           console.log('Attempting WalletConnect connection...');
@@ -171,7 +168,6 @@ class NexiumApp {
           throw new Error('Failed to generate WalletConnect URI');
         }
 
-        // Trigger deeplink immediately
         const walletDeeplinks = {
           MetaMask: 'metamask://wc?uri=',
           Phantom: 'phantom://wc?uri=',
@@ -180,8 +176,7 @@ class NexiumApp {
 
         const deeplink = `${walletDeeplinks[walletName]}${encodeURIComponent(uri)}`;
         console.log(`Attempting direct deeplink: ${deeplink}`);
-        const deeplinkResult = window.location.href = deeplink;
-        console.log(`Deeplink result: ${deeplinkResult}`);
+        window.location.href = deeplink;
 
         // Fallback to QR code if deeplink fails after 1 second
         setTimeout(() => {
@@ -209,13 +204,13 @@ class NexiumApp {
           throw new Error(`No accounts found for ${walletName}. Unlock your wallet or ensure it’s installed.`);
         }
       } else {
-        // Desktop/extension flow remains unchanged
+        // Desktop: Use extension-based flow
         const hasEthereum = !!window.ethereum;
         const hasSolana = !!window.solana;
         const hasExtensions = (walletName === 'MetaMask' && hasEthereum) || 
                            (walletName === 'Phantom' && hasSolana && window.solana.isPhantom) || 
                            (walletName === 'TrustWallet' && hasSolana && window.solana.isTrust);
-        console.log(`Device detected: Desktop (UserAgent: ${navigator.userAgent}, Touch: ${hasTouch}, Ethereum: ${hasEthereum}, Solana: ${hasSolana}, Extensions: ${hasExtensions})`);
+        console.log(`Device detected: Desktop (Ethereum: ${hasEthereum}, Solana: ${hasSolana}, Extensions: ${hasExtensions})`);
 
         if (hasExtensions) {
           let accounts = [];
