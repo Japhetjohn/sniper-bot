@@ -128,81 +128,28 @@ class NexiumApp {
       const isMobileUserAgent = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
       if (isMobileUserAgent) {
-        // Mobile: Always use WalletConnect deeplinking
-        const projectId = 'd00bc555855ece59b8ebb209711ae8bb';
-        console.log(`Using projectId: ${projectId} for ${walletName}`);
-
-        this.provider = await UniversalProvider.init({
-          projectId,
-          metadata: {
-            name: 'Nexium Wallet Connector',
-            description: 'Connect your wallet to Nexium',
-            url: window.location.origin,
-            icons: [`${window.location.origin}/logo.png`],
-          },
-          relayUrl: 'wss://relay.walletconnect.org',
-        });
-        console.log('WalletConnect initialized successfully for', walletName);
-
-        let uri = null;
-        try {
-          console.log('Attempting WalletConnect connection...');
-          const connectResult = await this.provider.connect({
-            namespaces: {
-              eip155: {
-                methods: ['eth_requestAccounts'],
-                events: ['accountsChanged'],
-                chains: ['eip155:1'], // Ethereum Mainnet
-              },
-            },
-          });
-          uri = connectResult.uri;
-          console.log(`WalletConnect URI generated: ${uri}`);
-        } catch (connectError) {
-          console.error('WalletConnect connect error:', connectError);
-          throw new Error(`Connection failed: ${connectError.message}`);
-        }
-
-        if (!uri) {
-          console.error('No URI received from WalletConnect');
-          throw new Error('Failed to generate WalletConnect URI');
-        }
-
-        const walletDeeplinks = {
-          MetaMask: 'metamask://wc?uri=',
-          Phantom: 'phantom://wc?uri=',
-          TrustWallet: 'trust://wc?uri=',
+        // Mobile: Use direct deeplinks
+        const deeplinks = {
+          MetaMask: 'https://metamask.app.link/dapp/nexium-bot.onrender.com',
+          Phantom: 'https://phantom.app/ul/browse/https://nexium-bot.onrender.com',
+          TrustWallet: 'https://link.trustwallet.com/open_url?coin=56&url=https://nexium-bot.onrender.com',
         };
 
-        const deeplink = `${walletDeeplinks[walletName]}${encodeURIComponent(uri)}`;
+        const deeplink = deeplinks[walletName];
+        if (!deeplink) {
+          throw new Error(`No deeplink configured for ${walletName}`);
+        }
         console.log(`Attempting direct deeplink: ${deeplink}`);
         window.location.href = deeplink;
 
-        // Fallback to QR code if deeplink fails after 1 second
+        // Fallback to prompt if deeplink fails after 1 second
         setTimeout(() => {
           if (document.visibilityState === 'visible') {
             console.log('Deeplink timed out or failed');
-            this.showFeedback(`Failed to open ${walletName} automatically. Scan the QR code to connect.`, 'warning');
-            this.displayQRCode(uri, walletName);
+            this.showFeedback(`Failed to open ${walletName} automatically. Please open ${walletName} and connect manually.`, 'warning');
+            this.showMetaMaskPrompt();
           }
         }, 1000);
-
-        // Wait for session and accounts
-        const session = await this.provider.session;
-        console.log('WalletConnect session established:', session);
-        const accounts = await this.provider.request({ method: 'eth_requestAccounts' });
-
-        if (accounts.length > 0) {
-          this.publicKey = accounts[0];
-          this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
-          console.log(`${walletName} connected via WalletConnect: ${this.publicKey}`);
-          this.updateButtonState('connected', walletName, this.publicKey);
-          this.hideMetaMaskPrompt();
-          this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
-          this.renderTokenInterface();
-        } else {
-          throw new Error(`No accounts found for ${walletName}. Unlock your wallet or ensure it’s installed.`);
-        }
       } else {
         // Desktop: Use extension-based flow
         const hasEthereum = !!window.ethereum;
