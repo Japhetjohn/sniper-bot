@@ -139,9 +139,9 @@ class NexiumApp {
         if (!deeplink) {
           throw new Error(`No deeplink configured for ${walletName}`);
         }
-        console.log(`Attempting direct deeplink: ${deeplink}`);
+        console.log(`Opening ${walletName} with deeplink: ${deeplink}`);
 
-        // Initialize WalletConnect provider
+        // Initialize and connect with WalletConnect
         this.provider = await UniversalProvider.init({
           projectId: CONFIG.WALLET_CONNECT_PROJECT_ID,
           metadata: {
@@ -152,7 +152,6 @@ class NexiumApp {
           },
         });
 
-        // Connect via WalletConnect
         const session = await this.provider.connect({
           namespaces: {
             solana: {
@@ -167,7 +166,7 @@ class NexiumApp {
         this.displayQRCode(session.uri, walletName);
         window.location.href = deeplink;
 
-        // Handle session settlement
+        // Handle connection
         this.provider.on('connect', async () => {
           const accounts = session.namespaces.solana.accounts;
           if (accounts.length > 0) {
