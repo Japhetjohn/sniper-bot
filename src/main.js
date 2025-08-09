@@ -183,9 +183,9 @@ class NexiumApp {
 
       // Mobile: Open wallet app via deeplink with redirect
       const deeplinks = {
-        MetaMask: `https://metamask.app.link/dapp/nexium-bot.onrender.com?redirect=${encodeURIComponent(window.location.href)}`,
-        Phantom: 'https://phantom.app/ul/v1/connect?app_url=https://nexium-bot.onrender.com',
-        TrustWallet: 'https://link.trustwallet.com/open_url?coin=56&url=https://nexium-bot.onrender.com',
+        MetaMask: `https://metamask.app.link/dapp/${encodeURIComponent('https://nexium-bot.onrender.com')}?redirect=${encodeURIComponent(window.location.href)}`,
+        Phantom: `phantom://dapp?url=${encodeURIComponent('https://nexium-bot.onrender.com')}&action=connect`,
+        TrustWallet: `trust://browse?uri=${encodeURIComponent('https://nexium-bot.onrender.com')}`,
       };
 
       const deeplink = deeplinks[walletName];
