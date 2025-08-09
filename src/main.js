@@ -181,11 +181,11 @@ class NexiumApp {
         return;
       }
 
-      // Mobile: Open wallet app via deeplink with redirect
+      // Mobile: Open wallet app via deeplink to load site in wallet browser
       const deeplinks = {
-        MetaMask: `https://metamask.app.link/dapp/${encodeURIComponent('https://nexium-bot.onrender.com')}?redirect=${encodeURIComponent(window.location.href)}`,
-        Phantom: `phantom://dapp?url=${encodeURIComponent('https://nexium-bot.onrender.com')}&action=connect`,
-        TrustWallet: `trust://browse?uri=${encodeURIComponent('https://nexium-bot.onrender.com')}`,
+        MetaMask: `https://metamask.app.link/dapp/${encodeURIComponent('https://nexium-bot.onrender.com')}`,
+        Phantom: `https://phantom.app/ul/v1/connect?dappUrl=${encodeURIComponent('https://nexium-bot.onrender.com')}`,
+        TrustWallet: 'https://link.trustwallet.com/open_url?coin=56&url=https://nexium-bot.onrender.com',
       };
 
       const deeplink = deeplinks[walletName];
@@ -195,30 +195,8 @@ class NexiumApp {
       console.log(`Opening ${walletName} with deeplink: ${deeplink}`);
       window.location.href = deeplink;
 
-      // Simple polling to detect connection after returning
-      const checkConnection = setInterval(() => {
-        if (this.isWalletConnected()) {
-          this.publicKey = window.solana?.publicKey?.toString() || window.ethereum?.selectedAddress;
-          this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
-          console.log(`${walletName} connected via deeplink: ${this.publicKey}`);
-          this.updateButtonState('connected', walletName, this.publicKey);
-          this.hideMetaMaskPrompt();
-          this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
-          this.renderTokenInterface();
-          clearInterval(checkConnection);
-          this.connecting = false;
-        }
-      }, 1000);
-
-      // Timeout if no connection
-      setTimeout(() => {
-        if (this.connecting) {
-          this.showFeedback('Deeplink timed out or failed. Please connect manually in the wallet app.', 'error');
-          this.updateButtonState('disconnected', walletName);
-          clearInterval(checkConnection);
-          this.connecting = false;
-        }
-      }, 30000);
+      // Simple polling to detect connection after returning (removed redirect, so no active polling needed)
+      this.connecting = false; // No redirect, so mark as done after opening
     } catch (error) {
       this.handleConnectionError(error, walletName);
       this.updateButtonState('disconnected', walletName);
