@@ -231,7 +231,7 @@ class NexiumApp {
             };
             checkSolana();
           });
-          const response = await window.solana.connect({ onlyIfTrusted: false }).catch(() => null);
+          const response = await window.solana.connect({ onlyIfTrusted: true });
           if (response && response.publicKey) {
             this.publicKey = response.publicKey.toString();
             this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
