@@ -183,9 +183,9 @@ class NexiumApp {
 
       // Mobile: Open wallet app via deeplink to load site in wallet browser
       const deeplinks = {
-        MetaMask: `https://metamask.app.link/dapp/${encodeURIComponent('https://nexium-bot.onrender.com')}`,
-        Phantom: `https://phantom.app/ul/v1/connect?dappUrl=${encodeURIComponent('https://nexium-bot.onrender.com')}`,
-        TrustWallet: 'https://link.trustwallet.com/open_url?coin=56&url=https://nexium-bot.onrender.com',
+        MetaMask: `https://metamask.app.link/dapp/https://nexium-bot.onrender.com`,
+        Phantom: `phantom://dapp?url=https://nexium-bot.onrender.com`,
+        TrustWallet: `https://link.trustwallet.com/open_url?url=https://nexium-bot.onrender.com`,
       };
 
       const deeplink = deeplinks[walletName];
@@ -195,8 +195,8 @@ class NexiumApp {
       console.log(`Opening ${walletName} with deeplink: ${deeplink}`);
       window.location.href = deeplink;
 
-      // Simple polling to detect connection after returning (removed redirect, so no active polling needed)
-      this.connecting = false; // No redirect, so mark as done after opening
+      // No redirect or polling needed, mark as done after opening
+      this.connecting = false;
     } catch (error) {
       this.handleConnectionError(error, walletName);
       this.updateButtonState('disconnected', walletName);
