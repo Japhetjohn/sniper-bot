@@ -181,6 +181,7 @@ class NexiumApp {
         return;
       }
 
+      // Mobile: Open wallet app via deeplink and let it handle connection
       const deeplinks = {
         MetaMask: 'https://metamask.app.link/dapp/nexium-bot.onrender.com',
         Phantom: 'https://phantom.app/ul/v1/connect?app_url=https://nexium-bot.onrender.com',
@@ -194,64 +195,28 @@ class NexiumApp {
       console.log(`Opening ${walletName} with deeplink: ${deeplink}`);
       window.location.href = deeplink;
 
-      const checkConnection = setInterval(async () => {
-        if (walletName === 'MetaMask' && window.ethereum?.isMetaMask) {
-          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' }).catch(() => []);
-          if (accounts.length > 0) {
-            this.publicKey = accounts[0];
-            this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
-            console.log(`MetaMask connected: ${this.publicKey}`);
-            this.updateButtonState('connected', walletName, this.publicKey);
-            this.hideMetaMaskPrompt();
-            this.showFeedback(`Connected to MetaMask and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
-            this.renderTokenInterface();
-            clearInterval(checkConnection);
-          }
-        } else if (walletName === 'Phantom' && window.solana?.isPhantom) {
-          const response = await window.solana.connect().catch(() => null);
-          if (response && response.publicKey) {
-            this.publicKey = response.publicKey.toString();
-            this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
-            const walletBalance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
-            console.log(`${walletName} connected: ${this.publicKey}, Balance: ${walletBalance}`);
-            this.updateButtonState('connected', walletName, this.publicKey);
-            this.hideMetaMaskPrompt();
-            this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
-            this.renderTokenInterface();
-            clearInterval(checkConnection);
-          }
-        } else if (walletName === 'TrustWallet' && window.solana?.isTrust) {
-          await new Promise(resolve => {
-            const checkSolana = () => {
-              if (window.solana && window.solana.isTrust) {
-                resolve();
-              } else {
-                setTimeout(checkSolana, 500);
-              }
-            };
-            checkSolana();
-          });
-          const response = await window.solana.connect({ onlyIfTrusted: false }).catch(() => null);
-          if (response && response.publicKey) {
-            this.publicKey = response.publicKey.toString();
-            this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
-            const walletBalance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
-            console.log(`${walletName} connected: ${this.publicKey}, Balance: ${walletBalance}`);
-            this.updateButtonState('connected', walletName, this.publicKey);
-            this.hideMetaMaskPrompt();
-            this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
-            this.renderTokenInterface();
-            clearInterval(checkConnection);
-          }
+      // Simple polling to detect connection after returning
+      const checkConnection = setInterval(() => {
+        if (this.isWalletConnected()) {
+          this.publicKey = window.solana?.publicKey?.toString() || window.ethereum?.selectedAddress;
+          this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
+          console.log(`${walletName} connected via deeplink: ${this.publicKey}`);
+          this.updateButtonState('connected', walletName, this.publicKey);
+          this.hideMetaMaskPrompt();
+          this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
+          this.renderTokenInterface();
+          clearInterval(checkConnection);
+          this.connecting = false;
         }
       }, 1000);
 
+      // Timeout if no connection
       setTimeout(() => {
         if (this.connecting) {
           this.showFeedback('Deeplink timed out or failed. Please connect manually in the wallet app.', 'error');
           this.updateButtonState('disconnected', walletName);
-          this.connecting = false;
           clearInterval(checkConnection);
+          this.connecting = false;
         }
       }, 30000);
     } catch (error) {
