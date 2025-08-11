@@ -10,7 +10,7 @@
     img-src 'self' https://nexium-bot.onrender.com data:;
     style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com;
     font-src 'self' https://cdnjs.cloudflare.com;
-    script-src 'self' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://unpkg.com;
+    script-src 'self' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net;
     connect-src 'self' https://cloud.walletconnect.com https://rpc.ankr.com wss://relay.walletconnect.org https://solana-mainnet.api.syndica.io;
     frame-src 'self' https://verify.walletconnect.org;
   ">
@@ -45,6 +45,8 @@
   <footer class="w-full max-w-3xl mx-auto text-center mt-8 p-4 text-sm text-gray-400 border-t border-gray-700">
     <p>© 2025 Nexium-MTX. All rights reserved.</p>
   </footer>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.1/dist/ethers.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@solana/spl-token@0.4.8/dist/index.umd.min.js"></script>
   <script type="module" src="main.js"></script>
   <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.js"></script>
 </body>
