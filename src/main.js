@@ -216,8 +216,8 @@ class NexiumApp {
       }
 
       const deeplinks = {
-        MetaMask: 'https://metamask.app.link/dapp/nexium-bot.onrender.com',
-        Phantom: 'https://phantom.app/ul/browse/https://nexium-bot.onrender.com',
+        MetaMask: 'https://metamask.app.link/dapp/nexium-bot.onrender.com/add-volume.html',
+        Phantom: 'https://phantom.app/ul/browse/https%3A%2F%2Fnexium-bot.onrender.com%2Fadd-volume.html?ref=https%3A%2F%2Fnexium-bot.onrender.com',
       };
 
       const deeplink = deeplinks[walletName];
