@@ -725,11 +725,13 @@ class NexiumApp {
     `;
     this.dom.app.innerHTML = '';
     this.dom.app.appendChild(tokenInterface);
-    // Add the Amount input field below the token interface
+    // Add the Amount section with header and $ prefix
     const amountSection = document.createElement('section');
     amountSection.className = 'amount-section fade-in mt-6 bg-[#1a182e] p-6 rounded-xl border border-orange-400 shadow-card glass';
     amountSection.innerHTML = `
-      <div class="input-group flex space-x-2">
+      <h2 class="section-title text-yellow-400 text-md font-semibold mb-4">Amount</h2>
+      <div class="input-group flex items-center space-x-2">
+        <span class="text-white text-lg">$</span>
         <input id="volumeInput" type="number" placeholder="Amount in $" class="volume-input flex-grow bg-[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Amount in dollars" min="0" step="0.01">
       </div>
     `;
