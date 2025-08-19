@@ -36,7 +36,7 @@
       opacity: 0.3;
       pointer-events: none;
     }
-    nav, main, footer {
+    nav, main, footer, section {
       position: relative;
       z-index: 1;
     }
@@ -122,7 +122,7 @@
         border-radius: 6px;
         box-shadow: 0 0 10px rgba(250, 204, 21, 0.7);
         transition: transform 0.2s, box-shadow 0.2s;
-        border: none; /* Remove default button border */
+        border: none;
         cursor: pointer;
       }
       .nav-menu button:hover {
@@ -130,6 +130,51 @@
         transform: scale(1.05);
         box-shadow: 0 0 15px rgba(250, 204, 21, 1);
       }
+    }
+    /* Featured Tokens Section */
+    .token-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1.5rem;
+    }
+    @media (max-width: 768px) {
+      .token-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    @media (max-width: 480px) {
+      .token-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .token-card {
+      background: #1a182e;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      border: 1px solid #f97316;
+      box-shadow: 0 0 10px rgba(250, 204, 21, 0.3);
+      transition: transform 0.2s, box-shadow 0.2s;
+      text-align: center;
+    }
+    .token-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 0 15px rgba(250, 204, 21, 0.7);
+    }
+    .token-card p {
+      margin: 0.5rem 0;
+      font-size: 0.9rem;
+    }
+    .token-card .name {
+      font-weight: bold;
+      font-size: 1.1rem;
+      color: #facc15;
+    }
+    .token-card .address {
+      word-break: break-all;
+      color: #d1d5db;
+    }
+    .token-card .market-cap {
+      color: #9ca3af;
     }
   </style>
 </head>
@@ -159,8 +204,113 @@
       <button id="launchBtn" class="glow-button text-black text-lg font-bold py-4 px-10 rounded-xl transition-transform hover:scale-105 animate-pulse" aria-label="Get Started">Get Started</button>
     </a>
   </main>
+  <section class="py-12 px-4 max-w-6xl mx-auto">
+    <h2 class="text-3xl font-bold text-yellow-400 mb-8 text-center" style="text-shadow: 0 0 10px rgba(250, 204, 21, 0.8);">Featured Tokens</h2>
+    <div class="token-grid">
+      <div class="token-card">
+        <p class="name">USDT (ETH)</p>
+        <p class="address">0xdac17f958d2ee523a2206206994597c13d831ec7</p>
+        <p class="market-cap">Market Cap: $120B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">USDC (ETH)</p>
+        <p class="address">0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48</p>
+        <p class="market-cap">Market Cap: $34B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">LINK (ETH)</p>
+        <p class="address">0x514910771af9ca656af840dff83e8264ecf986ca</p>
+        <p class="market-cap">Market Cap: $16B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">LEO (ETH)</p>
+        <p class="address">0x2af5d2ad76741191d15dde7bf6ac92d4bd912ca3</p>
+        <p class="market-cap">Market Cap: $8.9B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">SHIB (ETH)</p>
+        <p class="address">0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce</p>
+        <p class="market-cap">Market Cap: $7.2B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">UNI (ETH)</p>
+        <p class="address">0x1f9840a85d5af5bf1d1762f925bdaddc4201f984</p>
+        <p class="market-cap">Market Cap: $6.4B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">PEPE (ETH)</p>
+        <p class="address">0x6982508145454ce325ddbeb5388b1e9e9b404ee</p>
+        <p class="market-cap">Market Cap: $4.4B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">AAVE (ETH)</p>
+        <p class="address">0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddea9</p>
+        <p class="market-cap">Market Cap: $4.2B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">MNT (ETH)</p>
+        <p class="address">0x3c3a81e81dc49a468bea9d0fc85412f65947f1cf</p>
+        <p class="market-cap">Market Cap: $4.5B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">ENA (ETH)</p>
+        <p class="address">0x57e114b691db7904ca757b1df9d453d4331fd3d5</p>
+        <p class="market-cap">Market Cap: $3B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">USDT (SOL)</p>
+        <p class="address">Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB</p>
+        <p class="market-cap">Market Cap: $120B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">USDC (SOL)</p>
+        <p class="address">EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</p>
+        <p class="market-cap">Market Cap: $34B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">JUP (SOL)</p>
+        <p class="address">JUPyiwrYJFskUPi3on1qnRMyb9KC3bCDevoQAxs6WzD</p>
+        <p class="market-cap">Market Cap: $0.7B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">PYTH (SOL)</p>
+        <p class="address">HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3</p>
+        <p class="market-cap">Market Cap: $0.5B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">RAY (SOL)</p>
+        <p class="address">4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R</p>
+        <p class="market-cap">Market Cap: $0.6B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">BONK (SOL)</p>
+        <p class="address">DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263</p>
+        <p class="market-cap">Market Cap: $1.5B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">WIF (SOL)</p>
+        <p class="address">EKpQGSJtjMFqUZ5dscq4YN5s9of7uUkaeA1QHiNjYUy7</p>
+        <p class="market-cap">Market Cap: $2B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">POPCAT (SOL)</p>
+        <p class="address">6D7NaBelnjprAMg7NNLkwX9FaDgiLu4yaex2dtfuDMdK</p>
+        <p class="market-cap">Market Cap: $1B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">MEW (SOL)</p>
+        <p class="address">HhJpBhRRn4g56VsyLuT8DL5Bv31HkXqsrahTTUCZeZg4</p>
+        <p class="market-cap">Market Cap: $0.8B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">HNT (SOL)</p>
+        <p class="address">hntyVP6YFm1E9D3g8E2An6MmPMwQyzkgCUnxazhS154</p>
+        <p class="market-cap">Market Cap: $1B</p>
+      </div>
+    </div>
+  </section>
   <footer class="text-center text-sm text-gray-400 py-6 border-t border-gray-700">
-    © 2025 Nexium-volume-bot — Built with ❤ 
+    © 2025 Nexium-volume-bot — Built with ❤
   </footer>
   <script>
     const canvas = document.getElementById('backgroundCanvas');
