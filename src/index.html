@@ -20,7 +20,6 @@
       background-size: 400%;
       animation: gradientShift 15s ease infinite;
       position: relative;
-      overflow: hidden;
     }
     @keyframes gradientShift {
       0% { background-position: 0% 50%; }
@@ -49,6 +48,10 @@
     }
     .glow-button:hover {
       box-shadow: 0 0 25px rgba(250, 204, 21, 1);
+    }
+    main {
+      min-height: 150vh; /* Ensures content is tall enough to scroll */
+      padding-bottom: 100px; /* Adds extra space for scrolling */
     }
   </style>
 </head>
