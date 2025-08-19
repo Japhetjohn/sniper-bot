@@ -33,6 +33,7 @@ export default defineConfig({
         // Specify multiple HTML files to handle routing and create separate bundles for each page
         main: 'src/index.html',
         addVolume: 'src/add-volume.html',
+        about: 'src/about.html'
       }
     }
   }
