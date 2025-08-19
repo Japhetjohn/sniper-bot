@@ -50,18 +50,80 @@
       box-shadow: 0 0 25px rgba(250, 204, 21, 1);
     }
     main {
-      min-height: 60vh; /* Reduced height to allow scrolling without excessive stretching */
+      min-height: 60vh;
+    }
+    /* Hamburger Menu Styles */
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      justify-content: space-around;
+      width: 24px;
+      height: 20px;
+      cursor: pointer;
+      padding: 4px;
+    }
+    .hamburger span {
+      width: 100%;
+      height: 3px;
+      background-color: #facc15;
+      transition: all 0.3s ease;
+    }
+    .hamburger.active span:nth-child(1) {
+      transform: rotate(45deg) translate(5px, 5px);
+    }
+    .hamburger.active span:nth-child(2) {
+      opacity: 0;
+    }
+    .hamburger.active span:nth-child(3) {
+      transform: rotate(-45deg) translate(7px, -7px);
+    }
+    .nav-menu {
+      display: flex;
+      flex-direction: row;
+      gap: 8px;
+    }
+    .nav-menu.hidden {
+      display: none;
+    }
+    @media (max-width: 640px) {
+      .hamburger {
+        display: flex;
+      }
+      .nav-menu {
+        display: none;
+        flex-direction: column;
+        position: absolute;
+        top: 100%;
+        right: 16px;
+        background: #1a182e;
+        border: 1px solid #f97316;
+        border-radius: 8px;
+        padding: 16px;
+        width: 200px;
+        z-index: 2;
+      }
+      .nav-menu.active {
+        display: flex;
+      }
     }
   </style>
 </head>
 <body class="bg-[#0d0c1d] text-white font-sans flex flex-col min-h-screen">
   <canvas id="backgroundCanvas"></canvas>
   <nav class="w-full max-w-3xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between bg-[#1a182e] p-4 rounded-xl shadow border border-orange-400 gap-2 sm:gap-0">
-    <div class="flex items-center justify-center sm:justify-start">
-      <img src="/logo.png" alt="Nexium-MTX Logo" id="nav-logo" class="h-14 w-14" onerror="console.log('Logo load failed'); this.classList.add('hidden')">
-      <span class="text-lg font-bold text-yellow-400 -ml-1">Nexium-MTX</span>
+    <div class="flex items-center justify-between w-full sm:w-auto">
+      <div class="flex items-center justify-center sm:justify-start">
+        <img src="/logo.png" alt="Nexium-MTX Logo" id="nav-logo" class="h-14 w-14" onerror="console.log('Logo load failed'); this.classList.add('hidden')">
+        <span class="text-lg font-bold text-yellow-400 -ml-1">Nexium-MTX</span>
+      </div>
+      <div class="hamburger" id="hamburger">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
     </div>
-    <div class="flex flex-col sm:flex-row gap-2">
+    <div class="nav-menu hidden sm:flex sm:flex-row sm:gap-2" id="nav-menu">
+      <a href="#" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">Home</a>
       <a href="#" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">Token</a>
       <a href="#" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">About</a>
     </div>
@@ -125,6 +187,15 @@
     });
 
     animate();
+
+    // Hamburger menu toggle
+    const hamburger = document.getElementById('hamburger');
+    const navMenu = document.getElementById('nav-menu');
+    hamburger.addEventListener('click', () => {
+      hamburger.classList.toggle('active');
+      navMenu.classList.toggle('active');
+      navMenu.classList.toggle('hidden');
+    });
   </script>
 </body>
 </html>
