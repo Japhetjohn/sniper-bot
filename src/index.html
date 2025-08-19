@@ -34,6 +34,7 @@
       height: 100%;
       z-index: -1;
       opacity: 0.3;
+      pointer-events: none;
     }
     nav, main, footer {
       position: relative;
@@ -100,17 +101,34 @@
         border-radius: 8px;
         padding: 16px;
         width: 200px;
-        z-index: 2;
+        z-index: 1000;
+        user-select: none;
+        pointer-events: auto;
       }
       .nav-menu.active {
         display: flex;
       }
-      .nav-menu a {
+      .nav-menu button {
         pointer-events: auto;
         touch-action: manipulation;
         display: block;
         width: 100%;
-        text-align: left;
+        text-align: center;
+        padding: 12px 0;
+        margin: 4px 0;
+        background: linear-gradient(45deg, #facc15, #f97316);
+        color: #000;
+        font-weight: bold;
+        border-radius: 6px;
+        box-shadow: 0 0 10px rgba(250, 204, 21, 0.7);
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: none; /* Remove default button border */
+        cursor: pointer;
+      }
+      .nav-menu button:hover {
+        color: #fff;
+        transform: scale(1.05);
+        box-shadow: 0 0 15px rgba(250, 204, 21, 1);
       }
     }
   </style>
@@ -130,9 +148,9 @@
       </div>
     </div>
     <div class="nav-menu sm:flex sm:flex-row sm:gap-2" id="nav-menu">
-      <a href="index.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">Home</a>
-      <a href="add-volume.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">Token</a>
-      <a href="javascript:void(0)" onclick="alert('About page is not ready yet.')" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">About</a>
+      <button onclick="window.location.href='index.html'" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4 sm:text-gray-300 sm:hover:text-yellow-400 sm:font-semibold sm:py-2 sm:px-4">Home</button>
+      <button onclick="window.location.href='add-volume.html'" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4 sm:text-gray-300 sm:hover:text-yellow-400 sm:font-semibold sm:py-2 sm:px-4">Token</button>
+      <button onclick="window.location.href='about.html'" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4 sm:text-gray-300 sm:hover:text-yellow-400 sm:font-semibold sm:py-2 sm:px-4">About</button>
     </div>
   </nav>
   <main class="flex flex-1 items-center justify-center flex-col text-center px-4">
@@ -195,22 +213,44 @@
 
     animate();
 
-    // Hamburger menu toggle
+    // Hamburger menu logic with debug logs
     const hamburger = document.getElementById('hamburger');
     const navMenu = document.getElementById('nav-menu');
-    hamburger.addEventListener('click', (event) => {
-      event.stopPropagation();
-      hamburger.classList.toggle('active');
-      navMenu.classList.toggle('active');
-      navMenu.classList.toggle('hidden');
-    });
 
-    // Ensure nav links are clickable on mobile
-    navMenu.querySelectorAll('a').forEach(link => {
-      link.addEventListener('click', (event) => {
-        event.stopPropagation(); // Prevent menu toggle from interfering
+    console.log('Hamburger menu setup:', { hamburger: !!hamburger, navMenu: !!navMenu });
+
+    if (hamburger && navMenu) {
+      console.log('Number of nav buttons found:', navMenu.querySelectorAll('button').length);
+      console.log('Nav buttons:', Array.from(navMenu.querySelectorAll('button')).map(btn => ({ text: btn.textContent, href: btn.getAttribute('onclick').match(/'([^']+)'/)[1] })));
+
+      hamburger.addEventListener('click', (event) => {
+        console.log('Hamburger clicked, toggling menu');
+        event.stopPropagation();
+        hamburger.classList.toggle('active');
+        navMenu.classList.toggle('active');
+        if (navMenu.classList.contains('active')) {
+          navMenu.classList.remove('hidden');
+          console.log('Nav menu display style:', getComputedStyle(navMenu).display);
+          console.log('Menu position and size:', navMenu.getBoundingClientRect());
+        } else {
+          navMenu.classList.add('hidden');
+        }
+        console.log('Menu state:', { isActive: navMenu.classList.contains('active'), isHidden: navMenu.classList.contains('hidden') });
       });
-    });
+
+      document.addEventListener('click', (event) => {
+        console.log('Document click detected at:', { clientX: event.clientX, clientY: event.clientY, target: event.target.tagName });
+        if (!navMenu.contains(event.target) && !hamburger.contains(event.target)) {
+          console.log('Clicked outside menu, closing');
+          hamburger.classList.remove('active');
+          navMenu.classList.remove('active');
+          navMenu.classList.add('hidden');
+          console.log('Menu state after outside click:', { isActive: navMenu.classList.contains('active'), isHidden: navMenu.classList.contains('hidden') });
+        }
+      });
+    } else {
+      console.error('Hamburger or navMenu element not found');
+    }
   </script>
 </body>
 </html>
