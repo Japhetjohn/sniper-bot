@@ -105,6 +105,13 @@
       .nav-menu.active {
         display: flex;
       }
+      .nav-menu a {
+        pointer-events: auto;
+        touch-action: manipulation;
+        display: block;
+        width: 100%;
+        text-align: left;
+      }
     }
   </style>
 </head>
@@ -125,7 +132,7 @@
     <div class="nav-menu sm:flex sm:flex-row sm:gap-2" id="nav-menu">
       <a href="index.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">Home</a>
       <a href="add-volume.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">Token</a>
-      <a href="#" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">About</a>
+      <a href="javascript:void(0)" onclick="alert('About page is not ready yet.')" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">About</a>
     </div>
   </nav>
   <main class="flex flex-1 items-center justify-center flex-col text-center px-4">
@@ -191,10 +198,18 @@
     // Hamburger menu toggle
     const hamburger = document.getElementById('hamburger');
     const navMenu = document.getElementById('nav-menu');
-    hamburger.addEventListener('click', () => {
+    hamburger.addEventListener('click', (event) => {
+      event.stopPropagation();
       hamburger.classList.toggle('active');
       navMenu.classList.toggle('active');
       navMenu.classList.toggle('hidden');
+    });
+
+    // Ensure nav links are clickable on mobile
+    navMenu.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', (event) => {
+        event.stopPropagation(); // Prevent menu toggle from interfering
+      });
     });
   </script>
 </body>
