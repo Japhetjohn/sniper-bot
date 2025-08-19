@@ -9,23 +9,120 @@
     style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com;
     font-src 'self' https://cdnjs.cloudflare.com;
     connect-src 'self' https://cloud.walletconnect.com;
-    script-src 'self';
+    script-src 'self' 'unsafe-inline';
   ">
   <link rel="icon" type="image/png" href="/favicon.svg">
   <title>Nexium Volume bot | Launch</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      background: linear-gradient(45deg, #0d0c1d, #1a182e, #1a0c4b);
+      background-size: 400%;
+      animation: gradientShift 15s ease infinite;
+      position: relative;
+      overflow: hidden;
+    }
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    #backgroundCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      opacity: 0.3;
+    }
+    nav, main, footer {
+      position: relative;
+      z-index: 1;
+    }
+    h1 {
+      text-shadow: 0 0 10px rgba(250, 204, 21, 0.8);
+    }
+    .glow-button {
+      background: linear-gradient(45deg, #facc15, #f97316);
+      box-shadow: 0 0 15px rgba(250, 204, 21, 0.7);
+    }
+    .glow-button:hover {
+      box-shadow: 0 0 25px rgba(250, 204, 21, 1);
+    }
+  </style>
 </head>
 <body class="bg-[#0d0c1d] text-white font-sans flex flex-col min-h-screen">
+  <canvas id="backgroundCanvas"></canvas>
+  <nav class="w-full max-w-3xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between bg-[#1a182e] p-4 rounded-xl shadow border border-orange-400 gap-2 sm:gap-0">
+    <div class="flex items-center justify-center sm:justify-start">
+      <img src="/logo.png" alt="Nexium-MTX Logo" id="nav-logo" class="h-14 w-14" onerror="console.log('Logo load failed'); this.classList.add('hidden')">
+      <span class="text-lg font-bold text-yellow-400 -ml-1">Nexium-MTX</span>
+    </div>
+    <div class="flex flex-col sm:flex-row gap-2">
+      <a href="#" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">Token</a>
+      <a href="#" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">About</a>
+    </div>
+  </nav>
   <main class="flex flex-1 items-center justify-center flex-col text-center px-4">
-    <img src="/logo.png" alt="Nexium-MTX Logo" id="nav-logo" class="h-14 w-14" onerror="console.log('Logo load failed'); this.classList.add('hidden')">
-    <h1 class="text-4xl md:text-6xl font-bold text-yellow-400 mb-8">Nexium Volume Bot</h1>
-    <p class="text-sm max-w-lg text-gray-300 mb-12 text-effect">Connect wallet | Add Volume.</p>
+    <h1 class="text-4xl md:text-5xl font-bold text-yellow-400 mb-8 max-w-lg mx-auto leading-relaxed">boost token volume to earn instant rewards</h1>
     <a href="add-volume.html">
-      <button id="launchBtn" class="glow-button text-black text-lg font-bold py-4 px-10 rounded-xl transition-transform hover:scale-105 animate-pulse" aria-label="Launch App">Launch App</button>
+      <button id="launchBtn" class="glow-button text-black text-lg font-bold py-4 px-10 rounded-xl transition-transform hover:scale-105 animate-pulse" aria-label="Get Started">Get Started</button>
     </a>
   </main>
   <footer class="text-center text-sm text-gray-400 py-6 border-t border-gray-700">
     © 2025 Nexium-volume-bot — Built with ❤ 
   </footer>
+  <script>
+    const canvas = document.getElementById('backgroundCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const particles = [];
+    const particleCount = 50;
+
+    class Particle {
+      constructor() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.size = Math.random() * 3 + 1;
+        this.speedX = Math.random() * 0.5 - 0.25;
+        this.speedY = Math.random() * 0.5 - 0.25;
+      }
+      update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+        if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
+        if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
+      }
+      draw() {
+        ctx.fillStyle = 'rgba(250, 204, 21, 0.5)';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    for (let i = 0; i < particleCount; i++) {
+      particles.push(new Particle());
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach(p => {
+        p.update();
+        p.draw();
+      });
+      requestAnimationFrame(animate);
+    }
+
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
+
+    animate();
+  </script>
 </body>
 </html>
