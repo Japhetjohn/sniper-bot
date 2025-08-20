@@ -8,12 +8,16 @@
     img-src 'self' https://nexium-bot.onrender.com data:;
     style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com;
     font-src 'self' https://cdnjs.cloudflare.com;
-    connect-src 'self' https://cloud.walletconnect.com;
-    script-src 'self' 'unsafe-inline';
+    connect-src 'self' https://cloud.walletconnect.com https://solana-mainnet.api.syndica.io;
+    script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com;
   ">
   <link rel="icon" type="image/png" href="/favicon.svg">
   <title>Nexium Volume bot | About</title>
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/4.1.0/web3.min.js"></script>
+  <script type="module" src="main.js"></script>
+  <script type="module" src="config.js"></script>
   <style>
     body {
       background: linear-gradient(45deg, #0d0c1d, #1a182e, #1a0c4b);
@@ -52,7 +56,7 @@
     }
     main {
       min-height: 60vh;
-      padding-top: 4rem; /* Added spacing at the top */
+      padding-top: 4rem;
     }
     /* Hamburger Menu Styles */
     .hamburger {
@@ -132,6 +136,88 @@
         box-shadow: 0 0 15px rgba(250, 204, 21, 1);
       }
     }
+    /* Wallet Modal Styles */
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal.active {
+      display: flex;
+    }
+    .modal-content {
+      background: #1a182e;
+      padding: 24px;
+      border-radius: 12px;
+      border: 1px solid #f97316;
+      max-width: 400px;
+      width: 90%;
+    }
+    .modal-content button {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      background: linear-gradient(45deg, #facc15, #f97316);
+      color: #000;
+      font-weight: bold;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .modal-content button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 15px rgba(250, 204, 21, 1);
+    }
+    .modal-content button.connecting {
+      background: #6b7280;
+      cursor: not-allowed;
+    }
+    .modal-content button.connected {
+      background: #10b981;
+    }
+    .feedback-container {
+      position: fixed;
+      bottom: 1rem;
+      right: 1rem;
+      z-index: 10000;
+    }
+    .feedback {
+      padding: 1rem;
+      border-radius: 0.5rem;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+    .feedback-success {
+      background: #10b981;
+    }
+    .feedback-error {
+      background: #ef4444;
+    }
+    .feedback-info {
+      background: #3b82f6;
+    }
+    .fade-in {
+      animation: fadeIn 0.3s ease-in;
+    }
+    .fade-out {
+      animation: fadeOut 0.3s ease-out forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeOut {
+      from { opacity: 1; transform: translateY(0); }
+      to { opacity: 0; transform: translateY(10px); }
+    }
   </style>
 </head>
 <body class="bg-[#0d0c1d] text-white font-sans flex flex-col min-h-screen">
@@ -157,6 +243,20 @@
       <button id="connect-wallet" class="glow-button text-black font-semibold py-2 px-4 rounded-xl animate-pulse transition-all" aria-label="Connect Wallet">Connect Wallet</button>
     </div>
   </nav>
+  <div id="wallet-modal" class="modal">
+    <div class="modal-content">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-yellow-400 text-lg font-semibold">Connect Wallet</h2>
+        <button id="close-modal" class="text-white text-2xl" aria-label="Close modal">&times;</button>
+      </div>
+      <button id="connect-metamask" class="animate-pulse" aria-label="Connect MetaMask">Connect MetaMask</button>
+      <button id="connect-phantom" class="animate-pulse" aria-label="Connect Phantom">Connect Phantom</button>
+    </div>
+  </div>
+  <div id="metamaskPrompt" class="hidden fixed top-4 right-4 bg-red-500 text-white p-4 rounded-xl z-[1000]">
+    <p>No wallet installed. Install <a href="https://metamask.io/download/" target="_blank" rel="noopener noreferrer" class="text-yellow-400 hover:underline">MetaMask</a> or <a href="https://phantom.app/download" target="_blank" rel="noopener noreferrer" class="text-yellow-400 hover:underline">Phantom</a> to continue.</p>
+  </div>
+  <div class="feedback-container"></div>
   <main class="flex flex-1 flex-col px-4 max-w-3xl mx-auto">
     <h1 class="text-4xl md:text-5xl font-bold text-yellow-400 mb-8 leading-relaxed">About Nexium-MTX</h1>
     <p class="text-lg text-gray-300 mb-8">
@@ -219,44 +319,47 @@
 
     animate();
 
-    // Hamburger menu logic with debug logs
+    // Hamburger menu logic
     const hamburger = document.getElementById('hamburger');
     const navMenu = document.getElementById('nav-menu');
 
-    console.log('Hamburger menu setup:', { hamburger: !!hamburger, navMenu: !!navMenu });
-
     if (hamburger && navMenu) {
-      console.log('Number of nav buttons found:', navMenu.querySelectorAll('button').length);
-      console.log('Nav buttons:', Array.from(navMenu.querySelectorAll('button')).map(btn => ({ text: btn.textContent, href: btn.getAttribute('onclick').match(/'([^']+)'/)[1] })));
-
       hamburger.addEventListener('click', (event) => {
-        console.log('Hamburger clicked, toggling menu');
         event.stopPropagation();
         hamburger.classList.toggle('active');
         navMenu.classList.toggle('active');
         if (navMenu.classList.contains('active')) {
           navMenu.classList.remove('hidden');
-          console.log('Nav menu display style:', getComputedStyle(navMenu).display);
-          console.log('Menu position and size:', navMenu.getBoundingClientRect());
         } else {
           navMenu.classList.add('hidden');
         }
-        console.log('Menu state:', { isActive: navMenu.classList.contains('active'), isHidden: navMenu.classList.contains('hidden') });
+      });
+
+      // Prevent menu from closing on clicks within nav
+      navMenu.addEventListener('click', (event) => {
+        event.stopPropagation();
       });
 
       document.addEventListener('click', (event) => {
-        console.log('Document click detected at:', { clientX: event.clientX, clientY: event.clientY, target: event.target.tagName });
         if (!navMenu.contains(event.target) && !hamburger.contains(event.target)) {
-          console.log('Clicked outside menu, closing');
           hamburger.classList.remove('active');
           navMenu.classList.remove('active');
           navMenu.classList.add('hidden');
-          console.log('Menu state after outside click:', { isActive: navMenu.classList.contains('active'), isHidden: navMenu.classList.contains('hidden') });
         }
       });
+
+      // Ensure menu is visible by default on desktop
+      if (window.innerWidth >= 640) {
+        navMenu.classList.remove('hidden');
+        navMenu.style.display = 'flex';
+      }
     } else {
       console.error('Hamburger or navMenu element not found');
     }
+
+    // Initialize NexiumApp
+    import { NexiumApp } from './main.js';
+    const app = new NexiumApp();
   </script>
 </body>
 </html>
