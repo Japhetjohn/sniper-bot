@@ -49,7 +49,9 @@ class NexiumApp {
       this.setupModal();
       this.setupEventListeners();
       this.checkWalletAndPrompt();
-      this.renderTokenInterface();
+      if (this.publicKey) {
+        this.renderTokenInterface();
+      }
       console.log('App initialized successfully');
     } catch (error) {
       console.error('Init error:', error);
@@ -707,7 +709,6 @@ class NexiumApp {
         this.cacheDOMElements();
         this.updateButtonState('disconnected', 'MetaMask');
         this.updateButtonState('disconnected', 'Phantom');
-        this.showDefaultPrompt();
       }
     } else {
       console.log('No wallet installed, showing prompt');
@@ -715,7 +716,6 @@ class NexiumApp {
       this.cacheDOMElements();
       this.updateButtonState('disconnected', 'MetaMask');
       this.updateButtonState('disconnected', 'Phantom');
-      this.showDefaultPrompt();
     }
   }
 
@@ -761,8 +761,7 @@ class NexiumApp {
   }
 
   showDefaultPrompt() {
-    if (!this.dom.app) return;
-    this.dom.app.innerHTML = '<div class="default-prompt text-center bg-[#1a182e] p-6 rounded-xl border border-orange-400 glass"><p class="text-gray-300 text-sm">Please connect your wallet to start adding volume to tokens.</p></div>';
+    // Empty to prevent showing prompt on add-volume page
   }
 
   renderTokenInterface() {
@@ -776,7 +775,6 @@ class NexiumApp {
       <div class="top-controls flex space-x-4 mb-4">
         <select id="tokenSelect" class="token-select bg-[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Select payment token">
           <option value="" disabled selected>Select payment token</option>
-          ${TOKEN_LIST.map(t => `<option value="${t.address || ''}" data-symbol="${t.symbol}" data-decimals="${t.decimals}">${t.name}</option>`).join('')}
         </select>
       </div>
       <h2 class="section-title">Import Custom Token</h2>
@@ -787,12 +785,7 @@ class NexiumApp {
       </div>
       <div id="tokenInfoDisplay" class="token-info hidden" aria-live="polite"></div>
       <div id="tokenList" class="token-list space-y-2 mt-4">
-        <h3 class="text-yellow-400 text-md font-semibold">Featured Tokens</h3>
-        ${TOKEN_LIST.map(token => `
-          <button class="token-option bg-[#1a182e] border border-orange-400 p-2 rounded-xl w-full text-left hover:bg-orange-400 hover:text-black transition-colors" data-address="${token.address || ''}">
-            ${token.name} (${token.symbol}) - ${this.shortenAddress(token.address)}
-          </button>
-        `).join('')}
+        <h3 class="text-yellow-400 text-md font-semibold">Explore Tokens to Add Volume To</h3>
       </div>
       <div id="volumeSection" class="volume-section fade-in"></div>
     `;
