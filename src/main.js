@@ -69,17 +69,14 @@ class NexiumApp {
       connectMetamask: document.querySelector('#wallet-modal #connect-metamask'),
       connectPhantom: document.querySelector('#wallet-modal #connect-phantom'),
       feedbackContainer: document.querySelector('.feedback-container'),
-      tokenSelect: null,
-      volumeSection: null,
-      customTokenNameInput: null,
-      customTokenAddressInput: null,
-      showCustomTokenBtn: null,
-      tokenInfo: null,
-      tokenList: null,
-      volumeInput: null,
-      addVolumeBtn: null,
-      beautifyVolumeInput: null,
-      beautifyAddVolumeBtn: null
+      tokenSelect: document.getElementById('tokenSelect'),
+      volumeSection: document.getElementById('volumeSection'),
+      customTokenNameInput: document.getElementById('customTokenNameInput'),
+      customTokenAddressInput: document.getElementById('customTokenAddressInput'),
+      showCustomTokenBtn: document.getElementById('showCustomTokenBtn'),
+      tokenInfo: document.getElementById('tokenInfoDisplay'),
+      tokenList: document.getElementById('tokenList'),
+      volumeInput: document.getElementById('volumeInput')
     };
     console.log('DOM elements cached:', {
       app: !!this.dom.app,
@@ -765,6 +762,75 @@ class NexiumApp {
   }
 
   renderTokenInterface() {
+    // Check if on add-volume.html by inspecting the current URL
+    const isAddVolumePage = window.location.pathname.includes('add-volume.html');
+    if (isAddVolumePage) {
+      console.log('On add-volume.html, skipping renderTokenInterface to preserve existing HTML');
+      // Update DOM references to existing elements in add-volume.html
+      this.dom.tokenSelect = document.getElementById('tokenSelect') || null;
+      this.dom.volumeSection = document.getElementById('volumeSection') || null;
+      this.dom.customTokenNameInput = document.getElementById('customTokenNameInput') || null;
+      this.dom.customTokenAddressInput = document.getElementById('customTokenAddressInput') || null;
+      this.dom.showCustomTokenBtn = document.getElementById('showCustomTokenBtn') || null;
+      this.dom.tokenInfo = document.getElementById('tokenInfoDisplay') || null;
+      this.dom.tokenList = document.getElementById('tokenList') || null;
+      this.dom.volumeInput = document.getElementById('volumeInput') || null;
+
+      // Attach event listeners to existing elements if they exist
+      if (this.dom.showCustomTokenBtn) {
+        const debouncedShowCustomToken = this.debounce(() => {
+          const name = this.dom.customTokenNameInput?.value.trim();
+          const address = this.dom.customTokenAddressInput?.value.trim();
+          if (!name || !address) return;
+          const truncatedAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
+          if (this.dom.tokenInfo) {
+            this.dom.tokenInfo.innerHTML = `
+              <div class="token-meta space-y-2">
+                <h3 class="text-yellow-400 text-lg font-semibold">${this.escapeHTML(name)}</h3>
+                <p class="meta-item text-gray-400 text-sm">Address: ${this.escapeHTML(truncatedAddress)}</p>
+              </div>
+            `;
+            this.dom.tokenInfo.classList.remove('hidden');
+          }
+        }, 1000);
+        this.dom.showCustomTokenBtn.addEventListener('click', debouncedShowCustomToken);
+      }
+
+      if (this.dom.tokenList) {
+        this.dom.tokenList.querySelectorAll('.token-card').forEach(button => {
+          const showTokenInfo = () => {
+            const address = button.querySelector('.address')?.textContent;
+            if (!address) {
+              this.showFeedback('Invalid token address.', 'error');
+              return;
+            }
+            const token = TOKEN_LIST.find(t => t.address === address);
+            if (token && this.dom.tokenInfo) {
+              const truncatedAddress = this.shortenAddress(address);
+              this.dom.tokenInfo.innerHTML = `
+                <div class="token-meta space-y-2">
+                  <h3 class="text-yellow-400 text-lg font-semibold">${this.escapeHTML(token.name)}</h3>
+                  <p class="meta-item text-gray-400 text-sm">Address: ${this.escapeHTML(truncatedAddress)}</p>
+                </div>
+              `;
+              this.dom.tokenInfo.classList.remove('hidden');
+              this.loadCustomTokenData(address);
+            } else {
+              this.showFeedback('Token not found.', 'error');
+            }
+          };
+          button.addEventListener('click', showTokenInfo);
+          button.addEventListener('touchstart', showTokenInfo);
+        });
+      }
+
+      if (this.dom.tokenSelect) {
+        this.dom.tokenSelect.disabled = !this.publicKey;
+      }
+      return;
+    }
+
+    // For other pages, render the token interface as before
     if (!this.dom.app) {
       console.error('Cannot render token interface: app element missing');
       return;
@@ -898,17 +964,21 @@ class NexiumApp {
       this.currentToken = { address: tokenAddress, name: this.escapeHTML(name), symbol: this.escapeHTML(symbol), decimals };
       this.lastSelectedToken = tokenAddress;
       const truncatedAddress = this.shortenAddress(tokenAddress);
-      this.dom.tokenInfo.innerHTML = `
-        <div class="token-meta space-y-2">
-          <h3 class="text-yellow-400 text-lg font-semibold">${this.currentToken.name} <span class="symbol text-gray-300">(${this.currentToken.symbol})</span></h3>
-          <p class="meta-item text-gray-400 text-sm">Address: ${this.escapeHTML(truncatedAddress)}</p>
-        </div>
-      `;
-      this.dom.tokenInfo.classList.remove('hidden');
+      if (this.dom.tokenInfo) {
+        this.dom.tokenInfo.innerHTML = `
+          <div class="token-meta space-y-2">
+            <h3 class="text-yellow-400 text-lg font-semibold">${this.currentToken.name} <span class="symbol text-gray-300">(${this.currentToken.symbol})</span></h3>
+            <p class="meta-item text-gray-400 text-sm">Address: ${this.escapeHTML(truncatedAddress)}</p>
+          </div>
+        `;
+        this.dom.tokenInfo.classList.remove('hidden');
+      }
     } catch (error) {
       console.error('Load custom token error:', error);
       this.showFeedback('Failed to load custom token.', 'error');
-      this.dom.tokenInfo.classList.add('hidden');
+      if (this.dom.tokenInfo) {
+        this.dom.tokenInfo.classList.add('hidden');
+      }
     }
   }
 
