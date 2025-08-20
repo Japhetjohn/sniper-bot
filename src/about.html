@@ -139,7 +139,7 @@
   <nav class="w-full max-w-3xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between bg-[#1a182e] p-4 rounded-xl shadow border border-orange-400 gap-2 sm:gap-0">
     <div class="flex items-center justify-between w-full sm:w-auto">
       <div class="flex items-center justify-center sm:justify-start">
-        <img src="/logo.png" alt="Nexium-MTX Logo" id="nav-logo" class="h-14 w-14" onerror="console.log('Logo load failed'); this.classList.add('hidden')">
+        <img src="/logo.png" alt="Nexium-MTX Logo" id="title-logo" class="h-14 w-14" onerror="console.log('Logo load failed'); this.classList.add('hidden')">
         <span class="text-lg font-bold text-yellow-400 -ml-1">Nexium-MTX</span>
       </div>
       <div class="hamburger" id="hamburger">
@@ -148,10 +148,13 @@
         <span></span>
       </div>
     </div>
-    <div class="nav-menu sm:flex sm:flex-row sm:gap-2" id="nav-menu">
-      <button onclick="window.location.href='index.html'" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4 sm:text-gray-300 sm:hover:text-yellow-400 sm:font-semibold sm:py-2 sm:px-4">Home</button>
-      <button onclick="window.location.href='add-volume.html'" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4 sm:text-gray-300 sm:hover:text-yellow-400 sm:font-semibold sm:py-2 sm:px-4">Token</button>
-      <button onclick="window.location.href='about.html'" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4 sm:text-gray-300 sm:hover:text-yellow-400 sm:font-semibold sm:py-2 sm:px-4">About</button>
+    <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
+      <div class="nav-menu sm:flex sm:flex-row sm:gap-2" id="nav-menu">
+        <a href="index.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4 sm:text-gray-300 sm:hover:text-yellow-400 sm:font-semibold sm:py-2 sm:px-4">Home</a>
+        <a href="about.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4 sm:text-gray-300 sm:hover:text-yellow-400 sm:font-semibold sm:py-2 sm:px-4">About</a>
+        <a href="add-volume.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4 sm:text-gray-300 sm:hover:text-yellow-400 sm:font-semibold sm:py-2 sm:px-4">Token</a>
+      </div>
+      <button id="connect-wallet" class="glow-button text-black font-semibold py-2 px-4 rounded-xl animate-pulse transition-all" aria-label="Connect Wallet">Connect Wallet</button>
     </div>
   </nav>
   <main class="flex flex-1 flex-col px-4 max-w-3xl mx-auto">
