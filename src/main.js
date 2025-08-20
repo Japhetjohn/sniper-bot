@@ -592,11 +592,11 @@ class NexiumApp {
         console.log(`Set ${walletName} button to Connecting..., disabled=${button.disabled}`);
         break;
       case 'connected':
-        button.textContent = 'Add Volume';
+        const shortenedAddress = this.shortenAddress(address);
+        button.textContent = shortenedAddress;
         button.classList.add('connected');
-        console.log(`Set ${walletName} button to Add Volume, disabled=${button.disabled}, classes=${button.classList}`);
+        console.log(`Set ${walletName} button to ${shortenedAddress}, disabled=${button.disabled}, classes=${button.classList}`);
         if (this.dom.connectWallet) {
-          const shortenedAddress = this.shortenAddress(address);
           this.dom.connectWallet.textContent = shortenedAddress;
           this.dom.connectWallet.classList.remove('animate-pulse');
           this.dom.connectWallet.classList.add('connected');
