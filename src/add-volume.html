@@ -616,6 +616,19 @@
       const app = new NexiumApp();
       console.log('NexiumApp initialized successfully');
       
+      // Ensure nav-menu remains visible after wallet connection
+      const ensureNavMenuVisible = () => {
+        const navMenu = document.getElementById('nav-menu');
+        if (navMenu) {
+          navMenu.classList.remove('hidden');
+          navMenu.style.display = window.innerWidth >= 640 ? 'flex' : ''; // Restore default display for desktop, empty for mobile to respect hamburger
+          console.log('Nav menu ensured visible after wallet connection');
+        }
+      };
+
+      document.getElementById('connect-metamask').addEventListener('click', ensureNavMenuVisible);
+      document.getElementById('connect-phantom').addEventListener('click', ensureNavMenuVisible);
+      
       // Handle token card clicks to show popup
       const tokenCards = document.querySelectorAll('.token-card');
       console.log(`Found ${tokenCards.length} token cards`);
