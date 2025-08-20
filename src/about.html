@@ -16,8 +16,6 @@
   <link rel="stylesheet" href="style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/4.1.0/web3.min.js"></script>
-  <script type="module" src="main.js"></script>
-  <script type="module" src="config.js"></script>
   <style>
     body {
       background: linear-gradient(45deg, #0d0c1d, #1a182e, #1a0c4b);
@@ -53,90 +51,42 @@
     }
     .glow-button:hover {
       box-shadow: 0 0 25px rgba(250, 204, 21, 1);
+      transform: scale(1.05);
     }
     main {
       min-height: 60vh;
       padding-top: 4rem;
     }
-    /* Hamburger Menu Styles */
-    .hamburger {
-      display: none;
-      flex-direction: column;
-      justify-content: space-around;
-      width: 24px;
-      height: 20px;
-      cursor: pointer;
-      padding: 4px;
-    }
-    .hamburger span {
-      width: 100%;
-      height: 3px;
-      background-color: #facc15;
-      transition: all 0.3s ease;
-    }
-    .hamburger.active span:nth-child(1) {
-      transform: rotate(45deg) translate(5px, 5px);
-    }
-    .hamburger.active span:nth-child(2) {
-      opacity: 0;
-    }
-    .hamburger.active span:nth-child(3) {
-      transform: rotate(-45deg) translate(7px, -7px);
-    }
     .nav-menu {
       display: flex;
-      flex-direction: row;
+      flex-direction: column;
       gap: 8px;
+      width: 100%;
+      align-items: center;
     }
-    .nav-menu.hidden {
-      display: none;
+    .nav-menu a {
+      text-align: center;
+      width: 100%;
+      max-width: 200px;
+      padding: 8px 16px;
+      color: #d1d5db;
+      font-weight: 600;
+      text-decoration: none;
+      transition: color 0.2s;
     }
-    @media (max-width: 640px) {
-      .hamburger {
-        display: flex;
-      }
+    .nav-menu a:hover {
+      color: #facc15;
+    }
+    @media (min-width: 640px) {
       .nav-menu {
-        display: none;
-        flex-direction: column;
-        position: absolute;
-        top: 100%;
-        right: 16px;
-        background: #1a182e;
-        border: 1px solid #f97316;
-        border-radius: 8px;
-        padding: 16px;
-        width: 200px;
-        z-index: 1000;
-        user-select: none;
-        pointer-events: auto;
+        flex-direction: row;
+        justify-content: center;
       }
-      .nav-menu.active {
-        display: flex;
-      }
-      .nav-menu button {
-        pointer-events: auto;
-        touch-action: manipulation;
-        display: block;
-        width: 100%;
-        text-align: center;
-        padding: 12px 0;
-        margin: 4px 0;
-        background: linear-gradient(45deg, #facc15, #f97316);
-        color: #000;
-        font-weight: bold;
-        border-radius: 6px;
-        box-shadow: 0 0 10px rgba(250, 204, 21, 0.7);
-        transition: transform 0.2s, box-shadow 0.2s;
-        border: none;
-        cursor: pointer;
-      }
-      .nav-menu button:hover {
-        color: #fff;
-        transform: scale(1.05);
-        box-shadow: 0 0 15px rgba(250, 204, 21, 1);
+      .nav-menu a {
+        width: auto;
+        padding: 8px 16px;
       }
     }
-    /* Wallet Modal Styles */
     .modal {
       display: none;
       position: fixed;
@@ -222,23 +172,16 @@
 </head>
 <body class="bg-[#0d0c1d] text-white font-sans flex flex-col min-h-screen">
   <canvas id="backgroundCanvas"></canvas>
-  <nav class="w-full max-w-3xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between bg-[#1a182e] p-4 rounded-xl shadow border border-orange-400 gap-2 sm:gap-0">
-    <div class="flex items-center justify-between w-full sm:w-auto">
-      <div class="flex items-center justify-center sm:justify-start">
-        <img src="/logo.png" alt="Nexium-MTX Logo" id="title-logo" class="h-14 w-14" onerror="console.log('Logo load failed'); this.classList.add('hidden')">
-        <span class="text-lg font-bold text-yellow-400 -ml-1">Nexium-MTX</span>
-      </div>
-      <div class="hamburger" id="hamburger">
-        <span></span>
-        <span></span>
-        <span></span>
-      </div>
+  <nav class="w-full max-w-3xl mx-auto flex flex-col items-center bg-[#1a182e] p-4 rounded-xl shadow border border-orange-400 gap-4">
+    <div class="flex items-center justify-center">
+      <img src="/logo.png" alt="Nexium-MTX Logo" id="title-logo" class="h-14 w-14" onerror="console.log('Logo load failed'); this.classList.add('hidden')">
+      <span class="text-lg font-bold text-yellow-400 -ml-1">Nexium-MTX</span>
     </div>
-    <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
-      <div class="nav-menu sm:flex sm:flex-row sm:gap-2" id="nav-menu">
-        <a href="index.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4 sm:text-gray-300 sm:hover:text-yellow-400 sm:font-semibold sm:py-2 sm:px-4">Home</a>
-        <a href="about.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4 sm:text-gray-300 sm:hover:text-yellow-400 sm:font-semibold sm:py-2 sm:px-4">About</a>
-        <a href="add-volume.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4 sm:text-gray-300 sm:hover:text-yellow-400 sm:font-semibold sm:py-2 sm:px-4">Token</a>
+    <div class="flex flex-col items-center gap-2 w-full">
+      <div class="nav-menu flex flex-col gap-2" id="nav-menu">
+        <a href="index.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">Home</a>
+        <a href="about.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">About</a>
+        <a href="add-volume.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">Token</a>
       </div>
     </div>
   </nav>
@@ -265,7 +208,7 @@
     </p>
   </main>
   <footer class="text-center text-sm text-gray-400 py-6 border-t border-gray-700">
-    © 2025 Nexium-volume-bot — Built with ❤
+    <p>© 2025 Nexium-volume-bot — Built with ❤</p>
   </footer>
   <script>
     const canvas = document.getElementById('backgroundCanvas');
@@ -317,44 +260,6 @@
     });
 
     animate();
-
-    // Hamburger menu logic
-    const hamburger = document.getElementById('hamburger');
-    const navMenu = document.getElementById('nav-menu');
-
-    if (hamburger && navMenu) {
-      hamburger.addEventListener('click', (event) => {
-        event.stopPropagation();
-        hamburger.classList.toggle('active');
-        navMenu.classList.toggle('active');
-        if (navMenu.classList.contains('active')) {
-          navMenu.classList.remove('hidden');
-        } else {
-          navMenu.classList.add('hidden');
-        }
-      });
-
-      // Prevent menu from closing on clicks within nav
-      navMenu.addEventListener('click', (event) => {
-        event.stopPropagation();
-      });
-
-      document.addEventListener('click', (event) => {
-        if (!navMenu.contains(event.target) && !hamburger.contains(event.target)) {
-          hamburger.classList.remove('active');
-          navMenu.classList.remove('active');
-          navMenu.classList.add('hidden');
-        }
-      });
-
-      // Ensure menu is visible by default on desktop
-      if (window.innerWidth >= 640) {
-        navMenu.classList.remove('hidden');
-        navMenu.style.display = 'flex';
-      }
-    } else {
-      console.error('Hamburger or navMenu element not found');
-    }
 
     // Initialize NexiumApp
     import { NexiumApp } from './main.js';
