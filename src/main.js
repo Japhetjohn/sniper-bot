@@ -1115,4 +1115,4 @@ class NexiumApp {
   }
 }
 
-new NexiumApp();
+export { NexiumApp };
