@@ -2,39 +2,73 @@
 import { defineConfig } from 'vite';
 import tailwindcss from 'tailwindcss';
 import autoprefixer from 'autoprefixer';
+import { Buffer } from 'buffer';
 
 export default defineConfig({
-  root: 'src', // Project root is src
-  publicDir: '../public', // Public assets outside src
-  base: '/', // Adjust to '/repo-name/' if hosting in a subdirectory
+  root: 'src',
+  publicDir: '../public',
+  base: '/',
 
   server: {
-    open: '/index.html', // Open index.html in dev
+    open: '/index.html',
   },
 
   css: {
     postcss: {
-      plugins: [
-        tailwindcss,
-        autoprefixer,
-      ]
-    }
+      plugins: [tailwindcss, autoprefixer],
+    },
   },
 
   optimizeDeps: {
-    include: ['ethers'] // Pre-bundle ethers for faster dev
+    include: [
+      'buffer',
+      'ethers',
+      '@solana/spl-token',
+      '@solana/web3.js',
+      '@viaprotocol/web3-wallets',
+      '@solana/spl-name-service'
+    ],
+    force: true,
+    esbuildOptions: {
+      define: {
+        global: 'globalThis',
+        'global.Buffer': 'Buffer',
+      },
+    },
+  },
+
+  resolve: {
+    alias: {
+      buffer: 'buffer',
+      '@solana/spl-token': '@solana/spl-token',
+      '@solana/web3.js': '@solana/web3.js',
+      '@solana/spl-name-service': '@solana/spl-name-service',
+    },
+  },
+
+  define: {
+    'global.Buffer': 'Buffer',
+    'global': 'globalThis',
+    'process.env': {},
   },
 
   build: {
-    outDir: '../dist', // Output directory for production build
-    emptyOutDir: true, // Clean the output directory before building
+    outDir: '../dist',
+    emptyOutDir: true,
     rollupOptions: {
       input: {
-        // Specify multiple HTML files to handle routing and create separate bundles for each page
         main: 'src/index.html',
         addVolume: 'src/add-volume.html',
-        about: 'src/about.html'
-      }
-    }
-  }
+        about: 'src/about.html',
+      },
+      external: [],
+    },
+    commonjsOptions: {
+      transformMixedEsModules: true,
+    },
+  },
+
+  esbuild: {
+    target: 'esnext',
+  },
 });

