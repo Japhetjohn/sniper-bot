@@ -3,6 +3,8 @@ import { defineConfig } from 'vite';
 import tailwindcss from 'tailwindcss';
 import autoprefixer from 'autoprefixer';
 import { NodeGlobalsPolyfillPlugin } from '@esbuild-plugins/node-globals-polyfill';
+import { Buffer } from 'buffer';
+import inject from '@rollup/plugin-inject';
 
 export default defineConfig({
   root: 'src',
@@ -63,6 +65,11 @@ export default defineConfig({
         about: 'src/about.html',
       },
       external: [],
+      plugins: [
+        inject({
+          Buffer: ['buffer', 'Buffer'],
+        }),
+      ],
     },
     commonjsOptions: {
       transformMixedEsModules: true,
