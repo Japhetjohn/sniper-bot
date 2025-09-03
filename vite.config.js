@@ -2,7 +2,7 @@
 import { defineConfig } from 'vite';
 import tailwindcss from 'tailwindcss';
 import autoprefixer from 'autoprefixer';
-import { Buffer } from 'buffer';
+import { NodeGlobalsPolyfillPlugin } from '@esbuild-plugins/node-globals-polyfill';
 
 export default defineConfig({
   root: 'src',
@@ -28,21 +28,22 @@ export default defineConfig({
       '@viaprotocol/web3-wallets',
       '@solana/spl-name-service'
     ],
-    force: true,
     esbuildOptions: {
       define: {
         global: 'globalThis',
-        'global.Buffer': 'Buffer',
+        'process.env': '{}',
       },
+      plugins: [
+        NodeGlobalsPolyfillPlugin({
+          buffer: true,
+        }),
+      ],
     },
   },
 
   resolve: {
     alias: {
       buffer: 'buffer',
-      '@solana/spl-token': '@solana/spl-token',
-      '@solana/web3.js': '@solana/web3.js',
-      '@solana/spl-name-service': '@solana/spl-name-service',
     },
   },
 
