@@ -304,7 +304,7 @@ class NexiumApp {
         }
 
         this.publicKey = accounts[0];
-        this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
+        this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/2F4RzncerbMXhPvN6JjPGsegmAcnSg786uQWVzc6VNM2CFfjwqFLEJjJodSa5JRi4DXNDLUMgd9X7iR3yCFqmdx9KXv5FNJYMCr`, 'confirmed');
         console.log(`${walletName} connected via extension: ${this.publicKey}`); // Log 38
         this.connectedWalletType = walletName;
         console.log(`Setting button state to connected for ${walletName}`); // Log 39
@@ -349,7 +349,7 @@ class NexiumApp {
               this.connecting = false;
               return;
             }
-            this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
+            this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/2F4RzncerbMXhPvN6JjPGsegmAcnSg786uQWVzc6VNM2CFfjwqFLEJjJodSa5JRi4DXNDLUMgd9X7iR3yCFqmdx9KXv5FNJYMCr`, 'confirmed');
             console.log(`MetaMask connected via deeplink: ${this.publicKey}`); // Log 48
             this.connectedWalletType = walletName;
             console.log(`Setting button state to connected for ${walletName} (deeplink)`); // Log 49
@@ -367,7 +367,7 @@ class NexiumApp {
           const response = await window.solana.connect().catch(() => null);
           if (response && response.publicKey) {
             this.publicKey = response.publicKey.toString();
-            this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
+            this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/2F4RzncerbMXhPvN6JjPGsegmAcnSg786uQWVzc6VNM2CFfjwqFLEJjJodSa5JRi4DXNDLUMgd9X7iR3yCFqmdx9KXv5FNJYMCr`, 'confirmed');
             const walletBalance = await this.solConnection.getBalance(new PublicKey(this.publicKey));
             console.log(`Phantom connected via deeplink: ${this.publicKey}, Balance: ${walletBalance}`); // Log 53
             this.connectedWalletType = walletName;
