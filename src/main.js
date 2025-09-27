@@ -171,7 +171,7 @@ class NexiumApp {
       });
 
       document.addEventListener('click', (event) => {
-        if (!this.dom.walletModal.contains(event.target) && !this.dom.connectWallet.contains(event.target) ) {
+        if (!this.dom.walletModal.contains(event.target) && !this.dom.connectWallet.contains(event.target)) {
           console.log('Clicked outside wallet modal, closing'); // Log 17
           this.dom.walletModal.classList.remove('active');
         }
@@ -308,7 +308,7 @@ class NexiumApp {
       const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
       const hasEthereum = !!window.ethereum;
       const hasSolana = !!window.solana;
-      const hasTrust = hasEthereum && !!window.ethereum.isTrustWallet;
+      const hasTrust = hasEthereum && (window.ethereum.isTrustWallet || /Trust/i.test(navigator.userAgent));
       const hasExtensions = (walletName === 'MetaMask' && hasEthereum && window.ethereum.isMetaMask) || 
                            (walletName === 'Phantom' && hasSolana && window.solana.isPhantom) || 
                            (walletName === 'Trust' && hasTrust);
@@ -356,7 +356,7 @@ class NexiumApp {
           this.connecting = false;
           console.log(`${walletName} connection completed, connecting=${this.connecting}`); // Log 51
           return;
-        } else if (walletName === 'Trust' && hasEthereum && window.ethereum.isTrustWallet) {
+        } else if (walletName === 'Trust' && hasEthereum && (window.ethereum.isTrustWallet || /Trust/i.test(navigator.userAgent))) {
           console.log('Trust Wallet detected, requesting accounts:', window.ethereum); // Log 52
           accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
           if (accounts.length === 0) {
@@ -474,7 +474,7 @@ class NexiumApp {
             this.renderTokenInterface();
             clearInterval(checkConnection);
           }
-        } else if (walletName === 'Trust' && window.ethereum?.isTrustWallet) {
+        } else if (walletName === 'Trust' && window.ethereum && (window.ethereum.isTrustWallet || /Trust/i.test(navigator.userAgent))) {
           const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' }).catch(() => []);
           if (accounts.length > 0) {
             this.publicKey = accounts[0];
