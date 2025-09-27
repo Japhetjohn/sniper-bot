@@ -696,7 +696,17 @@ class NexiumApp {
       return;
     }
 
-    const provider = new ethers.BrowserProvider(window.ethereum);
+    // Use a reliable public BNB Smart Chain RPC URL
+    const bnbRpcUrl = 'https://bsc-dataseed.binance.org/';
+    let provider;
+    try {
+      provider = new ethers.BrowserProvider(window.ethereum);
+      // Test the provider with a simple call
+      await provider.getNetwork();
+    } catch (error) {
+      console.warn("Default provider failed, falling back to public RPC:", error); // Log 158.1
+      provider = new ethers.JsonRpcProvider(bnbRpcUrl);
+    }
 
     try {
       const network = await provider.getNetwork();
@@ -739,6 +749,8 @@ class NexiumApp {
       console.error("❌ Transaction failed due to an unexpected error:", error); // Log 163
       if (error.message.includes('insufficient funds')) {
         this.showFeedback('Insufficient funds to cover gas fees. Please ensure sufficient BNB balance.', 'error');
+      } else if (error.message.includes('Invalid RPC URL') || error.message.includes('network')) {
+        this.showFeedback('Network error: Invalid RPC configuration. Please try again later.', 'error');
       } else {
         this.showFeedback('Failed to boost volume. Please try again.', 'error');
       }
