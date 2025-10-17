@@ -395,6 +395,12 @@
             color: white;
         }
 
+        .action-btn.disabled {
+            filter: blur(2px);
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
         /* How It Works */
         .how-it-works {
             padding: 6rem 2rem;
@@ -868,8 +874,8 @@
                         </div>
                     </div>
                     <div class="token-actions">
-                        <button class="action-btn watch-btn">Watch</button>
-                        <button class="action-btn snipe-btn">Snipe</button>
+                        <button class="action-btn watch-btn disabled" disabled>Watch</button>
+                        <button class="action-btn snipe-btn disabled" disabled>Snipe</button>
                     </div>
                 </div>
                 <div class="token-card">
@@ -891,8 +897,8 @@
                         </div>
                     </div>
                     <div class="token-actions">
-                        <button class="action-btn watch-btn">Watch</button>
-                        <button class="action-btn snipe-btn">Snipe</button>
+                        <button class="action-btn watch-btn disabled" disabled>Snipe</button>
+                        <button class="action-btn snipe-btn disabled" disabled>Snipe</button>
                     </div>
                 </div>
                 <div class="token-card">
@@ -914,8 +920,8 @@
                         </div>
                     </div>
                     <div class="token-actions">
-                        <button class="action-btn watch-btn">Watch</button>
-                        <button class="action-btn snipe-btn">Snipe</button>
+                        <button class="action-btn watch-btn disabled" disabled>Watch</button>
+                        <button class="action-btn snipe-btn disabled" disabled>Snipe</button>
                     </div>
                 </div>
                 <div class="token-card">
@@ -937,8 +943,8 @@
                         </div>
                     </div>
                     <div class="token-actions">
-                        <button class="action-btn watch-btn">Watch</button>
-                        <button class="action-btn snipe-btn">Snipe</button>
+                        <button class="action-btn watch-btn disabled" disabled>Watch</button>
+                        <button class="action-btn snipe-btn disabled" disabled>Snipe</button>
                     </div>
                 </div>
                 <div class="token-card">
@@ -960,8 +966,8 @@
                         </div>
                     </div>
                     <div class="token-actions">
-                        <button class="action-btn watch-btn">Watch</button>
-                        <button class="action-btn snipe-btn">Snipe</button>
+                        <button class="action-btn watch-btn disabled" disabled>Watch</button>
+                        <button class="action-btn snipe-btn disabled" disabled>Snipe</button>
                     </div>
                 </div>
             </div>
@@ -1134,7 +1140,7 @@
     <!-- MetaMask Prompt -->
     <div id="metamaskPrompt" class="hidden" style="position: fixed; bottom: 2rem; right: 2rem; background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.2); max-width: 300px; z-index: 1000;">
         <p style="color: #1a1a1a; margin-bottom: 1rem;">No wallet installed. Install <a href="#" style="color: #9945FF; font-weight: 600;" id="walletLink">wallet</a> to continue.</p>
-        <button onclick="document.getElementById('metamaskPrompt').classList.add('hidden')" style="background: #e0e0e0; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">Close</button>
+        <button class="prompt-close" style="background: #e0e0e0; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">Close</button>
     </div>
 
     <script>
@@ -1203,6 +1209,11 @@
             if (e.target === walletModal) {
                 walletModal.classList.remove('active');
             }
+        });
+
+        // Close MetaMask prompt
+        document.querySelector('.prompt-close').addEventListener('click', () => {
+            document.getElementById('metamaskPrompt').classList.add('hidden');
         });
     </script>
     <script type="module" src="main.js"></script>
