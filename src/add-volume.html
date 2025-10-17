@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Nexium-MTX: Add volume to tokens on Solana using Phantom">
-    <title>Nexium Add Volume</title>
+    <title>NexiumBoost - Top-tier Multichain Sniper Bot</title>
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
       img-src 'self' https://nexium-bot.onrender.com data: https://i.ibb.co;
@@ -21,45 +21,624 @@
     <script src="https://unpkg.com/@solana/web3.js@1.95.3/dist/index.global.js"></script>
     <script src="https://unpkg.com/@solana/spl-token@0.4.8/lib/index.global.js"></script>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            background: linear-gradient(45deg, #0d0c1d, #1a182e, #1a0c4b);
-            background-size: 400%;
-            animation: gradientShift 15s ease infinite;
-            position: relative;
+            background: #ffffff;
+            color: #1a1a1a;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            overflow-x: hidden;
         }
-        @keyframes gradientShift {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+
+        /* Solana Gradient Accents */
+        .gradient-accent {
+            background: linear-gradient(135deg, #9945FF 0%, #14F195 50%, #00D4FF 100%);
         }
-        #backgroundCanvas {
-            position: absolute;
+
+        .gradient-text {
+            background: linear-gradient(135deg, #9945FF 0%, #14F195 50%, #00D4FF 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
             top: 0;
             left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.05);
+            z-index: 1000;
+        }
+
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-section img {
+            width: 40px;
+            height: 40px;
+        }
+
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #9945FF 0%, #14F195 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: #4a4a4a;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: #9945FF;
+        }
+
+        #connect-wallet {
+            background: linear-gradient(135deg, #9945FF 0%, #14F195 50%, #00D4FF 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            box-shadow: 0 4px 20px rgba(153, 69, 255, 0.3);
+        }
+
+        #connect-wallet:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 30px rgba(153, 69, 255, 0.5);
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: 8rem 2rem 4rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        .hero-content h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            color: #1a1a1a;
+        }
+
+        .hero-content .subhead {
+            font-size: 1.25rem;
+            color: #6a6a6a;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #9945FF 0%, #14F195 50%, #00D4FF 100%);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            box-shadow: 0 4px 20px rgba(153, 69, 255, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 30px rgba(153, 69, 255, 0.5);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #9945FF;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            border: 2px solid #9945FF;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-secondary:hover {
+            background: #9945FF;
+            color: white;
+        }
+
+        .hero-visual {
+            position: relative;
+            height: 500px;
+        }
+
+        .device-mockup {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             width: 100%;
             height: 100%;
-            z-index: -1;
-            opacity: 0.3;
-            pointer-events: none;
+            background: linear-gradient(135deg, rgba(153, 69, 255, 0.1) 0%, rgba(20, 241, 149, 0.1) 100%);
+            border-radius: 24px;
+            padding: 2rem;
+            animation: float 6s ease-in-out infinite;
         }
-        nav, main, footer, section {
+
+        @keyframes float {
+            0%, 100% {
+                transform: translate(-50%, -50%) translateY(0);
+            }
+            50% {
+                transform: translate(-50%, -50%) translateY(-20px);
+            }
+        }
+
+        /* Features Section */
+        .features {
+            padding: 6rem 2rem;
+            background: #f8f9fa;
+        }
+
+        .features-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 3rem;
+            color: #1a1a1a;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 8px 30px rgba(153, 69, 255, 0.2);
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #9945FF 0%, #14F195 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            color: #1a1a1a;
+        }
+
+        .feature-card p {
+            color: #6a6a6a;
+            line-height: 1.6;
+        }
+
+        /* Token Cards Carousel */
+        .token-carousel-section {
+            padding: 6rem 2rem;
+            background: white;
+            overflow: hidden;
+        }
+
+        .carousel-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .token-carousel {
+            display: flex;
+            gap: 1.5rem;
+            overflow-x: auto;
+            scroll-behavior: smooth;
+            padding: 2rem 0;
+            scrollbar-width: none;
+        }
+
+        .token-carousel::-webkit-scrollbar {
+            display: none;
+        }
+
+        .token-card {
+            min-width: 280px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
+            cursor: pointer;
             position: relative;
-            z-index: 1;
         }
-        .glow-button {
-            background: linear-gradient(45deg, #facc15, #f97316);
-            box-shadow: 0 0 15px rgba(250, 204, 21, 0.7);
+
+        .token-card:hover {
+            transform: translateX(15px) scale(1.03);
+            box-shadow: 0 8px 30px rgba(153, 69, 255, 0.3);
+            border-color: #9945FF;
+            z-index: 10;
         }
-        .glow-button:hover {
-            box-shadow: 0 0 25px rgba(250, 204, 21, 1);
-            transform: scale(1.05);
+
+        .token-card:hover ~ .token-card {
+            transform: translateX(-8px);
         }
-        .glass {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+
+        .token-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
         }
-        .wallet-modal, .token-popup, .custom-token-popup {
+
+        .token-logo {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #9945FF 0%, #14F195 100%);
+        }
+
+        .token-info h4 {
+            font-weight: 700;
+            color: #1a1a1a;
+        }
+
+        .chain-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: linear-gradient(135deg, #9945FF 0%, #14F195 100%);
+            color: white;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .token-stats {
+            margin: 1rem 0;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 0.5rem 0;
+            color: #6a6a6a;
+        }
+
+        .token-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid #9945FF;
+            background: transparent;
+            color: #9945FF;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .action-btn:hover {
+            background: #9945FF;
+            color: white;
+        }
+
+        /* How It Works */
+        .how-it-works {
+            padding: 6rem 2rem;
+            background: #f8f9fa;
+        }
+
+        .steps-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+        }
+
+        .step {
+            text-align: center;
+            position: relative;
+        }
+
+        .step-number {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #9945FF 0%, #14F195 100%);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0 auto 1.5rem;
+        }
+
+        .step h3 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            color: #1a1a1a;
+        }
+
+        .step p {
+            color: #6a6a6a;
+            line-height: 1.6;
+        }
+
+        /* Pricing Section */
+        .pricing {
+            padding: 6rem 2rem;
+            background: white;
+        }
+
+        .pricing-container {
+            max-width: 900px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .pricing-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 16px;
+            padding: 2.5rem;
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+        }
+
+        .pricing-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 40px rgba(153, 69, 255, 0.2);
+            border-color: #9945FF;
+        }
+
+        .pricing-card.featured {
+            border-color: #9945FF;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .pricing-card.featured::before {
+            content: 'BEST VALUE';
+            position: absolute;
+            top: 1rem;
+            right: -2rem;
+            background: linear-gradient(135deg, #9945FF 0%, #14F195 100%);
+            color: white;
+            padding: 0.25rem 3rem;
+            transform: rotate(45deg);
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .price {
+            font-size: 3rem;
+            font-weight: 800;
+            margin: 1rem 0;
+        }
+
+        .price-period {
+            color: #6a6a6a;
+            font-size: 1rem;
+        }
+
+        .features-list {
+            text-align: left;
+            margin: 2rem 0;
+        }
+
+        .features-list li {
+            padding: 0.75rem 0;
+            color: #6a6a6a;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .features-list li::before {
+            content: '✓';
+            color: #14F195;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        .subscribe-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #9945FF 0%, #14F195 50%, #00D4FF 100%);
+            color: white;
+            padding: 1rem;
+            border-radius: 12px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .subscribe-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 30px rgba(153, 69, 255, 0.5);
+        }
+
+        /* Trust Section */
+        .trust {
+            padding: 4rem 2rem;
+            background: #f8f9fa;
+        }
+
+        .trust-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .trust-features {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            flex-wrap: wrap;
+            margin-top: 2rem;
+        }
+
+        .trust-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: #6a6a6a;
+            font-weight: 500;
+        }
+
+        .trust-icon {
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, #9945FF 0%, #14F195 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .chain-logos {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+            margin-top: 2rem;
+        }
+
+        .chain-logo {
+            width: 50px;
+            height: 50px;
+            background: white;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: #9945FF;
+            border: 2px solid #e0e0e0;
+        }
+
+        /* Footer */
+        footer {
+            background: #1a1a1a;
+            color: white;
+            padding: 3rem 2rem 1rem;
+        }
+
+        .footer-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-section h4 {
+            margin-bottom: 1rem;
+            color: #14F195;
+        }
+
+        .footer-section a {
+            display: block;
+            color: #b0b0b0;
+            text-decoration: none;
+            margin: 0.5rem 0;
+            transition: color 0.3s;
+        }
+
+        .footer-section a:hover {
+            color: #14F195;
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid #333;
+            color: #b0b0b0;
+        }
+
+        /* Modals */
+        .wallet-modal,
+        .subscription-modal {
             display: none;
             position: fixed;
             top: 0;
@@ -71,235 +650,625 @@
             align-items: center;
             justify-content: center;
         }
-        .wallet-modal.active, .token-popup.active, .custom-token-popup.active {
+
+        .wallet-modal.active,
+        .subscription-modal.active {
             display: flex;
         }
-        .wallet-modal-content, .token-popup-content, .custom-token-popup-content {
-            background: #1a182e;
-            border: 1px solid #f97316;
-            border-radius: 12px;
-            padding: 24px;
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
             width: 90%;
-            max-width: 400px;
+            max-width: 450px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-content h2 {
+            color: #1a1a1a;
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
             text-align: center;
         }
-        .wallet-modal-content h2, .token-popup-content h2, .custom-token-popup-content h2 {
-            color: #facc15;
-            font-size: 1.5rem;
-            margin-bottom: 16px;
-        }
-        .wallet-modal-content button, .token-popup-content button, .custom-token-popup-content button {
-            display: block;
-            width: 100%;
-            padding: 12px;
-            margin: 8px 0;
-            background: linear-gradient(45deg, #facc15, #f97316);
-            color: #000;
-            font-weight: bold;
-            border-radius: 6px;
-            box-shadow: 0 0 10px rgba(250, 204, 21, 0.7);
-            transition: transform 0.2s, box-shadow 0.2s;
-            border: none;
-            cursor: pointer;
-        }
-        .wallet-modal-content button:hover, .token-popup-content button:hover, .custom-token-popup-content button:hover {
-            color: #fff;
-            transform: scale(1.05);
-            box-shadow: 0 0 15px rgba(250, 204, 21, 1);
-        }
-        .wallet-modal-content .close-modal, .token-popup-content .close-popup, .custom-token-popup-content .close-popup {
-            background: #4b5563;
-            color: #fff;
-            margin-top: 16px;
-        }
-        .wallet-modal-content .close-modal:hover, .token-popup-content .close-popup:hover, .custom-token-popup-content .close-popup:hover {
-            background: #6b7280;
-            transform: scale(1.05);
-            box-shadow: 0 0 15px rgba(107, 114, 128, 0.7);
-        }
-        .nav-menu {
+
+        .wallet-option {
             display: flex;
-            flex-direction: column;
-            gap: 8px;
-            width: 100%;
             align-items: center;
-        }
-        .nav-menu a {
-            text-align: center;
-            width: 100%;
-            max-width: 200px;
-            padding: 8px 16px;
-            color: #d1d5db;
-            font-weight: 600;
-            text-decoration: none;
-            transition: color 0.2s;
-        }
-        .nav-menu a:hover {
-            color: #facc15;
-        }
-        @media (min-width: 640px) {
-            .nav-menu {
-                flex-direction: row;
-                justify-content: center;
-            }
-            .nav-menu a {
-                width: auto;
-                padding: 8px 16px;
-            }
-        }
-        .token-grid {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 1.5rem;
-        }
-        @media (max-width: 768px) {
-            .token-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-        }
-        @media (max-width: 480px) {
-            .token-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-        .token-card, .custom-token-card {
-            background: #1a182e;
+            gap: 1rem;
             padding: 1rem;
-            border-radius: 0.5rem;
-            border: 1px solid #f97316;
-            box-shadow: 0 0 10px rgba(250, 204, 21, 0.3);
-            transition: transform 0.2s, box-shadow 0.2s;
-            text-align: center;
+            margin: 1rem 0;
+            background: #f8f9fa;
+            border-radius: 12px;
             cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
         }
-        .token-card:hover, .custom-token-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 0 15px rgba(250, 204, 21, 0.7);
+
+        .wallet-option:hover {
+            background: linear-gradient(135deg, rgba(153, 69, 255, 0.1) 0%, rgba(20, 241, 149, 0.1) 100%);
+            border-color: #9945FF;
         }
-        .token-card p, .custom-token-card p {
-            margin: 0.5rem 0;
-            font-size: 0.9rem;
-        }
-        .token-card .name, .custom-token-card .name {
-            font-weight: bold;
-            font-size: 1.1rem;
-            color: #facc15;
-        }
-        .token-card .address, .custom-token-card .address {
-            word-break: break-all;
-            color: #d1d5db;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        @media (max-width: 480px) {
-            .token-card .address, .custom-token-card .address {
-                font-size: 0.7rem;
-                line-height: 1.2;
-                white-space: normal;
-                word-break: break-word;
-                overflow-wrap: anywhere;
-            }
-            .token-popup-content .address, .custom-token-popup-content .address {
-                font-size: 0.7rem;
-                line-height: 1.2;
-                white-space: normal;
-                word-break: break-word;
-                overflow-wrap: anywhere;
-            }
-        }
-        .token-card .market-cap {
-            color: #9ca3af;
-        }
-        .custom-token-popup-content .input-group {
+
+        .wallet-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #9945FF 0%, #14F195 100%);
             display: flex;
             align-items: center;
-            margin: 1rem 0;
+            justify-content: center;
+            color: white;
         }
-        .custom-token-popup-content .input-group span {
-            color: #facc15;
-            font-size: 1.2rem;
-            margin-right: 0.5rem;
-        }
-        .custom-token-popup-content .volume-input, .custom-token-popup-content .address-input {
-            flex-grow: 1;
-            background: #1a182e;
-            border: 1px solid #f97316;
-            color: #fff;
-            padding: 0.5rem;
-            border-radius: 6px;
-            font-size: 1rem;
-        }
-        .form-group label {
-            color: #facc15;
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-        }
-        .form-group select, .form-group input {
+
+        .close-modal {
             width: 100%;
             padding: 0.75rem;
+            background: #e0e0e0;
+            border: none;
             border-radius: 8px;
-            border: 1px solid #f97316;
-            background-color: #1a182e;
-            color: #d1d5db;
-            font-size: 1rem;
-            transition: border-color 0.2s, box-shadow 0.2s;
+            margin-top: 1rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
         }
-        .form-group select:focus, .form-group input:focus {
-            outline: none;
-            border-color: #facc15;
-            box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.5);
+
+        .close-modal:hover {
+            background: #d0d0d0;
         }
-        .info-card {
-            background: #1a182e;
-            border-radius: 12px;
-            padding: 1.5rem;
-            border: 1px solid #f97316;
-            box-shadow: 0 0 15px rgba(250, 204, 21, 0.3);
-            text-align: center;
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero-container {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+
+            .hero-content h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero-visual {
+                height: 300px;
+            }
+
+            .nav-container {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .nav-links {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .cta-buttons {
+                justify-content: center;
+            }
+
+            .section-title {
+                font-size: 2rem;
+            }
         }
-        .info-card img {
-            width: 64px;
-            height: 64px;
-            margin: 0 auto 1rem;
-        }
-        .info-card h3 {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #facc15;
-            margin-bottom: 0.5rem;
-        }
-        .info-card p {
-            color: #9ca3af;
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation: none !important;
+                transition: none !important;
+            }
         }
     </style>
 </head>
-<body class="bg-[#0d0c1d] text-white font-sans flex flex-col min-h-screen">
-    <nav class="w-full max-w-3xl mx-auto flex flex-col items-center bg-[#1a182e] p-4 rounded-xl shadow border border-orange-400 gap-4">
-        <div class="flex items-center justify-center">
-            <img src="/logo.png" alt="Nexium-MTX Logo" id="title-logo" class="h-14 w-14" onerror="console.log('Logo load failed'); this.classList.add('hidden')">
-            <span class="text-lg font-bold text-yellow-400 -ml-1">Nexium-MTX</span>
-        </div>
-        <div class="flex flex-col items-center gap-2 w-full">
-            <div class="nav-menu flex flex-col gap-2" id="nav-menu">
-                <a href="index.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">Home</a>
-                <a href="about.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">About</a>
-                <a href="add-volume.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">Token</a>
+<body>
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-container">
+            <div class="logo-section">
+                <img src="/logo.png" alt="NexiumBoost Logo" onerror="this.style.display='none'">
+                <span class="logo-text">NexiumBoost</span>
             </div>
-            <button id="connect-wallet" class="glow-button text-black font-semibold py-2 px-4 rounded-xl animate-pulse transition-all" aria-label="Connect Wallet">Connect Wallet</button>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#how-it-works">How It Works</a>
+                <a href="#pricing">Pricing</a>
+                <button id="connect-wallet" aria-label="Connect Wallet">Connect Wallet</button>
+            </div>
         </div>
     </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-container">
+            <div class="hero-content">
+                <h1>
+                    <span class="gradient-text">NexiumBoost</span><br>
+                    Top-tier Multichain Sniper Bot
+                </h1>
+                <p class="subhead">
+                    Automated memecoin sniping across 8+ blockchains. Connect your wallet. Start sniping faster.
+                </p>
+                <div class="cta-buttons">
+                    <button class="btn-primary" onclick="document.getElementById('connect-wallet').click()">
+                        Connect Wallet
+                    </button>
+                    <button class="btn-secondary" onclick="window.location.href='#pricing'">
+                        Subscribe $5/mo
+                    </button>
+                </div>
+            </div>
+            <div class="hero-visual">
+                <div class="device-mockup">
+                    <div style="background: white; border-radius: 16px; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 3rem;">
+                        🚀
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="features-container">
+            <h2 class="section-title">Lightning-Fast Features</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h3>Memecoin Sniping</h3>
+                    <p>Automated liquidity sniping with millisecond precision across multiple DEXs</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>8+ Chain Support</h3>
+                    <p>SOL, ETH, BASE, SUI, BNB, METIS, ARB, AVAX - all in one interface</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔥</div>
+                    <h3>High-Speed Trading</h3>
+                    <p>Ultra-fast buy/sell transactions with optimized gas fees</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Copy Trade</h3>
+                    <p>Mirror successful traders automatically with Pump.fun integration</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💎</div>
+                    <h3>Raydium & Openbook</h3>
+                    <p>Direct integration with Raydium Swap and Openbook Sniper</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🛡️</div>
+                    <h3>Security Checks</h3>
+                    <p>Rug alerts, mintable status, and liquidity-lock verification built-in</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Token Cards Carousel -->
+    <section class="token-carousel-section">
+        <div class="carousel-container">
+            <h2 class="section-title">Live Token Opportunities</h2>
+            <div class="token-carousel" id="tokenCarousel">
+                <div class="token-card">
+                    <div class="token-header">
+                        <div class="token-logo"></div>
+                        <div class="token-info">
+                            <h4>BONK</h4>
+                            <span class="chain-badge">SOL</span>
+                        </div>
+                    </div>
+                    <div class="token-stats">
+                        <div class="stat-row">
+                            <span>Price:</span>
+                            <span>$0.000024</span>
+                        </div>
+                        <div class="stat-row">
+                            <span>Liquidity:</span>
+                            <span>$2.4M</span>
+                        </div>
+                    </div>
+                    <div class="token-actions">
+                        <button class="action-btn">Watch</button>
+                        <button class="action-btn">Snipe</button>
+                    </div>
+                </div>
+                <div class="token-card">
+                    <div class="token-header">
+                        <div class="token-logo"></div>
+                        <div class="token-info">
+                            <h4>WIF</h4>
+                            <span class="chain-badge">SOL</span>
+                        </div>
+                    </div>
+                    <div class="token-stats">
+                        <div class="stat-row">
+                            <span>Price:</span>
+                            <span>$0.002341</span>
+                        </div>
+                        <div class="stat-row">
+                            <span>Liquidity:</span>
+                            <span>$5.3M</span>
+                        </div>
+                    </div>
+                    <div class="token-actions">
+                        <button class="action-btn">Watch</button>
+                        <button class="action-btn">Snipe</button>
+                    </div>
+                </div>
+                <div class="token-card">
+                    <div class="token-header">
+                        <div class="token-logo"></div>
+                        <div class="token-info">
+                            <h4>SHIB</h4>
+                            <span class="chain-badge">BNB</span>
+                        </div>
+                    </div>
+                    <div class="token-stats">
+                        <div class="stat-row">
+                            <span>Price:</span>
+                            <span>$0.000009</span>
+                        </div>
+                        <div class="stat-row">
+                            <span>Liquidity:</span>
+                            <span>$3.8M</span>
+                        </div>
+                    </div>
+                    <div class="token-actions">
+                        <button class="action-btn">Watch</button>
+                        <button class="action-btn">Snipe</button>
+                    </div>
+                </div>
+                <div class="token-card">
+                    <div class="token-header">
+                        <div class="token-logo"></div>
+                        <div class="token-info">
+                            <h4>PEPE</h4>
+                            <span class="chain-badge">ETH</span>
+                        </div>
+                    </div>
+                    <div class="token-stats">
+                        <div class="stat-row">
+                            <span>Price:</span>
+                            <span>$0.000008</span>
+                        </div>
+                        <div class="stat-row">
+                            <span>Liquidity:</span>
+                            <span>$8.7M</span>
+                        </div>
+                    </div>
+                    <div class="token-actions">
+                        <button class="action-btn">Watch</button>
+                        <button class="action-btn">Snipe</button>
+                    </div>
+                </div>
+                <div class="token-card">
+                    <div class="token-header">
+                        <div class="token-logo"></div>
+                        <div class="token-info">
+                            <h4>DOGE</h4>
+                            <span class="chain-badge">BASE</span>
+                        </div>
+                    </div>
+                    <div class="token-stats">
+                        <div class="stat-row">
+                            <span>Price:</span>
+                            <span>$0.000156</span>
+                        </div>
+                        <div class="stat-row">
+                            <span>Liquidity:</span>
+                            <span>$1.2M</span>
+                        </div>
+                    </div>
+                    <div class="token-actions">
+                        <button class="action-btn">Watch</button>
+                        <button class="action-btn">Snipe</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-it-works" id="how-it-works">
+        <div class="features-container">
+            <h2 class="section-title">How It Works</h2>
+            <div class="steps-container">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h3>Connect Wallet</h3>
+                    <p>Link your Phantom, MetaMask, or any Web3 wallet securely</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h3>Choose Strategy</h3>
+                    <p>Select auto-snipe, copy trade, or manual mode</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h3>Auto-Snipe</h3>
+                    <p>Bot executes lightning-fast transactions at optimal prices</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <h3>Monitor & Profit</h3>
+                    <p>Track performance and withdraw earnings anytime</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="pricing" id="pricing">
+        <div class="features-container">
+            <h2 class="section-title">Simple, Transparent Pricing</h2>
+            <div class="pricing-container">
+                <div class="pricing-card">
+                    <h3>Monthly</h3>
+                    <div class="price">$5<span class="price-period">/mo</span></div>
+                    <ul class="features-list">
+                        <li>Core sniping features</li>
+                        <li>8+ chain support</li>
+                        <li>Basic alerts</li>
+                        <li>Community support</li>
+                        <li>Real-time trading</li>
+                    </ul>
+                    <button class="subscribe-btn" onclick="openSubscriptionModal('monthly')">Subscribe - $5/month</button>
+                </div>
+                <div class="pricing-card featured">
+                    <h3>Yearly</h3>
+                    <div class="price">$30<span class="price-period">/yr</span></div>
+                    <ul class="features-list">
+                        <li>All Monthly features</li>
+                        <li>Priority support</li>
+                        <li>Advanced analytics</li>
+                        <li>Custom alerts</li>
+                        <li>API access</li>
+                        <li>Save $30/year</li>
+                    </ul>
+                    <button class="subscribe-btn" onclick="openSubscriptionModal('yearly')">Subscribe - $30/year</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Trust & Security -->
+    <section class="trust">
+        <div class="trust-container">
+            <h2 class="section-title">Trusted & Secure</h2>
+            <div class="trust-features">
+                <div class="trust-item">
+                    <div class="trust-icon">🔒</div>
+                    <span>Non-custodial</span>
+                </div>
+                <div class="trust-item">
+                    <div class="trust-icon">⚡</div>
+                    <span>Instant execution</span>
+                </div>
+                <div class="trust-item">
+                    <div class="trust-icon">🛡️</div>
+                    <span>Liquidity verification</span>
+                </div>
+                <div class="trust-item">
+                    <div class="trust-icon">🔐</div>
+                    <span>Encrypted connections</span>
+                </div>
+            </div>
+            <div class="chain-logos">
+                <div class="chain-logo">SOL</div>
+                <div class="chain-logo">ETH</div>
+                <div class="chain-logo">BASE</div>
+                <div class="chain-logo">SUI</div>
+                <div class="chain-logo">BNB</div>
+                <div class="chain-logo">ARB</div>
+                <div class="chain-logo">AVAX</div>
+                <div class="chain-logo">METIS</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-container">
+            <div class="footer-section">
+                <h4>Product</h4>
+                <a href="#features">Features</a>
+                <a href="#how-it-works">How It Works</a>
+                <a href="#pricing">Pricing</a>
+                <a href="#">Documentation</a>
+            </div>
+            <div class="footer-section">
+                <h4>Company</h4>
+                <a href="#">About</a>
+                <a href="#">Blog</a>
+                <a href="#">Careers</a>
+                <a href="#">Contact</a>
+            </div>
+            <div class="footer-section">
+                <h4>Legal</h4>
+                <a href="#">Terms of Service</a>
+                <a href="#">Privacy Policy</a>
+                <a href="#">Cookie Policy</a>
+            </div>
+            <div class="footer-section">
+                <h4>Community</h4>
+                <a href="#">Discord</a>
+                <a href="#">Twitter</a>
+                <a href="#">Telegram</a>
+                <a href="#">GitHub</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 NexiumBoost. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Wallet Modal -->
     <div class="wallet-modal" id="wallet-modal">
-        <div class="wallet-modal-content">
-            <h2 class="text-yellow-400">Select a Wallet</h2>
-            <button id="connect-phantom" class="glow-button" aria-label="Connect Phantom">Connect Phantom</button>
-            <button class="close-modal" id="close-modal" aria-label="Close Modal">Close</button>
+        <div class="modal-content">
+            <h2>Connect Your Wallet</h2>
+            <div class="wallet-option" id="connect-phantom">
+                <div class="wallet-icon">👻</div>
+                <div>
+                    <strong>Phantom</strong>
+                    <div style="font-size: 0.9rem; color: #6a6a6a;">For Solana</div>
+                </div>
+            </div>
+            <div class="wallet-option" onclick="alert('MetaMask support coming soon!')">
+                <div class="wallet-icon">🦊</div>
+                <div>
+                    <strong>MetaMask</strong>
+                    <div style="font-size: 0.9rem; color: #6a6a6a;">For EVM chains</div>
+                </div>
+            </div>
+            <div class="wallet-option" onclick="alert('WalletConnect support coming soon!')">
+                <div class="wallet-icon">🔗</div>
+                <div>
+                    <strong>WalletConnect</strong>
+                    <div style="font-size: 0.9rem; color: #6a6a6a;">Universal connector</div>
+                </div>
+            </div>
+            <button class="close-modal" id="close-modal">Close</button>
         </div>
     </div>
-    <div id="metamaskPrompt" class="metamask-prompt hidden text-center bg-[#1a182e] p-6 rounded-xl border border-orange-400 glass">
-        <p class="text-white">No wallet installed. Install <a href="#" class="text-yellow-400 hover:underline" id="walletLink">wallet</a> to continue.</p>
+
+    <!-- Subscription Modal -->
+    <div class="subscription-modal" id="subscription-modal">
+        <div class="modal-content">
+            <h2>Confirm Subscription</h2>
+            <div style="margin: 2rem 0; text-align: center;">
+                <div style="font-size: 2.5rem; font-weight: 800; color: #9945FF;" id="modal-price">$5</div>
+                <div style="color: #6a6a6a; margin-top: 0.5rem;" id="modal-period">per month</div>
+                <div style="margin-top: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 8px; text-align: left;">
+                    <p style="font-weight: 600; margin-bottom: 0.5rem;">Includes:</p>
+                    <ul style="color: #6a6a6a; margin-left: 1.5rem;">
+                        <li id="feature-1">Core sniping features</li>
+                        <li id="feature-2">8+ chain support</li>
+                        <li id="feature-3">Real-time alerts</li>
+                    </ul>
+                </div>
+            </div>
+            <button class="subscribe-btn" onclick="processSubscription()">Confirm & Pay</button>
+            <button class="close-modal" onclick="closeSubscriptionModal()">Cancel</button>
+        </div>
     </div>
+
+    <!-- MetaMask Prompt -->
+    <div id="metamaskPrompt" class="hidden" style="position: fixed; bottom: 2rem; right: 2rem; background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.2); max-width: 300px; z-index: 1000;">
+        <p style="color: #1a1a1a; margin-bottom: 1rem;">No wallet installed. Install <a href="#" style="color: #9945FF; font-weight: 600;" id="walletLink">wallet</a> to continue.</p>
+        <button onclick="document.getElementById('metamaskPrompt').classList.add('hidden')" style="background: #e0e0e0; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">Close</button>
+    </div>
+
+    <script>
+        // Auto-scroll carousel
+        const carousel = document.getElementById('tokenCarousel');
+        let scrollPosition = 0;
+        let isHovering = false;
+
+        carousel.addEventListener('mouseenter', () => isHovering = true);
+        carousel.addEventListener('mouseleave', () => isHovering = false);
+
+        function autoScroll() {
+            if (!isHovering && carousel) {
+                scrollPosition += 0.5;
+                if (scrollPosition >= carousel.scrollWidth - carousel.clientWidth) {
+                    scrollPosition = 0;
+                }
+                carousel.scrollLeft = scrollPosition;
+            }
+            requestAnimationFrame(autoScroll);
+        }
+        autoScroll();
+
+        // Wallet connection
+        const connectWalletBtn = document.getElementById('connect-wallet');
+        const walletModal = document.getElementById('wallet-modal');
+        const closeModalBtn = document.getElementById('close-modal');
+        const connectPhantomBtn = document.getElementById('connect-phantom');
+
+        connectWalletBtn.addEventListener('click', () => {
+            walletModal.classList.add('active');
+        });
+
+        closeModalBtn.addEventListener('click', () => {
+            walletModal.classList.remove('active');
+        });
+
+        connectPhantomBtn.addEventListener('click', () => {
+            if (window.solana && window.solana.isPhantom) {
+                window.solana.connect().then(() => {
+                    walletModal.classList.remove('active');
+                    connectWalletBtn.textContent = 'Connected';
+                    connectWalletBtn.style.background = 'linear-gradient(135deg, #14F195 0%, #9945FF 100%)';
+                }).catch(err => {
+                    console.error('Connection failed:', err);
+                });
+            } else {
+                document.getElementById('metamaskPrompt').classList.remove('hidden');
+                document.getElementById('walletLink').href = 'https://phantom.app/';
+            }
+        });
+
+        // Subscription Modal
+        let currentPlan = '';
+
+        function openSubscriptionModal(plan) {
+            currentPlan = plan;
+            const modal = document.getElementById('subscription-modal');
+            const priceEl = document.getElementById('modal-price');
+            const periodEl = document.getElementById('modal-period');
+
+            if (plan === 'monthly') {
+                priceEl.textContent = '$5';
+                periodEl.textContent = 'per month';
+            } else {
+                priceEl.textContent = '$30';
+                periodEl.textContent = 'per year (Save $30)';
+                document.getElementById('feature-3').textContent = 'Priority support + API access';
+            }
+
+            modal.classList.add('active');
+        }
+
+        function closeSubscriptionModal() {
+            document.getElementById('subscription-modal').classList.remove('active');
+        }
+
+        function processSubscription() {
+            if (window.solana && window.solana.isConnected) {
+                alert(`Subscription processing for ${currentPlan} plan. Payment gateway integration required.`);
+                closeSubscriptionModal();
+            } else {
+                alert('Please connect your wallet first!');
+                closeSubscriptionModal();
+                document.getElementById('connect-wallet').click();
+            }
+        }
+
+        // Smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+
+        // Close modals on outside click
+        walletModal.addEventListener('click', (e) => {
+            if (e.target === walletModal) {
+                walletModal.classList.remove('active');
+            }
+        });
+
+        document.getElementById('subscription-modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('subscription-modal')) {
+                closeSubscriptionModal();
+            }
+        });
+    </script>
     <script type="module" src="main.js"></script>
 </body>
 </html>
