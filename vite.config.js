@@ -60,9 +60,7 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        main: 'src/index.html',
         addVolume: 'src/add-volume.html',
-        about: 'src/about.html',
       },
       external: [],
       plugins: [
