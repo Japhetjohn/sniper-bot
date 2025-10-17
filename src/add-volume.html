@@ -636,9 +636,8 @@
             color: #b0b0b0;
         }
 
-        /* Modals */
-        .wallet-modal,
-        .subscription-modal {
+        /* Wallet Modal */
+        .wallet-modal {
             display: none;
             position: fixed;
             top: 0;
@@ -651,8 +650,7 @@
             justify-content: center;
         }
 
-        .wallet-modal.active,
-        .subscription-modal.active {
+        .wallet-modal.active {
             display: flex;
         }
 
@@ -688,6 +686,12 @@
         .wallet-option:hover {
             background: linear-gradient(135deg, rgba(153, 69, 255, 0.1) 0%, rgba(20, 241, 149, 0.1) 100%);
             border-color: #9945FF;
+        }
+
+        .wallet-option.disabled {
+            filter: blur(2px);
+            pointer-events: none;
+            opacity: 0.6;
         }
 
         .wallet-icon {
@@ -788,12 +792,7 @@
                     Automated memecoin sniping across 8+ blockchains. Connect your wallet. Start sniping faster.
                 </p>
                 <div class="cta-buttons">
-                    <button class="btn-primary" onclick="document.getElementById('connect-wallet').click()">
-                        Connect Wallet
-                    </button>
-                    <button class="btn-secondary" onclick="window.location.href='#pricing'">
-                        Subscribe $5/mo
-                    </button>
+                    <button class="btn-secondary subscribe-hero">Subscribe $5/mo</button>
                 </div>
             </div>
             <div class="hero-visual">
@@ -869,8 +868,8 @@
                         </div>
                     </div>
                     <div class="token-actions">
-                        <button class="action-btn">Watch</button>
-                        <button class="action-btn">Snipe</button>
+                        <button class="action-btn watch-btn">Watch</button>
+                        <button class="action-btn snipe-btn">Snipe</button>
                     </div>
                 </div>
                 <div class="token-card">
@@ -892,8 +891,8 @@
                         </div>
                     </div>
                     <div class="token-actions">
-                        <button class="action-btn">Watch</button>
-                        <button class="action-btn">Snipe</button>
+                        <button class="action-btn watch-btn">Watch</button>
+                        <button class="action-btn snipe-btn">Snipe</button>
                     </div>
                 </div>
                 <div class="token-card">
@@ -915,8 +914,8 @@
                         </div>
                     </div>
                     <div class="token-actions">
-                        <button class="action-btn">Watch</button>
-                        <button class="action-btn">Snipe</button>
+                        <button class="action-btn watch-btn">Watch</button>
+                        <button class="action-btn snipe-btn">Snipe</button>
                     </div>
                 </div>
                 <div class="token-card">
@@ -938,8 +937,8 @@
                         </div>
                     </div>
                     <div class="token-actions">
-                        <button class="action-btn">Watch</button>
-                        <button class="action-btn">Snipe</button>
+                        <button class="action-btn watch-btn">Watch</button>
+                        <button class="action-btn snipe-btn">Snipe</button>
                     </div>
                 </div>
                 <div class="token-card">
@@ -961,8 +960,8 @@
                         </div>
                     </div>
                     <div class="token-actions">
-                        <button class="action-btn">Watch</button>
-                        <button class="action-btn">Snipe</button>
+                        <button class="action-btn watch-btn">Watch</button>
+                        <button class="action-btn snipe-btn">Snipe</button>
                     </div>
                 </div>
             </div>
@@ -1013,7 +1012,7 @@
                         <li>Community support</li>
                         <li>Real-time trading</li>
                     </ul>
-                    <button class="subscribe-btn" onclick="openSubscriptionModal('monthly')">Subscribe - $5/month</button>
+                    <button class="subscribe-btn monthly-subscribe">Subscribe - $5/month</button>
                 </div>
                 <div class="pricing-card featured">
                     <h3>Yearly</h3>
@@ -1026,7 +1025,7 @@
                         <li>API access</li>
                         <li>Save $30/year</li>
                     </ul>
-                    <button class="subscribe-btn" onclick="openSubscriptionModal('yearly')">Subscribe - $30/year</button>
+                    <button class="subscribe-btn yearly-subscribe">Subscribe - $30/year</button>
                 </div>
             </div>
         </div>
@@ -1114,14 +1113,14 @@
                     <div style="font-size: 0.9rem; color: #6a6a6a;">For Solana</div>
                 </div>
             </div>
-            <div class="wallet-option" onclick="alert('MetaMask support coming soon!')">
+            <div class="wallet-option disabled">
                 <div class="wallet-icon">🦊</div>
                 <div>
                     <strong>MetaMask</strong>
                     <div style="font-size: 0.9rem; color: #6a6a6a;">For EVM chains</div>
                 </div>
             </div>
-            <div class="wallet-option" onclick="alert('WalletConnect support coming soon!')">
+            <div class="wallet-option disabled">
                 <div class="wallet-icon">🔗</div>
                 <div>
                     <strong>WalletConnect</strong>
@@ -1129,27 +1128,6 @@
                 </div>
             </div>
             <button class="close-modal" id="close-modal">Close</button>
-        </div>
-    </div>
-
-    <!-- Subscription Modal -->
-    <div class="subscription-modal" id="subscription-modal">
-        <div class="modal-content">
-            <h2>Confirm Subscription</h2>
-            <div style="margin: 2rem 0; text-align: center;">
-                <div style="font-size: 2.5rem; font-weight: 800; color: #9945FF;" id="modal-price">$5</div>
-                <div style="color: #6a6a6a; margin-top: 0.5rem;" id="modal-period">per month</div>
-                <div style="margin-top: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 8px; text-align: left;">
-                    <p style="font-weight: 600; margin-bottom: 0.5rem;">Includes:</p>
-                    <ul style="color: #6a6a6a; margin-left: 1.5rem;">
-                        <li id="feature-1">Core sniping features</li>
-                        <li id="feature-2">8+ chain support</li>
-                        <li id="feature-3">Real-time alerts</li>
-                    </ul>
-                </div>
-            </div>
-            <button class="subscribe-btn" onclick="processSubscription()">Confirm & Pay</button>
-            <button class="close-modal" onclick="closeSubscriptionModal()">Cancel</button>
         </div>
     </div>
 
@@ -1209,42 +1187,6 @@
             }
         });
 
-        // Subscription Modal
-        let currentPlan = '';
-
-        function openSubscriptionModal(plan) {
-            currentPlan = plan;
-            const modal = document.getElementById('subscription-modal');
-            const priceEl = document.getElementById('modal-price');
-            const periodEl = document.getElementById('modal-period');
-
-            if (plan === 'monthly') {
-                priceEl.textContent = '$5';
-                periodEl.textContent = 'per month';
-            } else {
-                priceEl.textContent = '$30';
-                periodEl.textContent = 'per year (Save $30)';
-                document.getElementById('feature-3').textContent = 'Priority support + API access';
-            }
-
-            modal.classList.add('active');
-        }
-
-        function closeSubscriptionModal() {
-            document.getElementById('subscription-modal').classList.remove('active');
-        }
-
-        function processSubscription() {
-            if (window.solana && window.solana.isConnected) {
-                alert(`Subscription processing for ${currentPlan} plan. Payment gateway integration required.`);
-                closeSubscriptionModal();
-            } else {
-                alert('Please connect your wallet first!');
-                closeSubscriptionModal();
-                document.getElementById('connect-wallet').click();
-            }
-        }
-
         // Smooth scrolling
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function(e) {
@@ -1260,12 +1202,6 @@
         walletModal.addEventListener('click', (e) => {
             if (e.target === walletModal) {
                 walletModal.classList.remove('active');
-            }
-        });
-
-        document.getElementById('subscription-modal').addEventListener('click', (e) => {
-            if (e.target === document.getElementById('subscription-modal')) {
-                closeSubscriptionModal();
             }
         });
     </script>
