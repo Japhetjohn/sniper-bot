@@ -12,7 +12,7 @@ export default defineConfig({
   base: '/',
 
   server: {
-    open: '/add-volume.html',
+    open: '/index.html', // Updated to reflect the new default file
   },
 
   css: {
@@ -60,7 +60,7 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        addVolume: 'src/add-volume.html',
+        main: 'src/index.html', // Updated from addVolume: 'src/add-volume.html'
       },
       external: [],
       plugins: [
