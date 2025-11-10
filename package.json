@@ -11,7 +11,9 @@
     "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
     "@rollup/plugin-inject": "^5.0.5",
     "autoprefixer": "^10.4.21",
+    "crypto-browserify": "^3.12.1",
     "postcss": "^8.5.6",
+    "stream-browserify": "^3.0.0",
     "tailwindcss": "^3.4.17",
     "terser": "^5.43.1",
     "vite": "^7.0.5"
@@ -28,6 +30,7 @@
     "dotenv": "^17.2.1",
     "ethers": "^6.15.0",
     "i": "^0.3.7",
+    "js-sha256": "^0.11.1",
     "qrcode": "^1.5.4",
     "xrpl": "^4.4.0"
   }

